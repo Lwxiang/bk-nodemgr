@@ -74,7 +74,7 @@ func (mgr *Manager) Start(ctx context.Context) error {
 func (mgr *Manager) initializeWorkflowManager(ctx context.Context) error {
 	workflowStg := workflowStorage.NewStorage(&workflowStorage.StorageConfig{
 		MongoDB:            mgr.config.MongoDB,
-		Database:           "workflow",
+		Database:           "nodeman",
 		TaskCollection:     "task",
 		StoppingCollection: "stopping_task",
 	})

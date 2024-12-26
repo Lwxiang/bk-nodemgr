@@ -1,0 +1,48 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "bk-nodeman.fullname" . }}-backend-config
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  backend_conf.yaml: |
+    api_gateway: {{ .Values.backend.config.api_gateway | toYaml | nindent 6 }}
+
+    http_server: {{ .Values.backend.config.http_server | toYaml | nindent 6 }}
+
+    log: {{ .Values.backend.config.log | toYaml | nindent 6 }}
+
+    redis:
+      {{- if .Values.redis.enabled }}
+      host: {{ template "bk-nodeman.fullname" . }}-redis-headless
+      port: {{ .Values.redis.service.ports.redis }}
+      password: {{ .Values.redis.password }}
+      {{- else }}
+      host: {{ .Values.externalRedis.host }}
+      port: {{ .Values.externalRedis.port }}
+      password: {{ .Values.externalRedis.password }}
+      {{- end}}
+      db: 0
+
+    mongodb:
+      {{- if .Values.mongodb.enabled }}
+      hosts:
+        - {{ template "bk-nodeman.fullname" . }}-mongodb-headless
+      username: {{ .Values.mongodb.auth.username }}
+      password: {{ .Values.mongodb.auth.password }}
+      auth_source: {{ .Values.mongodb.auth.database }}
+      {{- else }}
+      hosts:
+        - {{ .Values.externalMongodb.hosts }}
+      username: {{ .Values.externalMongodb.username }}
+      password: {{ .Values.externalMongodb.password }}
+      auth_source: {{ .Values.externalMongodb.database }}
+      {{- end}}
+      auth_mechanism: SCRAM-SHA-256
+{{- end }}

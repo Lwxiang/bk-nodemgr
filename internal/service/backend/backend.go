@@ -51,7 +51,7 @@ func NewService(conf *config.BackendService) *Service {
 
 	ts := topoStorage.NewStorage(&topoStorage.StorageConfig{
 		MongoDB:            conf.MongoDB,
-		Database:           "bknodeman_topo",
+		Database:           "nodeman",
 		BusinessCollection: "business",
 		HostCollection:     "host",
 	})
