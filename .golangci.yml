@@ -610,6 +610,8 @@ linters-settings:
       - const C
       - T any
       - m map[string]int
+      - r recover
+      - p pool
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false
