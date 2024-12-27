@@ -123,7 +123,7 @@ func (c *client) SearchBusiness(page Page) ([]*types.Business, int, error) {
 	}
 
 	resp := &RespSearchBusiness{}
-	if err = json.Unmarshal(respData, &resp); err != nil {
+	if err = json.Unmarshal(respData, resp); err != nil {
 		return nil, 0, fmt.Errorf("failed to unmarshal response body. post(%s), data(%s), err: %v", url, respData, err)
 	}
 
