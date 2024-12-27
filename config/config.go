@@ -34,10 +34,12 @@ type MongoDB struct {
 
 // Log the config of log.
 type Log struct {
-	Dir     string `yaml:"dir" usage:"log dir of backend server"`
-	MaxSize uint64 `yaml:"max_size" usage:"max size in MBytes of single log file"`
-	MaxNum  int    `yaml:"max_num" usage:"max number of log files"`
-	Level   string `yaml:"level" usage:"log level of backend server"`
+	Dir          string `yaml:"dir" usage:"log dir of backend server"`
+	MaxSizeMB    uint64 `yaml:"max_size_mb" usage:"max size in MBytes of single log file"`
+	MaxNum       int    `yaml:"max_num" usage:"max number of log files"`
+	Level        string `yaml:"level" usage:"log level of backend server. DEBUG, INFO, WARN, ERROR"`
+	ToStdErr     bool   `yaml:"to_stderr" usage:"log to stderr instead of files"`
+	AlsoToStdErr bool   `yaml:"also_to_stderr" usage:"log to stderr in addition to files"`
 }
 
 // HTTPServer the config of http service.

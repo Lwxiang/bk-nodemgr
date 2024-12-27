@@ -14,26 +14,29 @@
 package blog
 
 import (
-	"fmt"
 	"log"
-	"regexp"
 	"sync"
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog/glog"
 )
 
-type LogConfig struct {
-	LogDir     string `json:"log_dir" value:"./logs" usage:"If non-empty, write log files in this directory" mapstructure:"log_dir" yaml:"log_dir"`
-	LogMaxSize uint64 `json:"log_max_size" value:"500" usage:"Max size (MB) per log file." mapstructure:"log_max_size" yaml:"log_max_size"`
-	LogMaxNum  int    `json:"log_max_num" value:"10" usage:"Max num of log file. The oldest will be removed if there is a extra file created." mapstructure:"log_max_num" yaml:"log_max_num"`
+// LogConfig is the configuration for initializing logs.
+type LogConfig glog.LogConfig
 
-	ToStdErr        bool   `json:"logtostderr" value:"false" usage:"log to standard error instead of files" mapstructure:"logtostderr" yaml:"logtostderr"`
-	AlsoToStdErr    bool   `json:"alsologtostderr" value:"false" usage:"log to standard error as well as files" mapstructure:"alsologtostderr" yaml:"alsologtostderr"`
-	Verbosity       int32  `json:"v" value:"0" usage:"log level for V logs" mapstructure:"v" yaml:"v"`
-	StdErrThreshold string `json:"stderrthreshold" value:"2" usage:"logs at or above this threshold go to stderr" mapstructure:"stderrthreshold" yaml:"stderrthreshold"`
-	VModule         string `json:"vmodule" value:"" usage:"comma-separated list of pattern=N settings for file-filtered logging" mapstructure:"vmodule" yaml:"vmodule"`
-	TraceLocation   string `json:"log_backtrace_at" value:"" usage:"when logging hits line file:N, emit a stack trace" mapstructure:"log_backtrace_at" yaml:"log_backtrace_at"`
+func NewLogConfig() LogConfig {
+	return LogConfig{
+		LogDir:       "./logs",
+		LogMaxSizeMB: 200,
+		LogMaxNum:    10,
+
+		ToStdErr:        true,
+		AlsoToStdErr:    true,
+		Level:           "info",
+		StdErrThreshold: "3",
+		VModule:         "",
+		TraceLocation:   "",
+	}
 }
 
 // GlogWriter serves as a bridge between the standard log package and the glog package.
@@ -49,16 +52,8 @@ var once sync.Once
 
 // InitLogs initializes logs the way we want for blog.
 func InitLogs(logConfig LogConfig) {
-	glog.InitLogs(logConfig.ToStdErr,
-		logConfig.AlsoToStdErr,
-		logConfig.Verbosity,
-		logConfig.StdErrThreshold,
-		logConfig.VModule,
-		logConfig.TraceLocation,
-		logConfig.LogDir,
-		logConfig.LogMaxSize,
-		logConfig.LogMaxNum,
-	)
+	glog.InitLogs(glog.LogConfig(logConfig))
+
 	once.Do(func() {
 		log.SetOutput(GlogWriter{})
 		log.SetFlags(0)
@@ -74,132 +69,42 @@ func InitLogs(logConfig LogConfig) {
 	})
 }
 
-// CloseLogs xxx
+// CloseLogs flush the rest logs in buffer.
 func CloseLogs() {
 	glog.Flush()
 }
 
 var (
-	// Info xxx
+	// Debug prints logs like fmt.Print in debug level.
+	Debug = glog.Debug
+	// Debugf prints logs like fmt.Printf in debug level.
+	Debugf = glog.Debugf
+	// Debugw prints logs with key(values) in debug level.
+	Debugw = glog.Debugw
+
+	// Info prints logs like fmt.Print in info level.
 	Info = glog.Info
-	// Infof xxx
+	// Infof prints logs like fmt.Printf in info level.
 	Infof = glog.Infof
-	// Infow 支持 key-values 方式输出
-	Infow = glog.Infow.LogFormatw
+	// Infow prints logs with key(values) in info level.
+	Infow = glog.Infow
 
-	// Warn xxx
+	// Warn prints logs like fmt.Print in warn level.
 	Warn = glog.Warning
-	// Warnf xxx
+	// Warnf prints logs like fmt.Printf in warn level.
 	Warnf = glog.Warningf
-	// Warnw 支持 key-values 方式输出
-	Warnw = glog.Warnw.LogFormatw
+	// Warnw prints logs with key(values) in warn level.
+	Warnw = glog.Warningw
 
-	// Error xxx
+	// Error prints	logs like fmt.Print in error level.
 	Error = glog.Error
-	// Errorf xxx
+	// Errorf prints logs like fmt.Printf in error level.
 	Errorf = glog.Errorf
-	// Errorw 支持 key-values 方式输出
-	Errorw = glog.Errorw.LogFormatw
-
-	// Fatal xxx
-	Fatal = glog.Fatal
-	// Fatalf xxx
-	Fatalf = glog.Fatalf
-	// Fatalw 支持 key-values 方式输出
-	Fatalw = glog.Fatalw.LogFormatw
-
-	// V xxx
-	V = glog.V
+	// Errorw prints logs with key(values) in error level.
+	Errorw = glog.Errorw
 )
 
-// Debug xxx
-func Debug(args ...interface{}) {
-	if format, ok := (args[0]).(string); ok {
-		glog.V(3).Infof(format, args[1:]...)
-	} else {
-		glog.V(3).Info(args...)
-	}
+// SetLevel set the logging level.
+func SetLevel(level string) {
+	glog.SetLevel(level)
 }
-
-// SetV xxx
-func SetV(level int32) {
-	glog.SetV(glog.Level(level))
-}
-
-// defaultRe and defaultHandler is for bcs-dns wrap its extra time tag in log.
-// the extra time tag of bcs-dns: [04/Jan/2018:09:44:27 +0800]
-var defaultRe = regexp.MustCompile(`\[\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2} \+\d{4}\] `)
-var defaultHandler WrapFunc = func(format string, args ...interface{}) string {
-	src := fmt.Sprintf(format, args...)
-	return defaultRe.ReplaceAllString(src, "")
-}
-
-// WrapFunc take the param the same as glog.Infof, and return string.
-type WrapFunc func(string, ...interface{}) string
-
-// Wrapper use WrapFunc to handle the log message before send it to glog.
-// Can be use as:
-//
-//	var handler blog.WrapFunc = func(format string, args ...interface{}) string {
-//	    src := fmt.Sprintf(format, args...)
-//	    dst := regexp.MustCompile("boy").ReplaceAllString(src, "man")
-//	}
-//	blog.Wrapper(handler).V(2).Info("hello boy")
-//
-// And it will flush as:
-//
-//	I0104 09:44:27.796409   16233 blog.go:21] hello man
-type Wrapper struct {
-	Handler WrapFunc
-	verbose glog.Verbose
-}
-
-// Info implementation
-func (w *Wrapper) Info(format string, args ...interface{}) {
-	if w.verbose {
-		Info(w.Handler(format, args...))
-	}
-}
-
-// Warn implementation
-func (w *Wrapper) Warn(format string, args ...interface{}) {
-	if w.verbose {
-		Warn(w.Handler(format, args...))
-	}
-}
-
-// Error implementation
-func (w *Wrapper) Error(format string, args ...interface{}) {
-	if w.verbose {
-		Error(w.Handler(format, args...))
-	}
-}
-
-// Fatal implementation
-func (w *Wrapper) Fatal(format string, args ...interface{}) {
-	if w.verbose {
-		Fatal(w.Handler(format, args...))
-	}
-}
-
-// V implementation
-func (w *Wrapper) V(level glog.Level) *Wrapper {
-	w.verbose = V(level)
-	return w
-}
-
-// Wrap Wrapper function
-func Wrap(handler WrapFunc) *Wrapper {
-	if handler == nil {
-		handler = defaultHandler
-	}
-	return &Wrapper{verbose: true, Handler: handler}
-}
-
-// GlogKit 适配 https://github.com/go-kit/log 接口
-type GlogKit interface {
-	Log(keyvals ...interface{}) error
-}
-
-// LogKit 适配 https://github.com/go-kit/log 接口
-var LogKit = glog.LogKit{}

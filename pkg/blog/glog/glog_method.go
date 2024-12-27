@@ -13,31 +13,59 @@
 package glog
 
 import (
-	"strconv"
+	"strings"
 	"sync"
 )
 
-// SetV xxx
-func SetV(level Level) {
-	_ = logging.verbosity.Set(strconv.Itoa(int(level)))
+// SetLevel set the logging level.
+func SetLevel(level string) {
+	var value int32
+
+	switch strings.ToUpper(level) {
+	case "DEBUG":
+		value = int32(debugLog)
+	case "INFO":
+		value = int32(infoLog)
+	case "WARN":
+		value = int32(warningLog)
+	case "ERROR":
+		value = int32(errorLog)
+	default:
+		value = int32(infoLog)
+	}
+
+	_ = logging.verbosity.Set(value)
 }
 
 var once sync.Once
 
-// InitLogs xxx
-// Init glog from commandline params
-func InitLogs(toStderr, alsoToStderr bool, verbose int32, stdErrThreshold, vModule, traceLocation, dir string,
-	maxSize uint64, maxNum int) {
-	once.Do(func() {
-		logging.toStderr = toStderr
-		logging.alsoToStderr = alsoToStderr
-		_ = logging.verbosity.Set(strconv.Itoa(int(verbose)))
-		_ = logging.stderrThreshold.Set(stdErrThreshold)
-		_ = logging.vmodule.Set(vModule)
-		_ = logging.traceLocation.Set(traceLocation)
+// LogConfig defines the glog config.
+type LogConfig struct {
+	LogDir       string
+	LogMaxSizeMB uint64
+	LogMaxNum    int
 
-		logMaxNum = maxNum
-		logMaxSize = maxSize * 1024 * 1024
-		logDir = dir
+	ToStdErr        bool
+	AlsoToStdErr    bool
+	Level           string
+	StdErrThreshold string
+	VModule         string
+	TraceLocation   string
+}
+
+// InitLogs init glog from params.
+func InitLogs(config LogConfig) {
+	once.Do(func() {
+		logging.toStderr = config.ToStdErr
+		logging.alsoToStderr = config.AlsoToStdErr
+		_ = logging.stderrThreshold.Set(config.StdErrThreshold)
+		_ = logging.vmodule.Set(config.VModule)
+		_ = logging.traceLocation.Set(config.TraceLocation)
+
+		SetLevel(config.Level)
+
+		logMaxNum = config.LogMaxNum
+		logMaxSize = config.LogMaxSizeMB * 1024 * 1024
+		logDir = config.LogDir
 	})
 }

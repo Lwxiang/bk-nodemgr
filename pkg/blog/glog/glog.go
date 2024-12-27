@@ -105,22 +105,28 @@ import (
 // the corresponding constants in C++.
 type severity int32 // sync/atomic int32
 
+func (s severity) AbleToLog() bool {
+	return logging.verbosity.get() <= Level(s)
+}
+
 // These constants identify the log levels in order of increasing severity.
 // A message written to a high-severity log file is also written to each
 // lower-severity log file.
 const (
-	infoLog severity = iota
+	debugLog severity = iota
+	infoLog
 	warningLog
 	errorLog
 	fatalLog
-	numSeverity = 4
+	numSeverity = 5
 )
 
-const severityChar = "IWEF"
+const severityChar = "DIWEF"
 
 var severityName = []string{
+	debugLog:   "DEBUG",
 	infoLog:    "INFO",
-	warningLog: "WARNING",
+	warningLog: "WARN",
 	errorLog:   "ERROR",
 	fatalLog:   "FATAL",
 }
@@ -191,10 +197,11 @@ func (s *OutputStats) Bytes() int64 {
 // Stats tracks the number of lines of output and number of bytes
 // per severity level. Values must be read with atomic.LoadInt64.
 var Stats struct {
-	Info, Warning, Error OutputStats
+	Debug, Info, Warning, Error OutputStats
 }
 
 var severityStats = [numSeverity]*OutputStats{
+	debugLog:   &Stats.Debug,
 	infoLog:    &Stats.Info,
 	warningLog: &Stats.Warning,
 	errorLog:   &Stats.Error,
@@ -235,11 +242,7 @@ func (l *Level) Get() interface{} {
 }
 
 // Set is part of the flag.Value interface.
-func (l *Level) Set(value string) error {
-	v, err := strconv.Atoi(value)
-	if err != nil {
-		return err
-	}
+func (l *Level) Set(v int32) error {
 	logging.mu.Lock()
 	defer logging.mu.Unlock()
 	logging.setVState(Level(v), logging.vmodule.filter, false)
@@ -533,15 +536,17 @@ func (l *loggingT) putBuffer(b *buffer) {
 
 var timeNow = time.Now // Stubbed out for testing.
 
-// header xxx
 /*
 header formats a log header as defined by the C++ implementation.
 It returns a buffer containing the formatted header and the user's file and line number.
 The depth specifies how many stack frames above lives the source line to be identified in the log message.
 
 Log lines have this form:
+
 	Lmmdd hh:mm:ss.uuuuuu threadid file:line] msg...
+
 where the fields are defined as follows:
+
 	L                A single character, representing the log level (eg 'I' for INFO)
 	mm               The month (zero padded; ie May is '05')
 	dd               The day (zero padded)
@@ -695,6 +700,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 		}
 	}
 	data := buf.Bytes()
+	leastSeverity := severity(logging.verbosity.get())
 	if l.toStderr {
 		_, _ = os.Stderr.Write(data)
 	} else {
@@ -707,18 +713,9 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 				l.exit(err)
 			}
 		}
-		switch s {
-		case fatalLog:
-			_, _ = l.file[fatalLog].Write(data)
-			fallthrough
-		case errorLog:
-			_, _ = l.file[errorLog].Write(data)
-			fallthrough
-		case warningLog:
-			_, _ = l.file[warningLog].Write(data)
-			fallthrough
-		case infoLog:
-			_, _ = l.file[infoLog].Write(data)
+
+		for log := s; log >= leastSeverity; log-- {
+			_, _ = l.file[log].Write(data)
 		}
 	}
 	if s == fatalLog {
@@ -738,7 +735,8 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 		// Write the stack trace for all goroutines to the files.
 		trace := stacks(true)
 		logExitFunc = func(error) {} // If we get a write error, we'll still exit below.
-		for log := fatalLog; log >= infoLog; log-- {
+
+		for log := fatalLog; log >= leastSeverity; log-- {
 			if f := l.file[log]; f != nil { // Can be nil if -logtostderr is set.
 				_, _ = f.Write(trace)
 			}
@@ -888,13 +886,14 @@ func (sb *syncBuffer) rotateFile(now time.Time) error {
 // on disk I/O. The flushDaemon will block instead.
 const bufferSize = 256 * 1024
 
-// createFiles creates all the log files for severity from sev down to infoLog.
+// createFiles creates all the log files for severity from sev down to debugLog.
 // l.mu is held.
 func (l *loggingT) createFiles(sev severity) error {
 	now := time.Now()
 	// Files are created in decreasing severity order, so as soon as we find one
 	// has already been created, we can stop.
-	for s := sev; s >= infoLog && l.file[s] == nil; s-- {
+	least := severity(logging.verbosity.get())
+	for s := sev; s >= least && l.file[s] == nil; s-- {
 		sb := &syncBuffer{
 			logger: l,
 			sev:    s,
@@ -929,7 +928,8 @@ func (l *loggingT) lockAndFlushAll() {
 // l.mu is held.
 func (l *loggingT) flushAll() {
 	// Flush from fatal down, in case there's trouble flushing.
-	for s := fatalLog; s >= infoLog; s-- {
+	least := severity(logging.verbosity.get())
+	for s := fatalLog; s >= least; s-- {
 		file := l.file[s]
 		if file != nil {
 			_ = file.Flush() // ignore error
@@ -943,7 +943,7 @@ func (l *loggingT) flushAll() {
 // severities.  Subsequent changes to the standard log's default output location
 // or format may break this behavior.
 //
-// Valid names are "INFO", "WARNING", "ERROR", and "FATAL".  If the name is not
+// Valid names are "DEBUG", "INFO", "WARNING", "ERROR", and "FATAL".  If the name is not
 // recognized, CopyStandardLogTo panics.
 func CopyStandardLogTo(name string) {
 	sev, ok := severityByName(name)
@@ -1085,15 +1085,73 @@ func (v Verbose) Infof(format string, args ...interface{}) {
 	}
 }
 
+// Debug logs to the DEBUG log.
+// Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
+func Debug(args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logging.print(debugLog, args...)
+}
+
+// DebugDepth acts as Debug but uses depth to determine which call frame to log.
+// DebugDepth(0, "msg") is the same as Debug("msg").
+func DebugDepth(depth int, args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logging.printDepth(debugLog, depth, args...)
+}
+
+// Debugln logs to the DEBUG log.
+// Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
+func Debugln(args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logging.println(debugLog, args...)
+}
+
+// Debugf logs to the DEBUG log.
+// Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
+func Debugf(format string, args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logging.printf(debugLog, format, args...)
+}
+
+// Debugw logs to the DEBUG log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func Debugw(args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logFormatw(debugLog, args...)
+}
+
 // Info logs to the INFO log.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Info(args ...interface{}) {
+	if !infoLog.AbleToLog() {
+		return
+	}
+
 	logging.print(infoLog, args...)
 }
 
 // InfoDepth acts as Info but uses depth to determine which call frame to log.
 // InfoDepth(0, "msg") is the same as Info("msg").
 func InfoDepth(depth int, args ...interface{}) {
+	if !infoLog.AbleToLog() {
+		return
+	}
+
 	logging.printDepth(infoLog, depth, args...)
 }
 
@@ -1106,67 +1164,141 @@ func Infoln(args ...interface{}) {
 // Infof logs to the INFO log.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Infof(format string, args ...interface{}) {
+	if !infoLog.AbleToLog() {
+		return
+	}
+
 	logging.printf(infoLog, format, args...)
+}
+
+// Infow logs to the INFO log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func Infow(args ...interface{}) {
+	if !infoLog.AbleToLog() {
+		return
+	}
+
+	logFormatw(infoLog, args...)
 }
 
 // Warning logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Warning(args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
 	logging.print(warningLog, args...)
 }
 
 // WarningDepth acts as Warning but uses depth to determine which call frame to log.
 // WarningDepth(0, "msg") is the same as Warning("msg").
 func WarningDepth(depth int, args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
 	logging.printDepth(warningLog, depth, args...)
 }
 
 // Warningln logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Warningln(args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
 	logging.println(warningLog, args...)
 }
 
 // Warningf logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Warningf(format string, args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
 	logging.printf(warningLog, format, args...)
+}
+
+// Warningw logs to the WARNING log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func Warningw(args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
+	logFormatw(warningLog, args...)
 }
 
 // Error logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Error(args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
 	logging.print(errorLog, args...)
 }
 
 // ErrorDepth acts as Error but uses depth to determine which call frame to log.
 // ErrorDepth(0, "msg") is the same as Error("msg").
 func ErrorDepth(depth int, args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
 	logging.printDepth(errorLog, depth, args...)
 }
 
 // Errorln logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Errorln(args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
 	logging.println(errorLog, args...)
 }
 
 // Errorf logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Errorf(format string, args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
 	logging.printf(errorLog, format, args...)
+}
+
+// Errorw logs to the ERROR log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func Errorw(args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
+	logFormatw(errorLog, args...)
 }
 
 // Fatal logs to the FATAL, ERROR, WARNING, and INFO logs,
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Fatal(args ...interface{}) {
+	if !fatalLog.AbleToLog() {
+		return
+	}
+
 	logging.print(fatalLog, args...)
 }
 
 // FatalDepth acts as Fatal but uses depth to determine which call frame to log.
 // FatalDepth(0, "msg") is the same as Fatal("msg").
 func FatalDepth(depth int, args ...interface{}) {
+	if !fatalLog.AbleToLog() {
+		return
+	}
+
 	logging.printDepth(fatalLog, depth, args...)
 }
 
@@ -1174,6 +1306,10 @@ func FatalDepth(depth int, args ...interface{}) {
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Fatalln(args ...interface{}) {
+	if !fatalLog.AbleToLog() {
+		return
+	}
+
 	logging.println(fatalLog, args...)
 }
 
@@ -1181,7 +1317,21 @@ func Fatalln(args ...interface{}) {
 // including a stack trace of all running goroutines, then calls os.Exit(255).
 // Arguments are handled in the manner of fmt.Printf; a newline is appended if missing.
 func Fatalf(format string, args ...interface{}) {
+	if !fatalLog.AbleToLog() {
+		return
+	}
+
 	logging.printf(fatalLog, format, args...)
+}
+
+// Fatalw logs to the FATAL log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func Fatalw(args ...interface{}) {
+	if !fatalLog.AbleToLog() {
+		return
+	}
+
+	logFormatw(fatalLog, args...)
 }
 
 // fatalNoStacks is non-zero if we are to exit without dumping goroutine stacks.
@@ -1221,99 +1371,35 @@ var MissingValuePrompt = "(MISSING)"
 // IgnoredValuePrompt is the ignore prompt
 var IgnoredValuePrompt = "\"Ignored key without a value.\""
 
-// Levelw only include info warn error fatal
-type Levelw int
-
-// Levelw key-values 方式输出等级，支持info、warn、error、fatal
-const (
-	Infow Levelw = iota
-	Warnw
-	Errorw
-	Fatalw
-)
-
-// LogKit 适配 https://github.com/go-kit/log 接口
-type LogKit struct {
-}
-
-// Log https://github.com/go-kit/log log方法实现
-func (l LogKit) Log(keyvals ...interface{}) error {
-	if len(keyvals)%2 != 0 {
-		keyvals = append(keyvals, MissingValuePrompt)
-	}
-
-	var levelw string
-
-	// 第一个位置留给msg，必定是奇数个
-	keysAndValues := make([]interface{}, 0, len(keyvals)+1)
-	keysAndValues = append(keysAndValues, "msg=")
-
-	// 通过for循环生成的格式：msg=value, key2=value2, key3=value3
-	for i := 0; i+2 <= len(keyvals); i += 2 {
-		key := fmt.Sprintf("%s", keyvals[i])
-
-		if key == "level" {
-			levelw = fmt.Sprintf("%s", keyvals[i+1])
-		} else if key == "msg" {
-			keysAndValues[0] = fmt.Sprintf("msg=%s", keyvals[i+1])
-		} else {
-			keysAndValues = append(keysAndValues, fmt.Sprintf(", %s=", keyvals[i]), keyvals[i+1])
-		}
-	}
-
-	var logLevel severity
-
-	switch levelw {
-	case "info":
-		logLevel = infoLog
-	case "warn":
-		logLevel = warningLog
-	case "error":
-		logLevel = errorLog
-	case "fatal":
-		logLevel = fatalLog
-	default:
-		logLevel = infoLog
-	}
-
-	logging.print(logLevel, keysAndValues...)
-	return nil
-}
-
-// LogFormatw : 以键值对的方式打印，打印格式：msg=value, key2=value2, key3=value3
-func (l Levelw) LogFormatw(args ...interface{}) {
-
+// LogFormatw print data with format key(value).
+func logFormatw(s severity, args ...interface{}) {
 	if len(args) == 0 {
 		return
 	}
 
-	// 必须是奇数，如果是偶数则最后一个值忽略
+	// args number must be odd. message + N * key(value)
 	if len(args)%2 != 1 {
-		logging.print(errorLog, fmt.Sprintf("msg=%s ignored=%s", IgnoredValuePrompt, args[len(args)-1]))
+		logging.print(errorLog, fmt.Sprintf("%s ignored=%s", IgnoredValuePrompt, args[len(args)-1]))
 		args = args[0 : len(args)-1]
 	}
 
-	// 第一个key加上msg, eg：msg=value, key2=value2, key3=value3
-	args[0] = fmt.Sprintf("msg=%v", args[0])
+	// first arg is message.
+	args[0] = fmt.Sprintf("%v", args[0])
 
-	// 从第二个开始，双数加上逗号、空格和等号 eg: msg=value, key2=value2, key3=value3
-	for i := 1; i+1 < len(args); i += 2 {
-		args[i] = fmt.Sprintf(", %v=", args[i])
+	// since 2nd arg, there are key(value) pairs.
+	for i := 1; i < len(args); i++ {
+		if i%2 == 0 {
+			args[i] = fmt.Sprintf("(%v)", args[i])
+
+			continue
+		}
+
+		if i == 1 {
+			args[i] = fmt.Sprintf(". %v", args[i])
+		} else {
+			args[i] = fmt.Sprintf(", %v", args[i])
+		}
 	}
 
-	var logLevel severity
-
-	switch l {
-	case Infow:
-		logLevel = infoLog
-	case Warnw:
-		logLevel = warningLog
-	case Errorw:
-		logLevel = errorLog
-	case Fatalw:
-		logLevel = fatalLog
-	default:
-		logLevel = infoLog
-	}
-	logging.print(logLevel, args...)
+	logging.print(s, args...)
 }

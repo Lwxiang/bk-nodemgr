@@ -74,12 +74,14 @@ func NewService(conf *config.BackendService) *Service {
 func (svc *Service) Start(ctx context.Context) error {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	blog.InitLogs(blog.LogConfig{
-		LogDir:     svc.conf.Log.Dir,
-		LogMaxSize: svc.conf.Log.MaxSize,
-		LogMaxNum:  svc.conf.Log.MaxNum,
-		ToStdErr:   true,
-	})
+	logConfig := blog.NewLogConfig()
+	logConfig.LogDir = svc.conf.Log.Dir
+	logConfig.LogMaxSizeMB = svc.conf.Log.MaxSizeMB
+	logConfig.LogMaxNum = svc.conf.Log.MaxNum
+	logConfig.Level = svc.conf.Log.Level
+	logConfig.ToStdErr = svc.conf.Log.ToStdErr
+	logConfig.AlsoToStdErr = svc.conf.Log.AlsoToStdErr
+	blog.InitLogs(logConfig)
 
 	svc.ctx, svc.cancelFunc = context.WithCancel(ctx)
 
