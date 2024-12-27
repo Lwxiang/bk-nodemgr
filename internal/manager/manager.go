@@ -65,7 +65,6 @@ func (mgr *Manager) Start(ctx context.Context) error {
 
 	mgr.isRunning = true
 
-	go mgr.startSyncingFromCMDB()
 	blog.Info("successfully started manager")
 
 	return nil
@@ -101,15 +100,18 @@ func (mgr *Manager) initializeWorkflowManager(ctx context.Context) error {
 	return nil
 }
 
+// initializeActionDefs init action defs
 func (mgr *Manager) initializeActionDefs() error {
 	return mgr.workflowMgr.RegisterActions(
 		actions.NewActionSyncBusinessFromCMDB(mgr.cmdbHandler, mgr.topoStorage),
 	)
 }
 
+// startSyncingFromCMDB start a period task to keep syncing from cmdb
+// TODO: implement
 func (mgr *Manager) startSyncingFromCMDB() {
-	task, err := workflow.NewPipeline("sync-from-cmdb").
-		Next(mgr.workflowMgr.GetRegisteredAction(actions.ActionNameSyncBusinessFromCMDB)).NewPeriodTask(10*time.Minute, "*/1 * * * *")
+	task, err := pipelineFactory[PipelineSyncFromCmdb](mgr.workflowMgr).
+		NewPeriodTask(10*time.Minute, "*/1 * * * *")
 	if err != nil {
 		blog.Warnf("failed to create syncing from cmdb task: %v", err)
 
@@ -123,4 +125,18 @@ func (mgr *Manager) startSyncingFromCMDB() {
 	}
 
 	blog.Info("successfully started period task keep syncing from cmdb")
+}
+
+// StartPipeline start a pre-defined pipeline
+func (mgr *Manager) StartPipeline(name PipelineName, timeout time.Duration) error {
+	task, err := pipelineFactory[name](mgr.workflowMgr).NewTask(timeout)
+	if err != nil {
+		return err
+	}
+
+	if err := mgr.workflowMgr.DispatchTask(task); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// NewPipeline creates a new pipeline
 func NewPipeline(name string) *Pipeline {
 	return &Pipeline{
 		name:       name,
