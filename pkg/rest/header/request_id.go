@@ -1,0 +1,58 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making 蓝鲸智云-节点管理(BlueKing-BK-NODEMAN) available.
+ * Copyright (C) 2017-2022 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at https://opensource.org/licenses/MIT
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+// Package header define the blueking common header.
+package header
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
+)
+
+const (
+	// RIDKey is request id header key.
+	RIDKey = "X-Bkapi-Request-Id"
+
+	// UserKey is operator name header key.
+	UserKey = "X-Bkapi-User-Name"
+
+	// AppCodeKey is blueking application code header key.
+	AppCodeKey = "X-Bkapi-App-Code"
+
+	// LanguageKey the language key word.
+	LanguageKey = "HTTP_BLUEKING_LANGUAGE"
+
+	// BKGWJWTTokenKey is blueking api gateway jwt header key.
+	BKGWJWTTokenKey = "X-Bkapi-JWT"
+
+	// TenantIDKey is tenant id header key.
+	TenantIDKey = "HTTP_BLUEKING_SUPPLIER_ID"
+
+	// BKGWAuthKey is blueking api gateway authorization header key.
+	BKGWAuthKey = "X-Bkapi-Authorization"
+)
+
+// RequestIDValue :
+func RequestIDValue(req *http.Request, autoGen bool) string {
+	id := req.Header.Get(RIDKey)
+	if id == "" && autoGen {
+		id = requestIdGenerator()
+	}
+	return id
+}
+
+// requestIdGenerator ...
+func requestIdGenerator() string {
+	uid := uuid.New().String()
+	requestId := strings.ReplaceAll(uid, "-", "")
+	return requestId
+}

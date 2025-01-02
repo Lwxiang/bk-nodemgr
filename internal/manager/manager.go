@@ -25,6 +25,11 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
 )
 
+// IManager defines the manager interface.
+type IManager interface {
+	StartPipeline(name PipelineName, timeout time.Duration) error
+}
+
 // NewManager creates a new manager.
 func NewManager(config *Config, cmdbHandler cmdb.Handler, topoStorage topoStorage.Storage) *Manager {
 	return &Manager{

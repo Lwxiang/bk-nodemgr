@@ -16,8 +16,7 @@ import (
 	"net/http"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/tracing"
-	"github.com/gin-contrib/requestid"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/header"
 	"github.com/gin-gonic/gin"
 )
 
@@ -67,26 +66,30 @@ func APIResponse(c *Context, data interface{}) {
 	c.JSON(http.StatusOK, result)
 }
 
+// restContextKey was used to store the restContext in gin.Context
+const restContextKey = "rest_context"
+
+
 // InitRestContext ...
 func InitRestContext(c *gin.Context) *Context {
-	requestId := requestid.Get(c)
-
 	restContext := &Context{
 		Context:   c,
-		RequestId: requestId,
+		RequestId: header.RequestIDValue(c.Request, true),
+		Username:  c.GetHeader(header.UserKey),
 	}
-	c.Set("rest_context", restContext)
 
-	tracing.SetRequestIDValue(c.Request, requestId)
-	ctx := context.WithValue(c.Request.Context(), tracing.RequestIDHeaderKey, requestId)
+	c.Set(restContextKey, restContext)
 
+	// note: for thread safety you need to reset it here.
+	ctx := context.WithValue(c.Request.Context(), header.RIDKey, restContext.RequestId)
 	restContext.Request = restContext.Request.WithContext(ctx)
+
 	return restContext
 }
 
 // GetRestContext only when user has authenticated, otherwise, return ErrorUnauthorized
 func GetRestContext(c *gin.Context) (*Context, error) {
-	ctxObj, ok := c.Get("rest_context")
+	ctxObj, ok := c.Get(restContextKey)
 	if !ok {
 		return nil, errf.ErrorUnauthorized
 	}

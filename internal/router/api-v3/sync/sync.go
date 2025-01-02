@@ -8,40 +8,34 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package middleware Authorization
-package middleware
+// Package sync is use to sync data.
+package sync
 
 import (
-	"net/http"
-
+	"git.woa.com/bk-gse/bk-nodeman/internal/manager"
+	"git.woa.com/bk-gse/bk-nodeman/internal/options"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
 	"github.com/gin-gonic/gin"
 )
 
-// InitRestContext init rest context.
-func InitRestContext() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		restContext := rest.InitRestContext(c)
+// handler ...
+type handler struct {
+	rg      *gin.RouterGroup
+	manager manager.IManager
+}
 
-		if c.Request.Method == http.MethodOptions {
-			c.Next()
-			return
-		}
-
-		switch {
-		case initContextWithJWT(restContext):
-		default:
-			rest.AbortWithUnauthorizedError(restContext, errf.ErrorUnauthorized)
-			return
-		}
-
-		c.Next()
+// newHandler ...
+func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
+	return &handler{
+		// this is a sub router, so we can use some special middleware in it and not affect the father router.
+		rg:      rg.Group("/sync"),
+		manager: capability.Manager,
 	}
 }
 
-// initContextWithJWT init context with jwt
-func initContextWithJWT(c *rest.Context) bool {
-	// TODO: implement jwt
-	return true
+// Load load sync handler.
+func Load(rg *gin.RouterGroup, capability *options.Capability) {
+	h := newHandler(rg, capability)
+
+	h.rg.POST("/cmdb", rest.RestHandlerFunc(h.SyncCmdbHost))
 }

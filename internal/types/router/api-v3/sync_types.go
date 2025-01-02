@@ -8,37 +8,21 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package tracing request id
-package tracing
+// Package apiv3 is the v3 version of the API types.
+package apiv3
 
-import (
-	"net/http"
-	"strings"
-
-	"github.com/google/uuid"
-)
-
-const (
-	RequestIDHeaderKey = "X-Bkapi-Request-Id"
-)
-
-// RequestIdGenerator :
-func RequestIdGenerator() string {
-	uid := uuid.New().String()
-	requestId := strings.ReplaceAll(uid, "-", "")
-	return requestId
+// SyncCmdbHostReq this is a request for sync cmdb host.
+type SyncCmdbHostReq struct {
+	// TODO implement me
 }
 
-// SetRequestIDValue :
-func SetRequestIDValue(req *http.Request, id string) {
-	req.Header.Set(RequestIDHeaderKey, id)
+// Validate ...
+func (req *SyncCmdbHostReq) Validate() error {
+	// TODO implement me
+	return nil
 }
 
-// RequestIDValue :
-func RequestIDValue(req *http.Request, autoGen bool) string {
-	id := req.Header.Get(RequestIDHeaderKey)
-	if id == "" && autoGen {
-		id = RequestIdGenerator()
-	}
-	return id
+// SyncCmdbHostResp this is a response for sync cmdb host.
+type SyncCmdbHostResp struct {
+	// TODO implement me
 }

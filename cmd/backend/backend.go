@@ -19,12 +19,25 @@ import (
 	"syscall"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/service/backend"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
 
+const (
+	// ModeDebug debug mode
+	ModeDebug = "debug"
+	// ModeRelease release mode
+	ModeRelease = "release"
+)
+
 var (
+	// configPath of backend service
 	configPath string
+
+	// mode of backend service
+	mode string
 
 	serverCmd = &cobra.Command{
 		Use:   "bk_nodeman_backend",
@@ -39,6 +52,19 @@ var (
 
 			if err := config.Validate(); err != nil {
 				fmt.Printf("failed to validate config: %v\n", err)
+				os.Exit(1)
+			}
+
+			switch mode {
+			case ModeDebug:
+				gin.SetMode(gin.DebugMode)
+			case ModeRelease:
+				gin.SetMode(gin.ReleaseMode)
+				gin.DebugPrintFunc = func(format string, args ...interface{}) {
+					fmt.Fprintf(blog.GlogWriter{}, format, args...)
+				}
+			default:
+				fmt.Printf("invalid mode: %s\n", mode)
 				os.Exit(1)
 			}
 
@@ -63,7 +89,21 @@ func main() {
 	serverCmd.PersistentFlags().StringVarP(
 		&configPath, "file", "f", "", "path of service config file",
 	)
-	_ = serverCmd.MarkPersistentFlagRequired("file")
 
-	_ = serverCmd.Execute()
+	err := serverCmd.MarkPersistentFlagRequired("file")
+	if err != nil {
+		fmt.Printf("failed to mark flag required, err: %v\n", err)
+		os.Exit(1)
+	}
+
+	serverCmd.PersistentFlags().StringVarP(
+		&mode, "mode", "m", ModeRelease, fmt.Sprintf("set mode of backend service, support %s",
+			[]string{ModeDebug, ModeRelease}),
+	)
+
+	err = serverCmd.Execute()
+	if err != nil {
+		fmt.Printf("failed to execute cmd, err: %v\n", err)
+		os.Exit(1)
+	}
 }

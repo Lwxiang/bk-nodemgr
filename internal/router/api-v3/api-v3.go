@@ -8,40 +8,31 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package middleware Authorization
-package middleware
+// Package apiv3 defines the api v3 router.
+package apiv3
 
 import (
-	"net/http"
-
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
+	"git.woa.com/bk-gse/bk-nodeman/internal/options"
+	"git.woa.com/bk-gse/bk-nodeman/internal/router/api-v3/sync"
 	"github.com/gin-gonic/gin"
 )
 
-// InitRestContext init rest context.
-func InitRestContext() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		restContext := rest.InitRestContext(c)
+// handler ...
+type handler struct {
+	rg *gin.RouterGroup
+}
 
-		if c.Request.Method == http.MethodOptions {
-			c.Next()
-			return
-		}
-
-		switch {
-		case initContextWithJWT(restContext):
-		default:
-			rest.AbortWithUnauthorizedError(restContext, errf.ErrorUnauthorized)
-			return
-		}
-
-		c.Next()
+// newHandler ...
+func newHandler(rg *gin.RouterGroup, cap *options.Capability) *handler {
+	return &handler{
+		// this is a sub router, so we can use some special middleware in it and not affect the father router.
+		rg: rg.Group("/api/v3"),
 	}
 }
 
-// initContextWithJWT init context with jwt
-func initContextWithJWT(c *rest.Context) bool {
-	// TODO: implement jwt
-	return true
+// Load ter register the api v3 router.
+func Load(rg *gin.RouterGroup, cap *options.Capability) {
+	h := newHandler(rg, cap)
+
+	sync.Load(h.rg, cap)
 }

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	baseStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"git.woa.com/bk-gse/bk-nodeman/internal/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"

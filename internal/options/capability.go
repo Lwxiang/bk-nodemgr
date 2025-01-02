@@ -8,40 +8,24 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package middleware Authorization
-package middleware
+// Package options provides the various capabilities the service supports.
+package options
 
 import (
-	"net/http"
-
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
-	"github.com/gin-gonic/gin"
+	"git.woa.com/bk-gse/bk-nodeman/internal/manager"
+	"git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/apigw"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
 )
 
-// InitRestContext init rest context.
-func InitRestContext() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		restContext := rest.InitRestContext(c)
-
-		if c.Request.Method == http.MethodOptions {
-			c.Next()
-			return
-		}
-
-		switch {
-		case initContextWithJWT(restContext):
-		default:
-			rest.AbortWithUnauthorizedError(restContext, errf.ErrorUnauthorized)
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// initContextWithJWT init context with jwt
-func initContextWithJWT(c *rest.Context) bool {
-	// TODO: implement jwt
-	return true
+// Capability encapsulates the various capabilities the service supports.
+type Capability struct {
+	// Manager workflow management.
+	Manager manager.IManager
+	// TopoStorage bk nodeman topo storage
+	TopoStorage topo.Storage
+	// CmdbHandler cmdb handler
+	CmdbHandler cmdb.Handler
+	// ApigwCli apigw client
+	ApigwCli apigw.Client
 }

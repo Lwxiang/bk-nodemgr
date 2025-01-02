@@ -612,6 +612,9 @@ linters-settings:
       - m map[string]int
       - r recover
       - p pool
+      - r gin.Router
+      - r Router
+      - h *handler
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false
