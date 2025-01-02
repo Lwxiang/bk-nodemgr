@@ -18,8 +18,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"git.woa.com/bk-gse/bk-nodeman/config"
 	"git.woa.com/bk-gse/bk-nodeman/internal/service/backend"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"github.com/spf13/cobra"
 )
 

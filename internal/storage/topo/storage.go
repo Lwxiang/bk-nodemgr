@@ -15,8 +15,8 @@ import (
 	"context"
 	"errors"
 
-	"git.woa.com/bk-gse/bk-nodeman/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

@@ -15,12 +15,12 @@ import (
 	"context"
 	"runtime"
 
-	"git.woa.com/bk-gse/bk-nodeman/config"
 	"git.woa.com/bk-gse/bk-nodeman/internal/manager"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/apigw"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 )
 
 // Service defines a server to provide all backend service.

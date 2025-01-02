@@ -16,12 +16,12 @@ import (
 	"errors"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/config"
 	"git.woa.com/bk-gse/bk-nodeman/internal/manager/actions"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
 	workflowStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage/workflow"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
 )
 

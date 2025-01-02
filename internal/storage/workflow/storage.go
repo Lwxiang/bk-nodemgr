@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/config"
 	baseStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"

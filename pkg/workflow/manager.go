@@ -8,8 +8,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"github.com/RichardKnop/machinery/v2"
 	redisBackend "github.com/RichardKnop/machinery/v2/backends/redis"
 	redisBroker "github.com/RichardKnop/machinery/v2/brokers/redis"
