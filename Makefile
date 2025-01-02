@@ -8,6 +8,13 @@ GITTAG    = $(shell git describe --tags --always)
 GITHASH   = $(shell git rev-parse --short HEAD)
 VERSION  ?= ${GITTAG}-$(shell date +%y.%m.%d)
 
+# ldflags
+# output directory for release package and version for command line
+LDVersionFLAG = "-X git.woa.com/bk-gse/bk-nodeman/internal/version.VERSION=${VERSION} \
+    	-X git.woa.com/bk-gse/bk-nodeman/internal/version.BUILDTIME=${BUILDTIME} \
+    	-X git.woa.com/bk-gse/bk-nodeman/internal/version.GITHASH=${GITHASH}"
+
+
 # cmd
 MKDIR = mkdir -p
 ECHO  = $(if $(filter Linux,$(shell uname)),echo -e,echo)
@@ -22,7 +29,7 @@ pre:
 	go mod tidy
 
 backend: pre
-	go build -o $(OUTPUT_DIR)/bk-nodeman-backend $(ROOT_DIR)/cmd/backend/backend.go
+	go build -ldflags ${LDVersionFLAG} -o $(OUTPUT_DIR)/bk-nodeman-backend $(ROOT_DIR)/cmd/backend/backend.go
 
 images: backend
 	$(CP) $(ROOT_DIR)/install/images/Dockerfile $(OUTPUT_DIR)/
