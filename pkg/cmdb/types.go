@@ -29,12 +29,14 @@ type BusinessInfo struct {
 	BKSupplierAccount string `json:"bk_supplier_account"`
 	CreateTime        string `json:"create_time"`
 	LastTime          string `json:"last_time"`
-	Default           int    `json:"default"` // bisiness type
-	Operator          string `json:"operator"`
-	LifeCycle         string `json:"life_cycle"`
-	BKCreatedAt       string `json:"bk_created_at"`
-	BKUpdatedAt       string `json:"bk_updated_at"`
-	BKCreatedBy       string `json:"bk_created_by"`
+
+	// default field describes business type.
+	Default     int    `json:"default"`
+	Operator    string `json:"operator"`
+	LifeCycle   string `json:"life_cycle"`
+	BKCreatedAt string `json:"bk_created_at"`
+	BKUpdatedAt string `json:"bk_updated_at"`
+	BKCreatedBy string `json:"bk_created_by"`
 }
 
 type ObjectInfo struct {

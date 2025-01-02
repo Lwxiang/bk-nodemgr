@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/internal/types"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
 )
 

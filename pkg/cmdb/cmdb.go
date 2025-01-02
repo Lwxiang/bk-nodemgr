@@ -15,9 +15,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/types"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/apigw"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/auth"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 )
 
 // Handler is the interface for cmdb handler.

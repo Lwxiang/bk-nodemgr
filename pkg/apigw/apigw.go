@@ -80,13 +80,13 @@ func (c *client) do(req *http.Request) (int, []byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return resp.StatusCode, nil, fmt.Errorf("got HTTP response code(%d), url(%s)", resp.StatusCode, req.URL.String())
-	}
-
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.StatusCode, nil, fmt.Errorf("failed to read response body. code(%d), url(%s), err: %v", resp.StatusCode, req.URL.String(), err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return resp.StatusCode, data, fmt.Errorf("got HTTP response code(%d), url(%s)", resp.StatusCode, req.URL.String())
 	}
 
 	fmt.Printf("response body: %s\n", data)
