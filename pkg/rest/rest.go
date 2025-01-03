@@ -20,74 +20,73 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Response standard response
+// Response standard response.
 type Response struct {
 	Result    bool        `json:"result"`
 	Code      int         `json:"code"`
 	Message   string      `json:"message"`
-	RequestId string      `json:"request_id"`
+	RequestID string      `json:"request_id"`
 	Data      interface{} `json:"data"`
 }
 
-// HandlerFunc xxx
+// HandlerFunc defines the router handler.
 type HandlerFunc func(*Context) (interface{}, error)
 
-// StreamHandlerFunc xxx
+// StreamHandlerFunc defines the stream handler.
 type StreamHandlerFunc func(*Context)
 
-// AbortWithBadRequestError 请求失败
+// AbortWithBadRequestError provides handler process failing response.
 func AbortWithBadRequestError(c *Context, err error) {
-	result := Response{Code: errf.InvalidParameter, Message: err.Error(), RequestId: c.RequestId}
+	result := Response{Code: errf.InvalidParameter, Message: err.Error(), RequestID: c.RequestID}
 	c.AbortWithStatusJSON(http.StatusBadRequest, result)
 }
 
-// AbortWithUnauthorizedError 未登入
+// AbortWithUnauthorizedError provides auth check failing response.
 func AbortWithUnauthorizedError(c *Context, err error) {
-	result := Response{Code: errf.DoAuthorizeFailed, Message: err.Error(), RequestId: c.RequestId}
+	result := Response{Code: errf.DoAuthorizeFailed, Message: err.Error(), RequestID: c.RequestID}
 	c.AbortWithStatusJSON(http.StatusUnauthorized, result)
 }
 
-// AbortWithWithForbiddenError no permission
+// AbortWithWithForbiddenError provides permission denied response.
 func AbortWithWithForbiddenError(c *Context, err error) {
-	result := Response{Code: errf.PermissionDenied, Message: err.Error(), RequestId: c.RequestId}
+	result := Response{Code: errf.PermissionDenied, Message: err.Error(), RequestID: c.RequestID}
 	c.AbortWithStatusJSON(http.StatusForbidden, result)
 }
 
-// AbortWithJSONError xxx
-func AbortWithJSONError(c *Context, err error) {
+// AbortWithJSONError provides handler process failing response.
+func AbortWithJSONError(ctx *Context, err error) {
 	// TODO: support error code
-	result := Response{Code: errf.Aborted, Message: err.Error(), RequestId: c.RequestId}
-	c.AbortWithStatusJSON(http.StatusOK, result)
+	result := Response{Code: errf.Aborted, Result: false, Message: err.Error(), RequestID: ctx.RequestID}
+	ctx.AbortWithStatusJSON(http.StatusOK, result)
 }
 
-// APIResponse 正常返回
-func APIResponse(c *Context, data interface{}) {
-	result := Response{Code: 0, Message: "OK", RequestId: c.RequestId, Data: data}
-	c.JSON(http.StatusOK, result)
+// APIResponse provides handler process successfully and make a normal response.
+func APIResponse(ctx *Context, data interface{}) {
+	result := Response{Code: 0, Result: true, Message: "OK", RequestID: ctx.RequestID, Data: data}
+	ctx.JSON(http.StatusOK, result)
 }
 
-// restContextKey was used to store the restContext in gin.Context
+// restContextKey was used to store the restContext in gin.Context.
 const restContextKey = "rest_context"
 
-
-// InitRestContext ...
-func InitRestContext(c *gin.Context) *Context {
+// InitRestContext initializes a new rest context.
+func InitRestContext(pCtx *gin.Context) *Context {
 	restContext := &Context{
-		Context:   c,
-		RequestId: header.RequestIDValue(c.Request, true),
-		Username:  c.GetHeader(header.UserKey),
+		Context:   pCtx,
+		RequestID: header.RequestIDValue(pCtx.Request, true),
+		Username:  pCtx.GetHeader(header.UserKey),
 	}
 
-	c.Set(restContextKey, restContext)
+	pCtx.Set(restContextKey, restContext)
 
 	// note: for thread safety you need to reset it here.
-	ctx := context.WithValue(c.Request.Context(), header.RIDKey, restContext.RequestId)
+	ctx := context.WithValue(pCtx.Request.Context(), header.RIDKey, restContext.RequestID)
 	restContext.Request = restContext.Request.WithContext(ctx)
 
 	return restContext
 }
 
-// GetRestContext only when user has authenticated, otherwise, return ErrorUnauthorized
+// GetRestContext only when user has authenticated, otherwise, return ErrorUnauthorized.
 func GetRestContext(c *gin.Context) (*Context, error) {
 	ctxObj, ok := c.Get(restContextKey)
 	if !ok {
@@ -102,7 +101,7 @@ func GetRestContext(c *gin.Context) (*Context, error) {
 	return restContext, nil
 }
 
-// RestHandlerFunc rest handler
+// RestHandlerFunc rest handler.
 func RestHandlerFunc(handler HandlerFunc) gin.HandlerFunc { // nolint
 	return func(c *gin.Context) {
 		restContext, err := GetRestContext(c)
@@ -120,7 +119,7 @@ func RestHandlerFunc(handler HandlerFunc) gin.HandlerFunc { // nolint
 	}
 }
 
-// STDRestHandlerFunc std rest handler
+// STDRestHandlerFunc std rest handler.
 func STDRestHandlerFunc(handler HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		restContext, err := GetRestContext(c)
@@ -138,7 +137,7 @@ func STDRestHandlerFunc(handler HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-// StreamHandler 流式 Handler
+// StreamHandler stream handler.
 func StreamHandler(handler StreamHandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		restContext, err := GetRestContext(c)

@@ -12,6 +12,7 @@
 package basic
 
 import (
+	"git.woa.com/bk-gse/bk-nodeman/internal/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/options"
 	"git.woa.com/bk-gse/bk-nodeman/internal/version"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
@@ -20,14 +21,16 @@ import (
 
 // handler ...
 type handler struct {
-	rg *gin.RouterGroup
+	rg      *gin.RouterGroup
+	manager manager.IManager
 }
 
 // newHandler ...
-func newHandler(rg *gin.RouterGroup, _ *options.Capability) *handler {
+func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
 	return &handler{
 		// this is a sub router, so we can use some special middleware in it and not affect the father router.
-		rg: rg.Group("/basic"),
+		rg:      rg.Group("/basic"),
+		manager: capability.Manager,
 	}
 }
 
@@ -36,6 +39,7 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 	h := newHandler(rg, capability)
 
 	h.rg.GET("/info", rest.RestHandlerFunc(h.Info))
+	h.rg.GET("/healthz", h.Healthz)
 }
 
 // Info ...

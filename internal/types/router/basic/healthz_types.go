@@ -8,16 +8,14 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package rest defines rest context.
-package rest
+// Package basic defines the types in basic api handler.
+package basic
 
-import (
-	"github.com/gin-gonic/gin"
-)
+// HealthzResp this is a response for healthz.
+type HealthzResp struct {
+	// define the result of whole health check.
+	OK bool `json:"ok"`
 
-// Context rest context.
-type Context struct {
-	*gin.Context
-	RequestID string `json:"request_id"`
-	Username  string `json:"username"`
+	// detail reason of several services.
+	Manager string `json:"manager"`
 }

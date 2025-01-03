@@ -14,6 +14,8 @@ package topo
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
@@ -23,8 +25,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const (
+	defaultPingTimeout = 3 * time.Second
+)
+
 // Storage defines the storage interface.
 type Storage interface {
+	// CheckHealthz checks the healthz of the storage.
+	CheckHealthz() error
+
 	// UpsertBusiness updates or inserts a business.
 	UpsertBusiness(biz *types.Business) error
 }
@@ -108,6 +117,22 @@ func (ds *DefaultStorage) initializeMongoDB(ctx context.Context) error {
 	}
 
 	blog.Infof("successfully initialized mongo client: %v", ds.config.MongoDB.Hosts)
+
+	return nil
+}
+
+// CheckHealthz checks the healthz of the topology storage.
+func (ds *DefaultStorage) CheckHealthz() error {
+	if ds.mongoClient == nil {
+		return errors.New("mongo client not initialized")
+	}
+
+	ctx, cancel := context.WithDeadline(ds.ctx, time.Now().Add(defaultPingTimeout))
+	defer cancel()
+
+	if err := ds.mongoClient.Ping(ctx, nil); err != nil {
+		return fmt.Errorf("failed to ping mongo client: %v", err)
+	}
 
 	return nil
 }

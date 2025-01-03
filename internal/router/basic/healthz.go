@@ -8,16 +8,36 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package rest defines rest context.
-package rest
+package basic
 
 import (
+	"net/http"
+
+	types "git.woa.com/bk-gse/bk-nodeman/internal/types/router/basic"
 	"github.com/gin-gonic/gin"
 )
 
-// Context rest context.
-type Context struct {
-	*gin.Context
-	RequestID string `json:"request_id"`
-	Username  string `json:"username"`
+// Healthz check service health.
+func (h *handler) Healthz(ctx *gin.Context) {
+	resp := new(types.HealthzResp)
+
+	if h.manager == nil {
+		resp.OK = false
+		resp.Manager = "not initialized"
+		ctx.JSON(http.StatusInternalServerError, resp)
+
+		return
+	}
+
+	if err := h.manager.CheckHealth(); err != nil {
+		resp.OK = false
+		resp.Manager = err.Error()
+		ctx.JSON(http.StatusInternalServerError, resp)
+
+		return
+	}
+
+	resp.OK = true
+	resp.Manager = "ok"
+	ctx.JSON(http.StatusOK, resp)
 }

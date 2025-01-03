@@ -89,6 +89,19 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
+// CheckHealth checks the health of the manager.
+func (m *Manager) CheckHealth() error {
+	if !m.isRunning {
+		return errors.New("manager is not running")
+	}
+
+	if m.server == nil {
+		return errors.New("machinery server is not initialized")
+	}
+
+	return nil
+}
+
 func (m *Manager) WaitWorkerShutdown() error {
 	if !m.isRunning {
 		return errors.New("manager is not running")

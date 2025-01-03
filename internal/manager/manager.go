@@ -14,6 +14,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/manager/actions"
@@ -27,6 +28,10 @@ import (
 
 // IManager defines the manager interface.
 type IManager interface {
+	// CheckHealth checks the health of manager.
+	CheckHealth() error
+
+	// StartPipeline starts all reserved pipelines.
 	StartPipeline(name PipelineName, timeout time.Duration) error
 }
 
@@ -71,6 +76,35 @@ func (mgr *Manager) Start(ctx context.Context) error {
 	mgr.isRunning = true
 
 	blog.Info("successfully started manager")
+
+	return nil
+}
+
+// CheckHealth checks the health of manager.
+func (mgr *Manager) CheckHealth() error {
+	if !mgr.isRunning {
+		return errors.New("manager is not running")
+	}
+
+	if mgr.cmdbHandler == nil {
+		return errors.New("cmdb handler is not initialized")
+	}
+
+	if mgr.topoStorage == nil {
+		return errors.New("topo storage is not initialized")
+	}
+
+	if err := mgr.topoStorage.CheckHealthz(); err != nil {
+		return fmt.Errorf("topo storage is unhealthy: %v", err)
+	}
+
+	if mgr.workflowMgr == nil {
+		return errors.New("workflow manager is not initialized")
+	}
+
+	if err := mgr.workflowMgr.CheckHealth(); err != nil {
+		return fmt.Errorf("workflow manager is unhealthy: %v", err)
+	}
 
 	return nil
 }
