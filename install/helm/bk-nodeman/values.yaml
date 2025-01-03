@@ -535,5 +535,3 @@ backend:
       max_size_mb: 200
       to_stderr: false
       also_to_stderr: false
-
-    metricExporterBindPort: 9100

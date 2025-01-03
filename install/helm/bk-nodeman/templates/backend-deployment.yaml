@@ -104,13 +104,11 @@ spec:
           ports:
             - name: service-http
               containerPort: {{ .Values.backend.config.http_server.port }}
-            - name: metric
-              containerPort: {{ .Values.backend.config.metricExporterBindPort }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
               path: {{ .Values.livenessProbe.path }}
-              port: metric
+              port: service-http
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
