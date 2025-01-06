@@ -8,89 +8,81 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package router is the restful API router.
-package router
+// Package rest is the restful API router.
+package rest
 
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/router/api-v3"
-	"git.woa.com/bk-gse/bk-nodeman/internal/router/basic"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
-	middleware "git.woa.com/bk-gse/bk-nodeman/pkg/rest/middlerware"
 	"github.com/gin-gonic/gin"
 )
 
-// Router defines the router.
-type Router struct {
+// LogWriter defines the log writer.
+type LogWriter interface {
+	InfoWriter() io.Writer
+	ErrorWriter() io.Writer
+}
+
+// Server defines the restful API server.
+type Server struct {
 	engine *gin.Engine
 	// rg it contains the rest context, please use to realize some business logic.
-	rg   *gin.RouterGroup
-	cap  *options.Capability
-	ctx  context.Context
+	rg  *gin.RouterGroup
+	ctx context.Context
+
 	ip   string
 	port int
 	name string
 }
 
 // OptionFunc defines a function that can be used to modify the router.
-type OptionFunc func(*Router)
+type OptionFunc func(rg *gin.RouterGroup)
 
-// WithApiV3 adds the api v3 router.
-func WithApiV3() OptionFunc {
-	return func(r *Router) {
-		apiv3.Load(r.rg, r.cap)
+// WithPing with ping pong api.
+func WithPing() OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		rg.Any("/ping", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "pong",
+			})
+		})
 	}
 }
 
-// WithBasic adds the basic router.
-func WithBasic() OptionFunc {
-	return func(r *Router) {
-		basic.Load(r.rg, r.cap)
-	}
-}
-
-// NewRouter creates a new router.
-func NewRouter(ctx context.Context, name string, ip string, port int, capability *options.Capability,
-	optFns ...OptionFunc) *Router {
-
-	r := &Router{
+// NewServer creates a new restful API server.
+func NewServer(ctx context.Context, name, ip string, port int, logWriter LogWriter, apiOptFns ...OptionFunc) *Server {
+	s := &Server{
 		ctx:    ctx,
-		name:   name,
 		ip:     ip,
 		port:   port,
+		name:   name,
 		engine: gin.New(),
-		cap:    capability,
 	}
 
 	// Recover from panic
-	r.engine.Use(gin.RecoveryWithWriter(blog.WriterError{}))
+	s.engine.Use(gin.RecoveryWithWriter(logWriter.ErrorWriter()))
 
 	// Set log middleware
-	r.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
-		Output:    blog.WriterInfo{},
+	s.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		Output:    logWriter.InfoWriter(),
 		Formatter: customLogFormatter}))
 
-	r.engine.Use()
+	s.engine.Use()
 
-	r.rg = r.engine.Group("/")
-	r.rg.Any("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+	s.rg = s.engine.Group("/")
 
 	// Set authentication middleware
-	r.rg.Use(middleware.InitRestContext())
+	s.rg.Use(MiddlewareContext())
 
-	for _, optFn := range optFns {
-		optFn(r)
+	for _, fn := range apiOptFns {
+		fn(s.rg)
 	}
 
-	return r
+	return s
 }
 
 // customLogFormatter is a custom log formatter.
@@ -116,7 +108,7 @@ func customLogFormatter(param gin.LogFormatterParams) string {
 }
 
 // Start starts the router.
-func (r *Router) Start() error {
+func (r *Server) Start() error {
 	addr := fmt.Sprintf("%s:%d", r.ip, r.port)
 	if err := r.engine.Run(addr); err != nil {
 		return err
@@ -126,16 +118,16 @@ func (r *Router) Start() error {
 }
 
 // Name returns the router name.
-func (r *Router) Name() string {
+func (r *Server) Name() string {
 	return r.name
 }
 
 // IP returns the router ip.
-func (r *Router) IP() string {
+func (r *Server) IP() string {
 	return r.ip
 }
 
 // Port returns the router port.
-func (r *Router) Port() int {
+func (r *Server) Port() int {
 	return r.port
 }

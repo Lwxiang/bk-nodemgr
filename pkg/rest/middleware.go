@@ -8,21 +8,20 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package middleware Authorization
-package middleware
+// Package rest ...
+package rest
 
 import (
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
 	"github.com/gin-gonic/gin"
 )
 
-// InitRestContext init rest context.
-func InitRestContext() gin.HandlerFunc {
+// MiddlewareContext ...
+func MiddlewareContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		restContext := rest.InitRestContext(c)
+		restContext := InitRestContext(c)
 
 		if c.Request.Method == http.MethodOptions {
 			c.Next()
@@ -32,7 +31,7 @@ func InitRestContext() gin.HandlerFunc {
 		switch {
 		case initContextWithJWT(restContext):
 		default:
-			rest.AbortWithUnauthorizedError(restContext, errf.ErrorUnauthorized)
+			AbortWithUnauthorizedError(restContext, errf.ErrorUnauthorized)
 			return
 		}
 
@@ -41,7 +40,7 @@ func InitRestContext() gin.HandlerFunc {
 }
 
 // initContextWithJWT init context with jwt
-func initContextWithJWT(c *rest.Context) bool {
+func initContextWithJWT(_ *Context) bool {
 	// TODO: implement jwt
 	return true
 }

@@ -13,20 +13,24 @@ package backend
 
 import (
 	"context"
+	"io"
 	"runtime"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/router"
+	apiv3 "git.woa.com/bk-gse/bk-nodeman/internal/router/api-v3"
+	"git.woa.com/bk-gse/bk-nodeman/internal/router/basic"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/ssl"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/apigw"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -58,7 +62,7 @@ type Service struct {
 	cmdbHandler cmdb.Handler
 
 	// router is the entry point of the service, routing requests to different capabilities.
-	routers []*router.Router
+	servers []*rest.Server
 
 	// Note: Capability is initialized in the Start() and could not be used in other package.
 	// Capability is the capability of the service.
@@ -113,16 +117,40 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		CmdbHandler: svc.cmdbHandler,
 	}
 
-	httpServer := router.NewRouter(
-		svc.ctx,
-		RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
-		svc.Capability,
-		router.WithApiV3(),
-		router.WithBasic(),
+	httpServer := rest.NewServer(svc.ctx, RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
+		loggerWriter{},
+		rest.WithPing(),
+		withApiV3(svc.Capability),
+		withBasic(svc.Capability),
 	)
-	svc.routers = append(svc.routers, httpServer)
+	svc.servers = append(svc.servers, httpServer)
 
 	return svc, nil
+}
+
+// loggerWriter implements rest.LoggerWriter.
+type loggerWriter struct{}
+
+func (l loggerWriter) InfoWriter() io.Writer {
+	return blog.WriterInfo{}
+}
+
+func (l loggerWriter) ErrorWriter() io.Writer {
+	return blog.WriterError{}
+}
+
+// withApiV3 load api v3.
+func withApiV3(capability *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		apiv3.Load(rg, capability)
+	}
+}
+
+// withBasic load basic.
+func withBasic(capability *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		basic.Load(rg, capability)
+	}
 }
 
 // newCMDBHandler
@@ -209,9 +237,9 @@ func (svc *Service) Start(ctx context.Context) error {
 		return err
 	}
 
-	// start routers
+	// start servers
 	gp := gopool.NewPool()
-	for _, router := range svc.routers {
+	for _, router := range svc.servers {
 		// router start will block until router stop, so we need to run it in a goroutine.
 		fn := func() error {
 			if err := router.Start(); err != nil {
@@ -225,9 +253,9 @@ func (svc *Service) Start(ctx context.Context) error {
 			router.Name(), router.IP(), router.Port())
 	}
 
-	// wait until all routers stopped or application error.
+	// wait until all servers stopped or application error.
 	if err := gp.Wait(); err != nil {
-		blog.Errorf("failed to start routers, err: %v", err)
+		blog.Errorf("failed to start servers, err: %v", err)
 		return err
 	}
 
