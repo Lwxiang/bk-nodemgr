@@ -1,0 +1,390 @@
+package gse
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+	"time"
+
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/google/uuid"
+)
+
+// Handler is the interface for gse handler.
+type Handler interface {
+	// ListAgentInfo list agent detail information.
+	// @param agentIDList given agent id list.
+	// @return agentInfoList agent detail information list.
+	ListAgentInfo(ctx context.Context, agentIDList []string) ([]*types.AgentInfo, error)
+
+	// ListAgentState list agent state information. AgentState is a subset of AgentInfo.
+	// This method is more efficient than ListAgentInfo.
+	// @param agentIDList given agent id list.
+	// @return agentStateList agent state information list.
+	ListAgentState(ctx context.Context, agentIDList []string) ([]*types.AgentState, error)
+
+	// ExecuteScript execute script on host.
+	// @param endpoints given endpoint list with auth.
+	// @param scriptContent given script content.
+	// @param timeout given timeout.
+	// @return gse-task-id for this execution for further querying.
+	ExecuteScript(ctx context.Context, endpoints []*types.EndpointWithAuth, scriptContent string,
+		timeout time.Duration) (string,
+		error)
+
+	// QueryScriptExecutionResult query script execution result.
+	// @param taskID given task id.
+	// @param endpoints given endpoint list.
+	// @return script result list.
+	QueryScriptExecutionResult(ctx context.Context, taskID string, endpoints []*types.EndpointWithRestrict) (
+		[]*types.ScriptResult, error)
+
+	// TerminateScriptExecution terminate script execution.
+	// @param taskID given task id
+	// @param endpoints given endpoint list.
+	// @return gse-task-id for this operation.
+	TerminateScriptExecution(ctx context.Context, taskID string, endpoints []*types.Endpoint) (string, error)
+
+	// TransferFile transfer files from source to targets.
+	// @param opts given options.
+	// @param transfers given transfer details.
+	// @return gse-task-id for this transferring.
+	TransferFile(ctx context.Context, opts *types.TransferOptions, transfers []*types.TransferDetail) (string, error)
+
+	// QueryFileTransmissionResult query file transmission result.
+	// @param taskID given task id.
+	// @param endpoints given endpoint list.
+	// @return file transmission result list.
+	QueryFileTransmissionResult(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
+		[]*types.TransferResult, error)
+
+	// TerminateFileTransmission terminate file transmission.
+	// @param taskID given task id.
+	// @param endpoints given endpoint list.
+	// @return gse-task-id for this operation.
+	TerminateFileTransmission(ctx context.Context, taskID string, endpoints []*types.Endpoint) (string, error)
+}
+type handler struct {
+	cli *cli
+}
+
+// NewHandler initialize a new cmdb handler.
+func NewHandler(c *client.Capability, conf *Config) (Handler, error) {
+	cli, err := newClient(c, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &handler{cli: cli}, nil
+}
+
+// ListAgentInfo list agent detail information.
+func (h *handler) ListAgentInfo(ctx context.Context, agentIDList []string) ([]*types.AgentInfo, error) {
+	req := ListAgentInfoReq{
+		AgentIDList: agentIDList,
+	}
+
+	resp, err := h.cli.listAgentInfo(ctx, &req)
+	if err != nil {
+		return nil, err
+	}
+	data := make([]*types.AgentInfo, len(resp))
+	for idx, info := range resp {
+		data[idx] = &types.AgentInfo{
+			AgentState: types.AgentState{
+				AgentID:        info.BKAgentID,
+				CloudID:        info.BKCloudID,
+				Version:        info.Version,
+				StatusCode:     types.AgentStatusCode(info.StatusCode),
+				LastStatusCode: types.AgentStatusCode(info.LastStatusCode),
+				ReportTime:     info.ReportTime,
+			},
+			HostIP:        info.BKHostIP,
+			OSType:        info.BKOSType,
+			ParentIP:      info.ParentIP,
+			ParentPort:    info.ParentPort,
+			CPURate:       info.CPURate,
+			MemRate:       info.MemRate,
+			StartTime:     info.StartTime,
+			LastWorkTime:  info.LastWorkTime,
+			ConnCycleTime: info.ConnCycleTime,
+			Status:        info.Status,
+			LastStatus:    info.LastStatus,
+			RunMode:       info.RunMode,
+			Remark:        info.Remark,
+		}
+	}
+
+	return data, nil
+}
+
+// ListAgentState ...
+func (h *handler) ListAgentState(ctx context.Context, agentIDList []string) ([]*types.AgentState, error) {
+	req := &ListAgentStateReq{
+		AgentIDList: agentIDList,
+	}
+	resp, err := h.cli.listAgentState(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]*types.AgentState, 0, len(resp))
+	for _, info := range resp {
+		data = append(data, &types.AgentState{
+			AgentID:        info.BKAgentID,
+			CloudID:        info.BKCloudID,
+			Version:        info.Version,
+			StatusCode:     types.AgentStatusCode(info.StatusCode),
+			LastStatusCode: types.AgentStatusCode(info.LastStatusCode),
+			ReportTime:     info.ReportTime,
+		})
+	}
+
+	return data, nil
+}
+
+// ExecuteScript ...
+func (h *handler) ExecuteScript(ctx context.Context, endpoints []*types.EndpointWithAuth, scriptContent string,
+	timeout time.Duration) (string, error) {
+
+	eps := make([]*EndpointWithAuth, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		eps = append(eps, &EndpointWithAuth{
+			Endpoint: Endpoint{
+				BKAgentID:     endpoint.AgentID,
+				BKContainerID: endpoint.ContainerID,
+			},
+			User:     endpoint.User,
+			Password: endpoint.Password,
+		})
+	}
+
+	scriptName := fmt.Sprintf("bk_gse_script_nodeman_%s.sh", uuid.New().String())
+	storedDir := "/tmp/bknodeman/"
+	req := &AsyncExecuteScriptReq{
+		Endpoints: eps,
+		Scripts: []*ScriptDetail{
+			{
+				Name:      scriptName,
+				StoredDir: storedDir,
+				Content:   scriptContent,
+			},
+		},
+		Atomics: []*ScriptAtomicTask{
+			{
+				ID:         0,
+				Command:    filepath.Join(storedDir, scriptName),
+				TimeoutSec: int(timeout.Seconds()),
+			},
+		},
+		Relations: make([]*ScriptAtomicRelation, 0),
+	}
+	resp, err := h.cli.asyncExecuteScript(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Result.TaskID, nil
+}
+
+// QueryScriptExecutionResult ...
+func (h *handler) QueryScriptExecutionResult(ctx context.Context, taskID string,
+	endpoints []*types.EndpointWithRestrict) ([]*types.ScriptResult, error) {
+
+	conditions := make([]*ScriptEndpointCondition, len(endpoints))
+	for idx, endpoint := range endpoints {
+		conditions[idx] = &ScriptEndpointCondition{
+			Endpoint: Endpoint{
+				BKAgentID:     endpoint.AgentID,
+				BKContainerID: endpoint.ContainerID,
+			},
+			Atomics: []*ScriptAtomicTaskCondition{
+				{
+					ID:     0,
+					Offset: endpoint.Offset,
+					Limit:  endpoint.Limit,
+				},
+			},
+		}
+	}
+
+	req := &GetExecuteScriptResultReq{
+		TaskID:     taskID,
+		AgentTasks: conditions,
+	}
+	resp, err := h.cli.getExecuteScriptResult(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*types.ScriptResult, len(resp.Data.Result))
+	for idx, rst := range resp.Data.Result {
+		result[idx] = &types.ScriptResult{
+			Endpoint: types.Endpoint{
+				AgentID:     rst.BKAgentID,
+				ContainerID: rst.BKContainerID,
+			},
+			Status:       types.ScriptStatus(rst.Status),
+			ErrorCode:    rst.ErrorCode,
+			ErrorMessage: rst.ErrorMessage,
+			StartTime:    time.UnixMilli(rst.StartTime),
+			EndTime:      time.UnixMilli(rst.EndTime),
+			ExitCode:     rst.ExitCode,
+			ScreenLog:    rst.ScreenLog,
+		}
+	}
+
+	return result, nil
+}
+
+// TerminateScriptExecution ...
+func (h *handler) TerminateScriptExecution(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
+	string, error) {
+
+	eps := make([]*Endpoint, len(endpoints))
+	for idx, endpoint := range endpoints {
+		eps[idx] = &Endpoint{
+			BKAgentID:     endpoint.AgentID,
+			BKContainerID: endpoint.ContainerID,
+		}
+	}
+
+	req := &AsyncTerminateExecuteScriptReq{
+		TaskID:    taskID,
+		Endpoints: eps,
+	}
+	resp, err := h.cli.asyncTerminateExecuteScript(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Result.TaskID, nil
+}
+
+// TransferFile ...
+func (h *handler) TransferFile(ctx context.Context, opts *types.TransferOptions, transfers []*types.TransferDetail) (
+	string, error) {
+
+	tasks := make([]*TransferDetail, len(transfers))
+	for i, transfer := range transfers {
+		targetEndpoints := make([]*EndpointWithAuth, len(transfer.Target.Endpoints))
+		for j, endpoint := range transfer.Target.Endpoints {
+			targetEndpoints[j] = &EndpointWithAuth{
+				Endpoint: Endpoint{
+					BKAgentID:     endpoint.AgentID,
+					BKContainerID: endpoint.ContainerID,
+				},
+				User: endpoint.User,
+			}
+		}
+
+		tasks[i] = &TransferDetail{
+			Source: &TransferSource{
+				FileName:  transfer.Source.FileName,
+				StoredDir: transfer.Source.StoredDir,
+				Endpoint: EndpointWithAuth{
+					Endpoint: Endpoint{
+						BKAgentID:     transfer.Source.Endpoint.AgentID,
+						BKContainerID: transfer.Source.Endpoint.ContainerID,
+					},
+					User: transfer.Source.Endpoint.User,
+				},
+			},
+			Target: &TransferTarget{
+				StoredDir: transfer.Target.StoredDir,
+				Endpoints: targetEndpoints,
+			},
+		}
+	}
+
+	req := &AsyncTransferFileReq{
+		TimeoutSec:    uint(opts.Timeout.Seconds()),
+		AutoMkdir:     opts.AutoMkdir,
+		UploadSpeed:   opts.UploadSpeedMBPerSec,
+		DownloadSpeed: opts.DownloadSpeedMBPerSec,
+		Tasks:         tasks,
+	}
+	resp, err := h.cli.asyncTransferFile(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Result.TaskID, nil
+}
+
+// QueryFileTransmissionResult ...
+func (h *handler) QueryFileTransmissionResult(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
+	[]*types.TransferResult, error) {
+
+	eps := make([]*Endpoint, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		eps = append(eps, &Endpoint{
+			BKAgentID:     endpoint.AgentID,
+			BKContainerID: endpoint.ContainerID,
+		})
+	}
+
+	req := &GetTransferFileResultReq{
+		TaskID:    taskID,
+		Endpoints: eps,
+	}
+	resp, err := h.cli.getTransferFileResult(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*types.TransferResult, len(resp.Data.Result))
+	for idx, rst := range resp.Data.Result {
+		result[idx] = &types.TransferResult{
+			Source: types.Endpoint{
+				AgentID:     rst.Content.SourceAgentID,
+				ContainerID: rst.Content.SourceContainerID,
+			},
+			Target: types.Endpoint{
+				AgentID:     rst.Content.DestinationAgentID,
+				ContainerID: rst.Content.DestinationContainerID,
+			},
+			Mode:           types.TransferMode(rst.Content.Mode),
+			Progress:       rst.Content.Progress,
+			SpeedKBPerSec:  rst.Content.Speed,
+			SizeBytes:      rst.Content.Size,
+			SourceDir:      rst.Content.SourceFileDir,
+			SourceFileName: rst.Content.SourceFileName,
+			TargetDir:      rst.Content.DestFileDir,
+			TargetFileName: rst.Content.DestFileName,
+			ErrorCode:      rst.ErrorCode,
+			ErrorMessage:   rst.ErrorMessage,
+			StatusCode:     types.TransferStatus(rst.Content.Status),
+			StatusMessage:  rst.Content.StatusInfo,
+			StartTime:      time.UnixMilli(rst.Content.StartTime),
+			EndTime:        time.UnixMilli(rst.Content.EndTime),
+		}
+	}
+
+	return result, nil
+}
+
+// TerminateFileTransmission ...
+func (h *handler) TerminateFileTransmission(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
+	string, error) {
+
+	eps := make([]*Endpoint, 0, len(endpoints))
+	for idx, endpoint := range endpoints {
+		eps[idx] = &Endpoint{
+			BKAgentID:     endpoint.AgentID,
+			BKContainerID: endpoint.ContainerID,
+		}
+	}
+
+	req := &AsyncTerminateTransferFileReq{
+		TaskID:    taskID,
+		Endpoints: eps,
+	}
+	resp, err := h.cli.asyncTerminateTransferFile(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Result.TaskID, nil
+}

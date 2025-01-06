@@ -619,6 +619,7 @@ linters-settings:
       - r *Result
       - c *Config
       - d *Discovery
+      - c *cli
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false

@@ -19,12 +19,12 @@ type Handler interface {
 }
 
 type handler struct {
-	cli *cmdbCli
+	cli *cli
 }
 
 // NewHandler initialize a new cmdb handler.
 func NewHandler(c *client.Capability, conf *Config) (Handler, error) {
-	cli, err := NewClient(c, conf)
+	cli, err := newClient(c, conf)
 	if err != nil {
 		return nil, err
 	}

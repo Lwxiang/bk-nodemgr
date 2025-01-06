@@ -33,27 +33,27 @@ type Config struct {
 	HeaderSetter HeaderSetter
 }
 
-// cmdbCli client for cmdb
-type cmdbCli struct {
+// cli client for cmdb.
+type cli struct {
 	client rest.ClientInterface
 	config *Config
 }
 
-// NewClient initialize a new cmdb client.
-func NewClient(c *client.Capability, conf *Config) (*cmdbCli, error) {
+// newClient initialize a new cmdb client.
+func newClient(c *client.Capability, conf *Config) (*cli, error) {
 	restCli, err := rest.NewClient(c, "/api/v3")
 	if err != nil {
 		return nil, err
 	}
 
-	return &cmdbCli{
+	return &cli{
 		client: restCli,
 		config: conf,
 	}, nil
 }
 
 // getCommonHeader get cmdb common header.
-func (c *cmdbCli) getCommonHeader() (http.Header, error) {
+func (c *cli) getCommonHeader() (http.Header, error) {
 	header := http.Header{}
 	header.Set(restheader.RIDKey, restheader.RIDGenerator())
 
@@ -70,7 +70,7 @@ func (c *cmdbCli) getCommonHeader() (http.Header, error) {
 }
 
 // ListBizHosts ...
-func (c *cmdbCli) listBizHosts(ctx context.Context, req *ReqListBizHosts) (*RespListBizHosts, error) {
+func (c *cli) listBizHosts(ctx context.Context, req *ReqListBizHosts) (*RespListBizHosts, error) {
 	resp := new(BaseBroker[*RespListBizHosts])
 	header, err := c.getCommonHeader()
 	if err != nil {
@@ -95,7 +95,7 @@ func (c *cmdbCli) listBizHosts(ctx context.Context, req *ReqListBizHosts) (*Resp
 }
 
 // searchBusiness search cmdb business.
-func (c *cmdbCli) searchBusiness(ctx context.Context, req *ReqSearchBusiness) (*RespSearchBusiness, error) {
+func (c *cli) searchBusiness(ctx context.Context, req *ReqSearchBusiness) (*RespSearchBusiness, error) {
 	resp := new(BaseBroker[*RespSearchBusiness])
 	header, err := c.getCommonHeader()
 	if err != nil {
