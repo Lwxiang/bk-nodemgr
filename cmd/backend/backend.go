@@ -21,6 +21,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/service/backend"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	machinerylog "github.com/RichardKnop/machinery/v2/log"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
@@ -31,6 +32,52 @@ const (
 	// ModeRelease release mode
 	ModeRelease = "release"
 )
+
+func init() {
+	gin.DebugPrintFunc = func(format string, args ...interface{}) {
+		fmt.Fprintf(blog.GlogWriter{}, format, args...)
+	}
+
+	machinerylog.Set(logger{})
+}
+
+type logger struct{}
+
+func (l logger) Print(args ...interface{}) {
+	blog.Info(args...)
+}
+
+func (l logger) Printf(s string, args ...interface{}) {
+	blog.Infof(s, args...)
+}
+
+func (l logger) Println(args ...interface{}) {
+	blog.Info(args...)
+}
+
+func (l logger) Fatal(args ...interface{}) {
+	blog.Error(args...)
+}
+
+func (l logger) Fatalf(s string, args ...interface{}) {
+	blog.Errorf(s, args...)
+}
+
+func (l logger) Fatalln(args ...interface{}) {
+	blog.Error(args...)
+}
+
+func (l logger) Panic(args ...interface{}) {
+	blog.Error(args...)
+}
+
+func (l logger) Panicf(s string, args ...interface{}) {
+	blog.Errorf(s, args...)
+}
+
+func (l logger) Panicln(args ...interface{}) {
+	blog.Error(args...)
+}
 
 var (
 	// configPath of backend service
@@ -54,15 +101,11 @@ var (
 				fmt.Printf("failed to validate config: %v\n", err)
 				os.Exit(1)
 			}
-
 			switch mode {
 			case ModeDebug:
 				gin.SetMode(gin.DebugMode)
 			case ModeRelease:
 				gin.SetMode(gin.ReleaseMode)
-				gin.DebugPrintFunc = func(format string, args ...interface{}) {
-					fmt.Fprintf(blog.GlogWriter{}, format, args...)
-				}
 			default:
 				fmt.Printf("invalid mode: %s\n", mode)
 				os.Exit(1)
