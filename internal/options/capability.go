@@ -14,8 +14,7 @@ package options
 import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/apigw"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 )
 
 // Capability encapsulates the various capabilities the service supports.
@@ -26,6 +25,4 @@ type Capability struct {
 	TopoStorage topo.Storage
 	// CmdbHandler cmdb handler
 	CmdbHandler cmdb.Handler
-	// ApigwCli apigw client
-	ApigwCli apigw.Client
 }

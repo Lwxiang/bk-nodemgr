@@ -4,3 +4,4 @@ build/
 .DS_Store
 /.air.toml
 /tmp
+/logs

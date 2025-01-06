@@ -35,7 +35,7 @@ const (
 
 func init() {
 	gin.DebugPrintFunc = func(format string, args ...interface{}) {
-		fmt.Fprintf(blog.GlogWriter{}, format, args...)
+		fmt.Fprintf(blog.WriterDebug{}, format, args...)
 	}
 
 	machinerylog.Set(logger{})
@@ -111,7 +111,13 @@ var (
 				os.Exit(1)
 			}
 
-			if err := backend.NewService(config).Start(context.Background()); err != nil {
+			service, err := backend.NewService(config)
+			if err != nil {
+				fmt.Printf("failed to create service: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := service.Start(context.Background()); err != nil {
 				fmt.Printf("failed to start service: %v\n", err)
 				os.Exit(1)
 			}

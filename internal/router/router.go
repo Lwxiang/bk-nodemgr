@@ -67,11 +67,11 @@ func NewRouter(ctx context.Context, name string, ip string, port int, capability
 	}
 
 	// Recover from panic
-	r.engine.Use(gin.RecoveryWithWriter(blog.GlogWriter{}))
+	r.engine.Use(gin.RecoveryWithWriter(blog.WriterError{}))
 
 	// Set log middleware
 	r.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
-		Output:    blog.GlogWriter{},
+		Output:    blog.WriterInfo{},
 		Formatter: customLogFormatter}))
 
 	r.engine.Use()

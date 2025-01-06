@@ -45,11 +45,11 @@ type NetArea struct {
 type Host struct {
 	// belongs to
 	TenantID string
-	CloudID  int
+	CloudID  int64
 	BizID    int
 
 	// host-id is the unique identifier for a host.
-	HostID int
+	HostID int64
 
 	// host informations.
 	InnerIP string

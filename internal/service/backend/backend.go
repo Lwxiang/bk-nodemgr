@@ -19,11 +19,19 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/options"
 	"git.woa.com/bk-gse/bk-nodeman/internal/router"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/apigw"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/ssl"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/apigw"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
+)
+
+const (
+	// DiscoveryNameApigw defines the name of apigateway discovery.
+	DiscoveryNameApigw = "apigateway"
 )
 
 // Service defines a server that provides backend services.
@@ -35,18 +43,19 @@ type Service struct {
 
 	// ctx is used to control the service lifecycle (cancellation and timeouts).
 	ctx context.Context
+
 	// cancelFunc is used to cancel the service and all associated operations.
 	cancelFunc context.CancelFunc
 
 	// Note: the following fields are initialized in the Start() and could not be used in other package.
 	// manager workflow management.
 	manager *manager.Manager
+
 	// topoStorage bk nodeman topo storage
 	topoStorage *topoStorage.DefaultStorage
+
 	// cmdbHandler cmdb handler
 	cmdbHandler cmdb.Handler
-	// apigwCli apigw client
-	apigwCli apigw.Client
 
 	// router is the entry point of the service, routing requests to different capabilities.
 	routers []*router.Router
@@ -59,28 +68,31 @@ type Service struct {
 const (
 	// TopoStorageDatabase bk node manager database name.
 	TopoStorageDatabase = "bknodeman_topo"
+
 	// TopoStorageBusinessCollection bk node manager business collection name.
 	TopoStorageBusinessCollection = "business"
+
 	// TopoStorageHostCollection bk node manager host collection name.
 	TopoStorageHostCollection = "host"
 )
 
+const (
+	//RouterNameHttpServer defines the name of http server router.
+	RouterNameHttpServer = "http-server"
+)
+
 // NewService creates a new backend service.
-func NewService(conf *config.BackendService) *Service {
+func NewService(conf *config.BackendService) (*Service, error) {
 	svc := &Service{
 		conf: conf,
 	}
 	svc.ctx, svc.cancelFunc = context.WithCancel(context.Background())
 
-	svc.apigwCli = apigw.NewClient(&apigw.Config{
-		BKAppCode:        conf.APIGateway.AppCode,
-		BKAppSecret:      conf.APIGateway.AppSecret,
-		PlatformUsername: conf.APIGateway.PlatformUsername,
-		APIGWDomain:      conf.APIGateway.Domain,
-	})
-	svc.cmdbHandler = cmdb.NewHandler(&cmdb.Config{
-		Environment: conf.CMDB.Environment,
-	}, svc.apigwCli)
+	var err error
+	svc.cmdbHandler, err = newCMDBHandler(conf.CMDB)
+	if err != nil {
+		return nil, err
+	}
 
 	svc.topoStorage = topoStorage.NewStorage(&topoStorage.StorageConfig{
 		MongoDB:            conf.MongoDB,
@@ -99,19 +111,75 @@ func NewService(conf *config.BackendService) *Service {
 		Manager:     svc.manager,
 		TopoStorage: svc.topoStorage,
 		CmdbHandler: svc.cmdbHandler,
-		ApigwCli:    svc.apigwCli,
 	}
 
 	httpServer := router.NewRouter(
 		svc.ctx,
-		"http-server", conf.HTTPServer.BindIP, conf.HTTPServer.Port,
+		RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
 		svc.Capability,
 		router.WithApiV3(),
 		router.WithBasic(),
 	)
 	svc.routers = append(svc.routers, httpServer)
 
-	return svc
+	return svc, nil
+}
+
+// newCMDBHandler
+func newCMDBHandler(conf config.CMDB) (cmdb.Handler, error) {
+	apiGwHeaderSetter := newApiGwHeaderSetter(&conf.APIGateway)
+	apiGwClientCapability, err := newApiGwClientCapability(&conf.APIGateway)
+	if err != nil {
+		return nil, err
+	}
+
+	cmdbHandler, err := cmdb.NewHandler(apiGwClientCapability, &cmdb.Config{
+		TenantID:     conf.TenantID,
+		HeaderSetter: apiGwHeaderSetter,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return cmdbHandler, nil
+}
+
+// newApiGwClientCapability creates a new api-gateway client capability.
+func newApiGwClientCapability(conf *config.APIGateway) (*client.Capability, error) {
+	httpClient, err := client.NewClient(&ssl.TLSConfig{
+		InsecureSkipVerify: conf.TLS.InsecureSkipVerify,
+		CertFile:           conf.TLS.CertFile,
+		KeyFile:            conf.TLS.KeyFile,
+		CAFile:             conf.TLS.CAFile,
+		Password:           conf.TLS.Password,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	clientCap := &client.Capability{
+		Client:               httpClient,
+		Discover:             discovery.NewDiscovery(DiscoveryNameApigw, conf.Endpoints),
+		ToleranceLatencyTime: client.ToleranceLatencyTimeDefault,
+		MetricOpts:           client.MetricOption{},
+		Logger:               blog.GlobalLogger{},
+	}
+
+	return clientCap, nil
+}
+
+// newApiGwHeaderSetter creates a new api-gateway header setter.
+func newApiGwHeaderSetter(conf *config.APIGateway) apigw.HeaderSetter {
+	return &apigw.Config{
+		Endpoints:   conf.Endpoints,
+		AppCode:     conf.AppCode,
+		AppSecret:   conf.AppSecret,
+		User:        conf.User,
+		AuthMode:    apigw.AuthMode(conf.AuthMode),
+		BkTicket:    conf.BkTicket,
+		BkToken:     conf.BkToken,
+		AccessToken: conf.AccessToken,
+	}
 }
 
 // Start starts the backend service.

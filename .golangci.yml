@@ -431,13 +431,13 @@ linters-settings:
     # Default: ""
     ignore-strings: 'foo.+'
   gocyclo:
-    # Minimal code complexity to report.
+    # Maximal code complexity to report.
     # Default: 30 (but we recommend 10-20)
-    min-complexity: 10
+    max-complexity: 20
   gocognit:
-    # Minimal code complexity to report.
+    # Maximal code complexity to report.
     # Default: 30 (but we recommend 10-20)
-    min-complexity: 20
+    max-complexity: 15
   wsl:
     # Do strict checking when assigning from append (x = append(x, y)).
     # If this is set to true - the append call must append either a variable
@@ -615,6 +615,10 @@ linters-settings:
       - r gin.Router
       - r Router
       - h *handler
+      - r *Request
+      - r *Result
+      - c *Config
+      - d *Discovery
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false

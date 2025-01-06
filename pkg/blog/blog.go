@@ -39,28 +39,47 @@ func NewLogConfig() LogConfig {
 	}
 }
 
-// GlogWriter serves as a bridge between the standard log package and the glog package.
-type GlogWriter struct{}
+// WriterInfo serves as a bridge between the standard log package and the glog package.
+type WriterInfo struct{}
 
 // Write implements the io.Writer interface.
-func (writer GlogWriter) Write(data []byte) (n int, err error) {
+func (writer WriterInfo) Write(data []byte) (n int, err error) {
 	glog.Info(string(data))
 	return len(data), nil
 }
 
+// WriterDebug serves as a bridge between the standard log package and the glog package.
+type WriterDebug struct{}
+
+// Write implements the io.Writer interface.
+func (writer WriterDebug) Write(data []byte) (n int, err error) {
+	glog.Debug(string(data))
+	return len(data), nil
+}
+
+// WriterError serves as a bridge between the standard log package and the glog package.
+type WriterError struct{}
+
+// Write implements the io.Writer interface.
+func (writer WriterError) Write(data []byte) (n int, err error) {
+	glog.Error(string(data))
+	return len(data), nil
+}
+
 var once sync.Once
+
+// delayDefault is the default delay time to flush logs.
+const delayDefault = 5 * time.Second
 
 // InitLogs initializes logs the way we want for blog.
 func InitLogs(logConfig LogConfig) {
 	glog.InitLogs(glog.LogConfig(logConfig))
 
 	once.Do(func() {
-		log.SetOutput(GlogWriter{})
+		log.SetOutput(WriterInfo{})
 		log.SetFlags(0)
-		// The default glog flush interval is 30 seconds, which is frighteningly long.
 		go func() {
-			d := time.Duration(5 * time.Second) // nolint
-			tick := time.Tick(d)
+			tick := time.Tick(delayDefault)
 
 			for range tick {
 				glog.Flush()
@@ -107,4 +126,67 @@ var (
 // SetLevel set the logging level.
 func SetLevel(level string) {
 	glog.SetLevel(level)
+}
+
+// GlobalLogger serves as a bridge between the standard log package and the glog package.
+type GlobalLogger struct{}
+
+// Debug ...
+func (l GlobalLogger) Debug(args ...interface{}) {
+	glog.Debug(args...)
+}
+
+// Debugf ...
+func (l GlobalLogger) Debugf(format string, args ...interface{}) {
+	glog.Debugf(format, args...)
+}
+
+// Debugw ...
+func (l GlobalLogger) Debugw(args ...interface{}) {
+	glog.Debugw(args...)
+}
+
+// Info ...
+func (l GlobalLogger) Info(args ...interface{}) {
+	glog.Info(args...)
+}
+
+// Infof ...
+func (l GlobalLogger) Infof(format string, args ...interface{}) {
+	glog.Infof(format, args...)
+}
+
+// Infow ...
+func (l GlobalLogger) Infow(args ...interface{}) {
+	glog.Infow(args...)
+}
+
+// Warn ...
+func (l GlobalLogger) Warn(args ...interface{}) {
+	glog.Warning(args...)
+}
+
+// Warnf ...
+func (l GlobalLogger) Warnf(format string, args ...interface{}) {
+	glog.Warningf(format, args...)
+}
+
+// Warnw ...
+func (l GlobalLogger) Warnw(args ...interface{}) {
+	glog.Warningw(args...)
+}
+
+// Error ...
+func (l GlobalLogger) Error(args ...interface{}) {
+	glog.Error(args...)
+}
+
+// Errorf ...
+func (l GlobalLogger) Errorf(format string, args ...interface{}) {
+	glog.Errorf(format, args...)
+}
+
+// Errorw ...
+func (l GlobalLogger) Errorw(args ...interface{}) {
+	glog.Errorw(args...)
 }

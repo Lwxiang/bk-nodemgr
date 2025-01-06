@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/apigw"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/gse"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/gse"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 )
 

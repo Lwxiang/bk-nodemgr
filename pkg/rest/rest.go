@@ -73,7 +73,7 @@ const restContextKey = "rest_context"
 func InitRestContext(pCtx *gin.Context) *Context {
 	restContext := &Context{
 		Context:   pCtx,
-		RequestID: header.RequestIDValue(pCtx.Request, true),
+		RequestID: header.RIDGetter(pCtx.Request, true),
 		Username:  pCtx.GetHeader(header.UserKey),
 	}
 

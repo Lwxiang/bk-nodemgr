@@ -431,7 +431,7 @@ func (m *Manager) do(actionName string, taskID string) (string, error) {
 
 	select {
 	case err = <-doErr:
-		blog.Infof("action done. action(%s), task-id(%s), err(%v)", actionName, taskID, err)
+		blog.Infof("action done. action(%s), task-id(%s), err: %v", actionName, taskID, err)
 
 		if err != nil {
 			action.data.State = ActionStateFailed
@@ -488,9 +488,10 @@ func (m *Manager) getTask(taskID string) (*Task, error) {
 	for _, actionName := range data.Actions {
 		actionDef, ok := m.registeredActionDefs[actionName]
 		if !ok {
-			blog.Errorf("failed to get task data, action not registered. task-id(%s), action(%s)", taskID, actionName)
+			blog.Errorf("failed to get task data, action not registered. task-id(%s), action-name(%s)", taskID,
+				actionName)
 
-			return nil, fmt.Errorf("action %s not registered", actionName)
+			return nil, fmt.Errorf("action not registered, action-name(%s)", actionName)
 		}
 
 		pipeline = pipeline.Next(actionDef)

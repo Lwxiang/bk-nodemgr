@@ -41,17 +41,26 @@ const (
 	BKGWAuthKey = "X-Bkapi-Authorization"
 )
 
-// RequestIDValue :
-func RequestIDValue(req *http.Request, autoGen bool) string {
+// ContentType http request content type
+type ContentType string
+
+// ContentType http request content type
+const (
+	FormDataContent ContentType = "application/x-www-form-urlencoded"
+	JsonContent     ContentType = "application/json"
+)
+
+// RIDGetter request id value
+func RIDGetter(req *http.Request, autoGen bool) string {
 	id := req.Header.Get(RIDKey)
 	if id == "" && autoGen {
-		id = requestIdGenerator()
+		id = RIDGenerator()
 	}
 	return id
 }
 
-// requestIdGenerator ...
-func requestIdGenerator() string {
+// RIDGenerator generate request id
+func RIDGenerator() string {
 	uid := uuid.New().String()
 	requestId := strings.ReplaceAll(uid, "-", "")
 	return requestId

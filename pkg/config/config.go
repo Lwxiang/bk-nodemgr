@@ -60,20 +60,49 @@ type HTTPServer struct {
 
 // APIGateway the config of api-gateway.
 type APIGateway struct {
-	AppCode          string `yaml:"app_code" usage:"app code for api-gateway"`
-	AppSecret        string `yaml:"app_secret" usage:"app secret for api-gateway"`
-	Domain           string `yaml:"domain" usage:"domain of api-gateway"`
-	PlatformUsername string `yaml:"platform_username" usage:"platform username for api-gateway"`
+	// Endpoints is a seed list of host:port addresses of api gateway nodes.
+	Endpoints []string `yaml:"endpoints"`
+	// AppCode is the BlueKing app code of nodeman to request api gateway.
+	AppCode string `yaml:"appCode"`
+	// AppSecret is the BlueKing app secret of nodeman to request api gateway.
+	AppSecret string `yaml:"appSecret"`
+	// User is the BlueKing user of nodeman to request api gateway.
+	User string `yaml:"user"`
+	// AuthMode is the BlueKing api authentication mode.
+	AuthMode string `yaml:"authMode"`
+	// BkTicket is the BlueKing access ticket of nodeman to request api gateway.
+	BkTicket string `yaml:"bkTicket"`
+	// BkToken is the BlueKing user token of nodeman to request api gateway.
+	BkToken string `yaml:"bkToken"`
+	// AccessToken is the BlueKing access token of nodeman to request api gateway.
+	AccessToken string `yaml:"accessToken"`
+	// TLS defines the tls config of api-gateway.
+	TLS TLSConfig `yaml:"tls" usage:"tls config of api-gateway"`
 }
 
 // CMDB the config of cmdb.
 type CMDB struct {
-	Environment string `yaml:"environment" usage:"environment of cmdb"`
+	TenantID   string `yaml:"tenant_id" usage:"tenant id of cmdb"`
+	APIGateway `yaml:",inline" usage:"api-gateway config of cmdb"`
+}
+
+// TLSConfig defines tls related options.
+type TLSConfig struct {
+	// Server should be accessed without verifying the TLS certificate.
+	// For testing only.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify"`
+	// Server requires TLS client certificate authentication
+	CertFile string `yaml:"certFile"`
+	// Server requires TLS client certificate authentication
+	KeyFile string `yaml:"keyFile"`
+	// Trusted root certificates for server
+	CAFile string `yaml:"caFile"`
+	// the password to decrypt the certificate
+	Password string `yaml:"password"`
 }
 
 // BackendService the config of backend service.
 type BackendService struct {
-	APIGateway APIGateway `yaml:"api_gateway" usage:"auth config of backend service"`
 	CMDB       CMDB       `yaml:"cmdb" usage:"cmdb config of backend service"`
 	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
 	Redis      Redis      `yaml:"redis" usage:"redis config of backend service"`

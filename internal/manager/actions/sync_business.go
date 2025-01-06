@@ -12,12 +12,13 @@
 package actions
 
 import (
-	"sync"
+	"context"
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/cmdb"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
 )
@@ -71,16 +72,17 @@ func (a *ActionSyncBusinessFromCMDB) Do(ctx *workflow.ActionContext) error {
 	blog.Infof("start syncing business info from cmdb. info: %s", ctx.Action.Info())
 	ctx.Action.Log("start syncing business info from cmdb")
 
-	var wg sync.WaitGroup
+	gp := gopool.NewPool()
+	gp.SetLimit(10)
 
-	page := cmdb.Page{
+	page := types.Page{
 		Start: 0,
 		Limit: 500,
 	}
 	for {
-		businesses, _, err := a.cmdbHandler.Tenant(1).User(nil).SearchBusiness(page)
+		businesses, err := a.cmdbHandler.SearchBusiness(context.Background(), page)
 		if err != nil {
-			blog.Errorf("failed to get business info from cmdb. err: %v", err)
+			blog.Errorf("failed to get business info from cmdb, err: %v", err)
 			ctx.Action.Log("failed to get business info from cmdb. err: " + err.Error())
 
 			return err
@@ -90,22 +92,27 @@ func (a *ActionSyncBusinessFromCMDB) Do(ctx *workflow.ActionContext) error {
 			break
 		}
 
-		for _, business := range businesses {
-			wg.Add(1)
-
-			func(biz *types.Business) {
-				defer wg.Done()
-
-				if err := a.topoStorage.UpsertBusiness(biz); err != nil {
-					blog.Errorf("failed to upsert business info. biz-id(%d), err: %v", biz.BizID, err)
+		for idx := range businesses {
+			business := businesses[idx]
+			fn := func() error {
+				if err := a.topoStorage.UpsertBusiness(&business); err != nil {
+					return err
 				}
-			}(business)
+
+				return nil
+			}
+
+			gp.Go(fn)
 		}
 
 		page.Start += page.Limit
 	}
 
-	wg.Wait()
+	if err := gp.Wait(); err != nil {
+		blog.Errorf("failed to sync business info from cmdb. info: %s, err: %v", ctx.Action.Info(), err)
+		return err
+	}
+
 	blog.Infof("succeed to sync business info from cmdb. info: %s", ctx.Action.Info())
 
 	return nil
