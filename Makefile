@@ -1,3 +1,5 @@
+.PHONY: tidy build test
+
 # directories
 ROOT_DIR = $(CURDIR)
 OUTPUT_DIR = $(ROOT_DIR)/build/$(VERSION)
@@ -29,13 +31,16 @@ pre:
 	go mod tidy
 
 backend: pre
-	go build -ldflags ${LDVersionFLAG} -o $(OUTPUT_DIR)/bk-nodeman-backend $(ROOT_DIR)/cmd/backend/backend.go
+	CGO_ENABLED=0 go build -ldflags ${LDVersionFLAG} -o $(OUTPUT_DIR)/bk-nodeman-backend $(ROOT_DIR)/cmd/backend/main.go
 
-images: backend
-	$(CP) $(ROOT_DIR)/install/images/Dockerfile $(OUTPUT_DIR)/
+saas: pre
+	CGO_ENABLED=0 go build -ldflags ${LDVersionFLAG} -o $(OUTPUT_DIR)/bk-nodeman-saas $(ROOT_DIR)/cmd/saas/*.go
+
+docker-build: backend saas
+	$(CP) $(ROOT_DIR)/install/images/Dockerfile $(OUTPUT_DIR)
 	$(CD) $(OUTPUT_DIR) && docker build -t bk-nodeman:v${VERSION} .
 
-all: backend
+all: backend saas
 
 clean:
 	$(RM) -rf build

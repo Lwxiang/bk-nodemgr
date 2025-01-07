@@ -75,7 +75,7 @@ func NewServer(ctx context.Context, name, ip string, port int, logWriter LogWrit
 
 	s.rg = s.engine.Group("/")
 
-	// Set authentication middleware
+	// Set authentication middleware.
 	s.rg.Use(MiddlewareContext())
 
 	for _, fn := range apiOptFns {
@@ -97,6 +97,7 @@ func customLogFormatter(param gin.LogFormatterParams) string {
 	if param.Latency > time.Minute {
 		param.Latency = param.Latency.Truncate(time.Second)
 	}
+
 	return fmt.Sprintf("[GIN Requst] |%s %3d %s| %13v | %15s |%s %-7s %s %#v\n%s",
 		statusColor, param.StatusCode, resetColor,
 		param.Latency,

@@ -1,0 +1,75 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making 蓝鲸智云-节点管理(BlueKing-BK-NODEMAN) available.
+ * Copyright (C) 2017-2022 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at https://opensource.org/licenses/MIT
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"git.woa.com/bk-gse/bk-nodeman/internal/saas/service"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
+)
+
+// NewWebServerCMD generates a new webserver command.
+func NewWebServerCMD() *cobra.Command {
+	// configPath of saas service.
+	var configPath string
+
+	wsCMD := &cobra.Command{
+		Use:   "webserver",
+		Short: "Start the HTTP server.",
+		Run: func(_ *cobra.Command, _ []string) {
+			conf := config.NewSaasService()
+			if err := conf.Load(configPath); err != nil {
+				fmt.Printf("failed to load config(%s): %v\n", configPath, err)
+				os.Exit(1)
+			}
+
+			if err := conf.Validate(); err != nil {
+				fmt.Printf("failed to validate config: %v\n", err)
+				os.Exit(1)
+			}
+
+			switch conf.RunMode {
+			case config.RunModeDebug:
+				gin.SetMode(gin.DebugMode)
+			case config.RunModeRelease:
+				gin.SetMode(gin.ReleaseMode)
+				gin.DebugPrintFunc = func(format string, args ...interface{}) {
+					_, _ = fmt.Fprintf(blog.WriterDebug{}, format, args...)
+				}
+			default:
+				fmt.Printf("invalid mode: %s\n", conf.RunMode)
+				os.Exit(1)
+			}
+
+			if err := service.NewService(conf).Start(context.Background()); err != nil {
+				fmt.Printf("failed to start service: %v\n", err)
+				os.Exit(1)
+			}
+
+			// listening signal
+			signalC := make(chan os.Signal, 1)
+			signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
+			receivedSignal := <-signalC
+
+			fmt.Printf("received signal(%s), going to exit server\n", receivedSignal.String())
+		},
+	}
+
+	return wsCMD
+}

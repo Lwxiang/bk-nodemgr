@@ -42,7 +42,7 @@ var once sync.Once
 // LogConfig defines the glog config.
 type LogConfig struct {
 	LogDir       string
-	LogMaxSizeMB uint64
+	LogMaxSizeMB int
 	LogMaxNum    int
 
 	ToStdErr        bool
@@ -65,7 +65,7 @@ func InitLogs(config LogConfig) {
 		SetLevel(config.Level)
 
 		logMaxNum = config.LogMaxNum
-		logMaxSize = config.LogMaxSizeMB * 1024 * 1024
+		logMaxSize = uint64(config.LogMaxSizeMB) * 1024 * 1024
 		logDir = config.LogDir
 	})
 }

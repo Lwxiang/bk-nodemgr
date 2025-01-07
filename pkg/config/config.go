@@ -12,9 +12,33 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/envx"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	// backend service config default values.
+	defaultBackendRunMode      = RunModeRelease
+	defaultBackendHTTPBindIP   = "127.0.0.1"
+	defaultBackendHTTPPort     = 8000
+	defaultBackendLogDir       = "/bk-nodeman/log/"
+	defaultBackendLogMaxNum    = 10
+	defaultBackendLogMaxSizeMB = 200
+	defaultBackendLogLevel     = "INFO"
+
+	// saas service config default values.
+	defaultSaasRunMode       = RunModeRelease
+	defaultSaasAPIGwUser     = "admin"
+	defaultSaasHTTPBindIP    = "127.0.0.1"
+	defaultSaasHTTPPort      = 5000
+	defaultSaasHTTPStaticDir = "/bk-nodeman/static/"
+	defaultSaasLogDir        = "/bk-nodeman/log/"
+	defaultSaasLogMaxNum     = 10
+	defaultSaasLogMaxSizeMB  = 200
+	defaultSaasLogLevel      = "INFO"
 )
 
 // Etcd the config of etcd.
@@ -45,7 +69,7 @@ type MongoDB struct {
 // Log the config of log.
 type Log struct {
 	Dir          string `yaml:"dir" usage:"log dir of backend server"`
-	MaxSizeMB    uint64 `yaml:"max_size_mb" usage:"max size in MBytes of single log file"`
+	MaxSizeMB    int    `yaml:"max_size_mb" usage:"max size in MBytes of single log file"`
 	MaxNum       int    `yaml:"max_num" usage:"max number of log files"`
 	Level        string `yaml:"level" usage:"log level of backend server. DEBUG, INFO, WARN, ERROR"`
 	ToStdErr     bool   `yaml:"to_stderr" usage:"log to stderr instead of files"`
@@ -54,8 +78,9 @@ type Log struct {
 
 // HTTPServer the config of http service.
 type HTTPServer struct {
-	BindIP string `yaml:"bind_ip" usage:"bind ip of http server"`
-	Port   int    `yaml:"port" usage:"port of http server"`
+	BindIP    string `yaml:"bind_ip"`
+	Port      int    `yaml:"port"`
+	StaticDir string `yaml:"static_dir"`
 }
 
 // APIGateway the config of api-gateway.
@@ -101,13 +126,42 @@ type TLSConfig struct {
 	Password string `yaml:"password"`
 }
 
+// RunMode the run mode of service.
+type RunMode string
+
+const (
+	// RunModeRelease release mode.
+	RunModeRelease RunMode = "release"
+
+	// RunModeDebug debug mode.
+	RunModeDebug RunMode = "debug"
+)
+
 // BackendService the config of backend service.
 type BackendService struct {
+	RunMode    RunMode    `yaml:"mode" usage:"run mode of service"`
 	CMDB       CMDB       `yaml:"cmdb" usage:"cmdb config of backend service"`
 	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
 	Redis      Redis      `yaml:"redis" usage:"redis config of backend service"`
 	MongoDB    MongoDB    `yaml:"mongodb" usage:"mongodb config of backend service"`
 	Log        Log        `yaml:"log" usage:"log config of backend service"`
+}
+
+// NewBackendService generates a new BackendService with default values.
+func NewBackendService() *BackendService {
+	return &BackendService{
+		RunMode: defaultBackendRunMode,
+		HTTPServer: HTTPServer{
+			BindIP: defaultBackendHTTPBindIP,
+			Port:   defaultBackendHTTPPort,
+		},
+		Log: Log{
+			Dir:       defaultBackendLogDir,
+			MaxSizeMB: defaultBackendLogMaxSizeMB,
+			MaxNum:    defaultBackendLogMaxNum,
+			Level:     defaultBackendLogLevel,
+		},
+	}
 }
 
 // LoadFromFile loads config from file.
@@ -128,4 +182,130 @@ func (b *BackendService) LoadFromFile(path string) error {
 func (b *BackendService) Validate() error {
 	// TODO: validate the config
 	return nil
+}
+
+// SaasService the config of saas service.
+type SaasService struct {
+	RunMode    RunMode    `yaml:"mode" usage:"run mode of service"`
+	APIGateway APIGateway `yaml:"api_gateway" usage:"auth config of backend service"`
+	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
+	Log        Log        `yaml:"log" usage:"log config of backend service"`
+}
+
+// NewSaasService generatea a new SaasService with default values.
+func NewSaasService() *SaasService {
+	return &SaasService{
+		RunMode: defaultSaasRunMode,
+		APIGateway: APIGateway{
+			User: defaultSaasAPIGwUser,
+		},
+		HTTPServer: HTTPServer{
+			BindIP:    defaultSaasHTTPBindIP,
+			Port:      defaultSaasHTTPPort,
+			StaticDir: defaultSaasHTTPStaticDir,
+		},
+		Log: Log{
+			Dir:       defaultSaasLogDir,
+			MaxSizeMB: defaultSaasLogMaxSizeMB,
+			MaxNum:    defaultSaasLogMaxNum,
+			Level:     defaultSaasLogLevel,
+		},
+	}
+}
+
+// Load loads config from file or environment variables.
+func (svc *SaasService) Load(filePath string) error {
+	// default options.
+	svc.RunMode = RunModeRelease
+
+	if filePath == "" {
+		return svc.LoadFromEnv()
+	}
+
+	return svc.LoadFromFile(filePath)
+}
+
+// LoadFromEnv loads config from environment variables.
+func (svc *SaasService) LoadFromEnv() error {
+	// run mode.
+	var runMode string
+	if envx.LoadString("NODEMAN_MODE", &runMode) {
+		svc.RunMode = RunMode(runMode)
+	}
+
+	// api_gateway.
+	if err := envx.MustLoadString("BKPAAS_APP_ID", &svc.APIGateway.AppCode); err != nil {
+		return err
+	}
+	if err := envx.MustLoadString("BKPAAS_APP_SECRET", &svc.APIGateway.AppSecret); err != nil {
+		return err
+	}
+	_ = envx.LoadString("NODEMAN_APIGW_USER", &svc.APIGateway.User)
+	_ = envx.LoadString("NODEMAN_APIGW_AUTH_MODE", &svc.APIGateway.AuthMode)
+	_ = envx.LoadString("NODEMAN_APIGW_BK_TICKET", &svc.APIGateway.BkTicket)
+	_ = envx.LoadString("NODEMAN_APIGW_BK_TOKEN", &svc.APIGateway.BkToken)
+	_ = envx.LoadString("NODEMAN_APIGW_ACCESS_TOKEN", &svc.APIGateway.AccessToken)
+	if _, err := envx.LoadBool("NODEMAN_APIGW_TLS_SKIP_VERIFY", &svc.APIGateway.TLS.InsecureSkipVerify); err != nil {
+		return err
+	}
+	_ = envx.LoadString("NODEMAN_APIGW_TLS_CERT", &svc.APIGateway.TLS.CertFile)
+	_ = envx.LoadString("NODEMAN_APIGW_TLS_KEY", &svc.APIGateway.TLS.KeyFile)
+	_ = envx.LoadString("NODEMAN_APIGW_TLS_CA", &svc.APIGateway.TLS.CAFile)
+	_ = envx.LoadString("NODEMAN_APIGW_TLS_PASSWORD", &svc.APIGateway.TLS.Password)
+
+	// http_server.
+	_ = envx.LoadString("NODEMAN_HTTPSVR_BIND_IP", &svc.HTTPServer.BindIP)
+	if _, err := envx.LoadInt("NODEMAN_HTTPSVR_PORT", &svc.HTTPServer.Port); err != nil {
+		return err
+	}
+
+	// log.
+	_ = envx.LoadString("NODEMAN_LOG_DIR", &svc.Log.Dir)
+	_ = envx.LoadString("NODEMAN_LOG_LEVEL", &svc.Log.Level)
+	if _, err := envx.LoadInt("NODEMAN_LOG_MAX_NUM", &svc.Log.MaxNum); err != nil {
+		return err
+	}
+	if _, err := envx.LoadInt("NODEMAN_LOG_MAX_SIZE_MB", &svc.Log.MaxSizeMB); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// LoadFromFile loads config from file.
+func (svc *SaasService) LoadFromFile(path string) error {
+	configContent, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	if err = yaml.Unmarshal(configContent, svc); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Validate validates the config.
+func (svc *SaasService) Validate() error {
+	// TODO: validate the config
+	return nil
+}
+
+// EnvGet read env, supports default value.
+func EnvGet(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+
+	return fallback
+}
+
+// EnvMustGet read env, panic if not set.
+func EnvMustGet(key string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+
+	panic(fmt.Sprintf("required environment variable %s unset", key))
 }
