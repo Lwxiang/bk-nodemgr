@@ -8,29 +8,61 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package metrics is the metrics router.
-package metrics
+// Package healthz defines the healthz router.
+package healthz
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/options"
+	"net/http"
+
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
+	types "git.woa.com/bk-gse/bk-nodeman/internal/backend/types/router/healthz"
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// handler ...
 type handler struct {
-	rg *gin.RouterGroup
+	rg      *gin.RouterGroup
+	manager manager.IManager
 }
 
-func newHandler(rg *gin.RouterGroup, _ *options.Capability) *handler {
+// newHandler ...
+func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
 	return &handler{
 		// this is a sub router, so we can use some special middleware in it and not affect the father router.
-		rg: rg,
+		rg:      rg.Group("/healthz"),
+		manager: capability.Manager,
 	}
 }
 
-// Load enables metrics router into gin.Engine.
+// Load ...
 func Load(rg *gin.RouterGroup, capability *options.Capability) {
 	h := newHandler(rg, capability)
 
-	h.rg.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	h.rg.GET("", h.Healthz)
+}
+
+// Healthz check service health.
+func (h *handler) Healthz(ctx *gin.Context) {
+	resp := new(types.Response)
+
+	if h.manager == nil {
+		resp.OK = false
+		resp.Manager = "not initialized"
+		ctx.JSON(http.StatusInternalServerError, resp)
+
+		return
+	}
+
+	if err := h.manager.CheckHealth(); err != nil {
+		resp.OK = false
+		resp.Manager = err.Error()
+		ctx.JSON(http.StatusInternalServerError, resp)
+
+		return
+	}
+
+	resp.OK = true
+	resp.Manager = "ok"
+	ctx.JSON(http.StatusOK, resp)
 }

@@ -8,35 +8,40 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package basic
+// Package healthz defines the healthz router.
+package healthz
 
 import (
 	"net/http"
 
-	types "git.woa.com/bk-gse/bk-nodeman/internal/backend/types/router/basic"
+	"git.woa.com/bk-gse/bk-nodeman/internal/saas/options"
+	types "git.woa.com/bk-gse/bk-nodeman/internal/saas/types/router/healthz"
 	"github.com/gin-gonic/gin"
 )
 
+// handler ...
+type handler struct {
+	rg *gin.RouterGroup
+}
+
+// newHandler ...
+func newHandler(rg *gin.RouterGroup, _ *options.Capability) *handler {
+	return &handler{
+		// this is a sub router, so we can use some special middleware in it and not affect the father router.
+		rg: rg.Group("/healthz"),
+	}
+}
+
+// Load ...
+func Load(rg *gin.RouterGroup, capability *options.Capability) {
+	h := newHandler(rg, capability)
+
+	h.rg.GET("", h.Healthz)
+}
+
 // Healthz check service health.
 func (h *handler) Healthz(ctx *gin.Context) {
-	resp := new(types.HealthzResp)
-
-	if h.manager == nil {
-		resp.OK = false
-		resp.Manager = "not initialized"
-		ctx.JSON(http.StatusInternalServerError, resp)
-
-		return
-	}
-
-	if err := h.manager.CheckHealth(); err != nil {
-		resp.OK = false
-		resp.Manager = err.Error()
-		ctx.JSON(http.StatusInternalServerError, resp)
-
-		return
-	}
-
+	resp := new(types.Response)
 	resp.OK = true
 	resp.Manager = "ok"
 	ctx.JSON(http.StatusOK, resp)

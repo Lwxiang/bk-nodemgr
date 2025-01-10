@@ -20,6 +20,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
 	apiv3 "git.woa.com/bk-gse/bk-nodeman/internal/backend/router/api-v3"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/basic"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/healthz"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
@@ -31,6 +32,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/apigw"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -120,7 +122,9 @@ func NewService(conf *config.BackendService) (*Service, error) {
 	httpServer := rest.NewServer(svc.ctx, RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
 		loggerWriter{},
 		rest.WithPing(),
-		withApiV3(svc.Capability),
+		withHealthz(svc.Capability),
+		withMetrics(svc.Capability),
+		withAPIV3(svc.Capability),
 		withBasic(svc.Capability),
 	)
 	svc.servers = append(svc.servers, httpServer)
@@ -139,8 +143,22 @@ func (l loggerWriter) ErrorWriter() io.Writer {
 	return blog.WriterError{}
 }
 
+// withHealthz load healthz.
+func withHealthz(capability *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		healthz.Load(rg, capability)
+	}
+}
+
+// withMetrics load metrics.
+func withMetrics(_ *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		rg.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	}
+}
+
 // withApiV3 load api v3.
-func withApiV3(capability *options.Capability) rest.OptionFunc {
+func withAPIV3(capability *options.Capability) rest.OptionFunc {
 	return func(rg *gin.RouterGroup) {
 		apiv3.Load(rg, capability)
 	}
@@ -153,7 +171,7 @@ func withBasic(capability *options.Capability) rest.OptionFunc {
 	}
 }
 
-// newCMDBHandler
+// newCMDBHandler.
 func newCMDBHandler(conf config.CMDB) (cmdb.Handler, error) {
 	apiGwHeaderSetter := newApiGwHeaderSetter(&conf.APIGateway)
 	apiGwClientCapability, err := newApiGwClientCapability(&conf.APIGateway)

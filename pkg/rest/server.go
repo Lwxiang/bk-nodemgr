@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"time"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/metrics"
 	"github.com/gin-gonic/gin"
 )
 
@@ -37,6 +38,8 @@ type Server struct {
 	ip   string
 	port int
 	name string
+
+	metrics *metrics.Monitor
 }
 
 // OptionFunc defines a function that can be used to modify the router.
@@ -55,7 +58,7 @@ func WithPing() OptionFunc {
 
 // NewServer creates a new restful API server.
 func NewServer(ctx context.Context, name, ip string, port int, logWriter LogWriter, apiOptFns ...OptionFunc) *Server {
-	s := &Server{
+	svr := &Server{
 		ctx:    ctx,
 		ip:     ip,
 		port:   port,
@@ -64,25 +67,30 @@ func NewServer(ctx context.Context, name, ip string, port int, logWriter LogWrit
 	}
 
 	// Recover from panic
-	s.engine.Use(gin.RecoveryWithWriter(logWriter.ErrorWriter()))
+	svr.engine.Use(gin.RecoveryWithWriter(logWriter.ErrorWriter()))
 
 	// Set log middleware
-	s.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+	svr.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Output:    logWriter.InfoWriter(),
 		Formatter: customLogFormatter}))
 
-	s.engine.Use()
+	// Set metrics monitor.
+	svr.metrics = metrics.GetMonitor()
+	svr.metrics.SetSlowTime(1)
+	svr.metrics.SetDuration([]float64{0.01, 0.05, 0.1, 0.5, 1, 2, 5})
+	svr.metrics.SetExcludePaths([]string{"/ping", "/healthz", "/metrics"})
+	svr.metrics.UseWithoutExposingEndpoint(svr.engine)
 
-	s.rg = s.engine.Group("/")
+	svr.rg = svr.engine.Group("/")
 
 	// Set authentication middleware.
-	s.rg.Use(MiddlewareContext())
+	svr.rg.Use(MiddlewareContext())
 
 	for _, fn := range apiOptFns {
-		fn(s.rg)
+		fn(svr.rg)
 	}
 
-	return s
+	return svr
 }
 
 // customLogFormatter is a custom log formatter.
@@ -109,9 +117,9 @@ func customLogFormatter(param gin.LogFormatterParams) string {
 }
 
 // Start starts the router.
-func (r *Server) Start() error {
-	addr := fmt.Sprintf("%s:%d", r.ip, r.port)
-	if err := r.engine.Run(addr); err != nil {
+func (svr *Server) Start() error {
+	addr := fmt.Sprintf("%s:%d", svr.ip, svr.port)
+	if err := svr.engine.Run(addr); err != nil {
 		return err
 	}
 
@@ -119,16 +127,16 @@ func (r *Server) Start() error {
 }
 
 // Name returns the router name.
-func (r *Server) Name() string {
-	return r.name
+func (svr *Server) Name() string {
+	return svr.name
 }
 
 // IP returns the router ip.
-func (r *Server) IP() string {
-	return r.ip
+func (svr *Server) IP() string {
+	return svr.ip
 }
 
 // Port returns the router port.
-func (r *Server) Port() int {
-	return r.port
+func (svr *Server) Port() int {
+	return svr.port
 }

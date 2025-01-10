@@ -17,7 +17,6 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/version"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // handler ...
@@ -40,8 +39,6 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 	h := newHandler(rg, capability)
 
 	h.rg.GET("/info", rest.RestHandlerFunc(h.Info))
-	h.rg.GET("/healthz", h.Healthz)
-	h.rg.GET("/metrics", gin.WrapH(promhttp.Handler()))
 }
 
 // Info ...

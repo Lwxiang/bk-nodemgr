@@ -17,13 +17,14 @@ import (
 	"runtime"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/saas/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/router/metrics"
+	"git.woa.com/bk-gse/bk-nodeman/internal/saas/router/healthz"
 	"git.woa.com/bk-gse/bk-nodeman/internal/saas/router/web"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Service defines a server that provides saas services.
@@ -60,8 +61,9 @@ func NewService(conf *config.SaasService) *Service {
 	httpServer := rest.NewServer(svc.ctx, RouterNameHTTPServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
 		loggerWriter{},
 		rest.WithPing(),
-		withWeb(svc.Capability),
+		withHealthz(svc.Capability),
 		withMetrics(svc.Capability),
+		withWeb(svc.Capability),
 	)
 	svc.servers = append(svc.servers, httpServer)
 
@@ -79,17 +81,24 @@ func (l loggerWriter) ErrorWriter() io.Writer {
 	return blog.WriterError{}
 }
 
+// withHealthz load healthz.
+func withHealthz(capability *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		healthz.Load(rg, capability)
+	}
+}
+
+// withMetrics load metrics.
+func withMetrics(_ *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		rg.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	}
+}
+
 // withWeb load web page handler.
 func withWeb(capability *options.Capability) rest.OptionFunc {
 	return func(rg *gin.RouterGroup) {
 		web.Load(rg, capability)
-	}
-}
-
-// withMetrics load metrics handler.
-func withMetrics(capability *options.Capability) rest.OptionFunc {
-	return func(rg *gin.RouterGroup) {
-		metrics.Load(rg, capability)
 	}
 }
 

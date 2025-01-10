@@ -8,11 +8,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package basic defines the types in basic api handler.
-package basic
+// Package healthz defines the types in healthz api handler.
+package healthz
 
-// HealthzResp this is a response for healthz.
-type HealthzResp struct {
+// Response this is a response for healthz.
+type Response struct {
 	// define the result of whole health check.
 	OK bool `json:"ok"`
 

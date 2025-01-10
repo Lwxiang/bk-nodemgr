@@ -4,6 +4,7 @@ go 1.21.13
 
 require (
 	github.com/RichardKnop/machinery/v2 v2.0.13
+	github.com/bits-and-blooms/bitset v1.20.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/pkg/errors v0.9.1
