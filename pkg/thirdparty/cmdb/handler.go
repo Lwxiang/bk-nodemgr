@@ -22,8 +22,8 @@ type handler struct {
 	cli *cli
 }
 
-// NewHandler initialize a new cmdb handler.
-func NewHandler(c *client.Capability, conf *Config) (Handler, error) {
+// New initialize a new cmdb handler.
+func New(c *client.Capability, conf *Config) (Handler, error) {
 	cli, err := newClient(c, conf)
 	if err != nil {
 		return nil, err

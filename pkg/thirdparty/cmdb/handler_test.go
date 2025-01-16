@@ -1,0 +1,147 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making 蓝鲸智云-节点管理(BlueKing-BK-NODEMAN) available.
+ * Copyright (C) 2017-2022 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at https://opensource.org/licenses/MIT
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+// Package cmdb ...
+package cmdb
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/ssl"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/joho/godotenv"
+)
+
+type testHeaderSetter struct{}
+
+// GetAuthHeader ...
+func (testHeaderSetter) GetAuthHeader() (string, error) {
+	return os.Getenv("bk-apigw-authheader"), nil
+}
+
+// testClient ...
+func testClient(t *testing.T) Handler {
+	err := godotenv.Load(".env")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpClient, err := client.NewClient(&ssl.TLSConfig{
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientCap := &client.Capability{
+		Client:               httpClient,
+		Discover:             discovery.NewDiscovery("apigateway", []string{os.Getenv("bk-apigw-endpoint")}),
+		ToleranceLatencyTime: client.ToleranceLatencyTimeDefault,
+		MetricOpts:           client.MetricOption{},
+		Logger:               logger.LoggerDefault{},
+	}
+
+	h, err := New(clientCap, &Config{
+		TenantID:     "0",
+		HeaderSetter: testHeaderSetter{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return h
+}
+
+// Test_handler_ListBizHosts ...
+func Test_handler_ListBizHosts(t *testing.T) {
+	type args struct {
+		biz  types.Business
+		page types.Page
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "base",
+			args: args{
+				biz: types.Business{
+					TenantID: "",
+					BizID:    2,
+					BizName:  "",
+				},
+				page: types.Page{
+					Start: 0,
+					Limit: 500,
+					Sort:  "",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			got, err := h.ListBizHosts(context.Background(), tt.args.biz, tt.args.page)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ListBizHosts() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			for _, host := range got {
+				t.Logf("host: %v", host)
+			}
+		})
+	}
+}
+
+// Test_handler_SearchBusiness ...
+func Test_handler_SearchBusiness(t *testing.T) {
+	type args struct {
+		page types.Page
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "base",
+			args: args{
+				page: types.Page{
+					Start: 0,
+					Limit: 500,
+					Sort:  "",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			got, err := h.SearchBusiness(context.Background(), tt.args.page)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SearchBusiness() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			for _, biz := range got {
+				t.Logf("biz: %v", biz)
+			}
+		})
+	}
+}

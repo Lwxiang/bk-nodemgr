@@ -102,8 +102,9 @@ func (c *cli) searchBusiness(ctx context.Context, req *ReqSearchBusiness) (*Resp
 		return nil, err
 	}
 
+	// TODO: access tenant information.
 	err = c.client.Post().
-		SubResourcef("/biz/search/0").
+		SubResourcef("/biz/search/%s", "0").
 		WithContext(ctx).
 		WithHeaders(header).
 		Body(req).

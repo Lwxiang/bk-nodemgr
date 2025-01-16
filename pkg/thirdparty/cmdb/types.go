@@ -16,8 +16,9 @@ type Page struct {
 
 // HostInfo describe the information of single host.
 type HostInfo struct {
-	BKHostID int64 `json:"bk_host_id"`
 	// 主机ID
+	BKHostID int64 `json:"bk_host_id"`
+	// 机房ID
 	IdcID int64 `json:"idc_id"`
 	// 机房
 	IdcName string `json:"idc_name"`
@@ -184,7 +185,7 @@ type HostInfo struct {
 	// 内网网段
 	InnerNetworkSegment string `json:"inner_network_segment"`
 	// 是否固资
-	IsSpecial string `json:"is_special"`
+	IsSpecial bool `json:"is_special"`
 	// InnerEquipID
 	BKInnerEquipID string `json:"bk_inner_equip_id"`
 	// Zone名称

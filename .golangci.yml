@@ -61,8 +61,6 @@ linters:
     - gocyclo
     # Check if comments end in a period.
     - godot
-    # Tool for detection of FIXME, TODO and other comment keywords.
-    - godox
     # Inspects source code for security problems.
     - gosec
     # Analyze expression groups.

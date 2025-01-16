@@ -505,22 +505,22 @@ func (r *Request) getRequest(url string, contentType header.ContentType) (*http.
 // isConnectionReset Returns if the given err is "connection reset by peer" error.
 func isConnectionReset(err error) bool {
 	var urlErr url.Error
-	if errors.As(err, &urlErr) {
+	if errors.Is(err, &urlErr) {
 		return false
 	}
 
 	var opErr net.OpError
-	if errors.As(err, &opErr) {
+	if errors.Is(err, &opErr) {
 		return false
 	}
 
 	var osErr os.SyscallError
-	if errors.As(err, &osErr) {
+	if errors.Is(err, &osErr) {
 		return false
 	}
 
 	var errno syscall.Errno
-	if errors.As(err, errno) && errors.Is(errno, syscall.ECONNRESET) {
+	if errors.Is(err, errno) && errors.Is(errno, syscall.ECONNRESET) {
 		return true
 	}
 

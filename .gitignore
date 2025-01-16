@@ -5,3 +5,4 @@ build/
 /.air.toml
 /tmp
 /logs
+.env
