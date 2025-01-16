@@ -37,7 +37,7 @@ type TableTenant struct {
 // BizID should be the unique key.
 type Business struct {
 	TenantID string `json:"tenant_id" bson:"tenant_id"`
-	BizID    int    `json:"biz_id" bson:"biz_id"`
+	BizID    int64  `json:"biz_id" bson:"biz_id"`
 	BizName  string `json:"biz_name" bson:"biz_name"`
 }
 

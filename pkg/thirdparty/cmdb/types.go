@@ -217,7 +217,7 @@ type HostInfo struct {
 
 // BusinessInfo describe the information of single business.
 type BusinessInfo struct {
-	BKBizID           int    `json:"bk_biz_id"`
+	BKBizID           int64  `json:"bk_biz_id"`
 	BKBizName         string `json:"bk_biz_name"`
 	BKBizMaintainer   string `json:"bk_biz_maintainer"`
 	BKBizProducer     string `json:"bk_biz_producer"`
@@ -272,7 +272,7 @@ type ReqListBizHosts struct {
 	Page Page `json:"page"`
 
 	// biz id of this request.
-	BKBizID int `json:"bk_biz_id"`
+	BKBizID int64 `json:"bk_biz_id"`
 
 	// expected resposne fields.
 	Fields []string `json:"fields"`

@@ -620,6 +620,13 @@ linters-settings:
       - c *Config
       - d *Discovery
       - c *cli
+      - m *manager
+      - o *Operation
+      - e *engine
+      - t *Trigger
+      - s *scheduler
+      - m *Manager
+      - d *dao
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false
@@ -640,3 +647,7 @@ linters-settings:
     # so no return split required.
     # Default: 1
     block-size: 2
+  interfacebloat:
+    # The maximum number of methods allowed for an interface.
+    # Default: 10
+    max: 15

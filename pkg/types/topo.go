@@ -28,7 +28,7 @@ type Business struct {
 	TenantID string
 
 	// biz-id is the unique identifier for a business.
-	BizID   int
+	BizID   int64
 	BizName string
 }
 
@@ -38,7 +38,7 @@ type NetArea struct {
 	TenantID string
 
 	// cloud-id is the unique identifier for a net-area.
-	CloudID int
+	CloudID int64
 }
 
 // Host represents a cmdb host.
@@ -46,12 +46,12 @@ type Host struct {
 	// belongs to
 	TenantID string
 	CloudID  int64
-	BizID    int
+	BizID    int64
 
 	// host-id is the unique identifier for a host.
 	HostID int64
 
-	// host informations.
+	// host information.
 	InnerIP string
 	Mac     string
 	OSType  string
