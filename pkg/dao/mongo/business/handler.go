@@ -13,6 +13,7 @@ package business
 
 import (
 	"context"
+	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
@@ -38,6 +39,10 @@ func New(client *mongo.Database, logger logger.Logger) Handler {
 
 // Upsert updates or inserts a business.
 func (h *handler) Upsert(ctx context.Context, biz *types.Business) error {
+	if biz == nil {
+		return errors.New("biz is nil")
+	}
+
 	data := &Business{
 		TenantID: biz.TenantID,
 		BizID:    biz.BizID,

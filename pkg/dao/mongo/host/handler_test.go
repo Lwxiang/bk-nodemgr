@@ -13,28 +13,35 @@ package host
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // testClient ...
 func testClient(t *testing.T) Handler {
+	err := godotenv.Load(".env")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx := context.Background()
 	mongoClient, err := mongo.Connect(
 		ctx,
 		&options.ClientOptions{
 			Hosts: []string{
-				"mongo.dev.com:27017",
+				os.Getenv("MONGO_ADDRESS"),
 			},
 			Auth: &options.Credential{
-				Username:      "root",
-				Password:      "mongo_root1",
-				AuthSource:    "admin",
-				AuthMechanism: "SCRAM-SHA-256",
+				Username:      os.Getenv("MONGO_USER"),
+				Password:      os.Getenv("MONGO_PASSWORD"),
+				AuthSource:    os.Getenv("MONGO_AUTH_SOURCE"),
+				AuthMechanism: os.Getenv("MONGO_AUTH_MECHANISM"),
 			},
 		},
 	)
@@ -42,9 +49,10 @@ func testClient(t *testing.T) Handler {
 		t.Fatal(err)
 	}
 
-	return New(mongoClient.Database("test"), logger.LoggerDefault{})
+	return New(mongoClient.Database(os.Getenv("MONGO_DATABASE")), logger.LoggerDefault{})
 }
 
+// Test_handler_Upsert ...
 func Test_handler_Upsert(t *testing.T) {
 	type args struct {
 		host *types.Host
@@ -70,19 +78,11 @@ func Test_handler_Upsert(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "test2",
+			name: "upsert nil",
 			args: args{
-				host: &types.Host{
-					TenantID: "0",
-					CloudID:  1,
-					BizID:    1,
-					HostID:   2,
-					InnerIP:  "127.0.0.1",
-					Mac:      "11:11:11:11:11:12",
-					OSType:   "Linux",
-				},
+				host: nil,
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

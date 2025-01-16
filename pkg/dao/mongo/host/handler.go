@@ -13,6 +13,7 @@ package host
 
 import (
 	"context"
+	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
@@ -38,6 +39,10 @@ func New(client *mongo.Database, logger logger.Logger) Handler {
 
 // Upsert updates or inserts a host.
 func (h *handler) Upsert(ctx context.Context, host *types.Host) error {
+	if host == nil {
+		return errors.New("host is nil")
+	}
+
 	data := &Host{
 		TenantID: host.TenantID,
 		CloudID:  host.CloudID,

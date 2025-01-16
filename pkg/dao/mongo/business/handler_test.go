@@ -13,28 +13,35 @@ package business
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // testClient ...
 func testClient(t *testing.T) Handler {
+	err := godotenv.Load(".env")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx := context.Background()
 	mongoClient, err := mongo.Connect(
 		ctx,
 		&options.ClientOptions{
 			Hosts: []string{
-				"mongo.dev.com:27017",
+				os.Getenv("MONGO_ADDRESS"),
 			},
 			Auth: &options.Credential{
-				Username:      "root",
-				Password:      "mongo_root1",
-				AuthSource:    "admin",
-				AuthMechanism: "SCRAM-SHA-256",
+				Username:      os.Getenv("MONGO_USER"),
+				Password:      os.Getenv("MONGO_PASSWORD"),
+				AuthSource:    os.Getenv("MONGO_AUTH_SOURCE"),
+				AuthMechanism: os.Getenv("MONGO_AUTH_MECHANISM"),
 			},
 		},
 	)
@@ -42,7 +49,7 @@ func testClient(t *testing.T) Handler {
 		t.Fatal(err)
 	}
 
-	return New(mongoClient.Database("test"), logger.LoggerDefault{})
+	return New(mongoClient.Database(os.Getenv("MONGO_DATABASE")), logger.LoggerDefault{})
 }
 
 // Test_handler_upsert ...
@@ -56,10 +63,10 @@ func Test_handler_Upsert(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test1",
+			name: "base",
 			args: args{
 				biz: &types.Business{
-					TenantID: "test1",
+					TenantID: "test",
 					BizID:    1,
 					BizName:  "test1",
 				},
@@ -67,15 +74,11 @@ func Test_handler_Upsert(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "test2",
+			name: "upsert nil",
 			args: args{
-				biz: &types.Business{
-					TenantID: "test2",
-					BizID:    2,
-					BizName:  "test2",
-				},
+				biz: nil,
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
