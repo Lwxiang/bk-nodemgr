@@ -30,7 +30,6 @@ type HeaderSetter interface {
 
 // Config the config of gse.
 type Config struct {
-	TenantID     string
 	HeaderSetter HeaderSetter
 }
 

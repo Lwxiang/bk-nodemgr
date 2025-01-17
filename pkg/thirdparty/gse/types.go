@@ -176,11 +176,7 @@ type GetExecuteScriptResultReq struct {
 
 // GetExecuteScriptResultResp describes the response data of query_script_execution_result.
 type GetExecuteScriptResultResp struct {
-	RespCommon
-
-	Data struct {
-		Result []*ScriptResult `json:"result"`
-	} `json:"data"`
+	Result []*ScriptResult `json:"result"`
 }
 
 // AsyncTerminateExecuteScriptReq describes the request data of terminate_script_execution.
@@ -271,11 +267,7 @@ type GetTransferFileResultReq struct {
 
 // GetTransferFileResultResp describes the response data of query_file_transmission_result.
 type GetTransferFileResultResp struct {
-	RespCommon
-
-	Data struct {
-		Result []*FileResult `json:"result"`
-	} `json:"data"`
+	Result []*FileResult `json:"result"`
 }
 
 // AsyncTerminateTransferFileReq describes the request data of terminate_file_transmission.

@@ -69,8 +69,8 @@ type handler struct {
 	cli *cli
 }
 
-// NewHandler initialize a new cmdb handler.
-func NewHandler(c *client.Capability, conf *Config) (Handler, error) {
+// New initialize a new gse handler.
+func New(c *client.Capability, conf *Config) (Handler, error) {
 	cli, err := newClient(c, conf)
 	if err != nil {
 		return nil, err
@@ -129,16 +129,16 @@ func (h *handler) ListAgentState(ctx context.Context, agentIDList []string) ([]*
 		return nil, err
 	}
 
-	data := make([]*types.AgentState, 0, len(resp))
-	for _, info := range resp {
-		data = append(data, &types.AgentState{
+	data := make([]*types.AgentState, len(resp))
+	for idx, info := range resp {
+		data[idx] = &types.AgentState{
 			AgentID:        info.BKAgentID,
 			CloudID:        info.BKCloudID,
 			Version:        info.Version,
 			StatusCode:     types.AgentStatusCode(info.StatusCode),
 			LastStatusCode: types.AgentStatusCode(info.LastStatusCode),
 			ReportTime:     info.ReportTime,
-		})
+		}
 	}
 
 	return data, nil
@@ -148,16 +148,16 @@ func (h *handler) ListAgentState(ctx context.Context, agentIDList []string) ([]*
 func (h *handler) ExecuteScript(ctx context.Context, endpoints []*types.EndpointWithAuth, scriptContent string,
 	timeout time.Duration) (string, error) {
 
-	eps := make([]*EndpointWithAuth, 0, len(endpoints))
-	for _, endpoint := range endpoints {
-		eps = append(eps, &EndpointWithAuth{
+	eps := make([]*EndpointWithAuth, len(endpoints))
+	for idx, endpoint := range endpoints {
+		eps[idx] = &EndpointWithAuth{
 			Endpoint: Endpoint{
 				BKAgentID:     endpoint.AgentID,
 				BKContainerID: endpoint.ContainerID,
 			},
 			User:     endpoint.User,
 			Password: endpoint.Password,
-		})
+		}
 	}
 
 	scriptName := fmt.Sprintf("bk_gse_script_nodeman_%s.sh", uuid.New().String())
@@ -218,8 +218,8 @@ func (h *handler) QueryScriptExecutionResult(ctx context.Context, taskID string,
 		return nil, err
 	}
 
-	result := make([]*types.ScriptResult, len(resp.Data.Result))
-	for idx, rst := range resp.Data.Result {
+	result := make([]*types.ScriptResult, len(resp.Result))
+	for idx, rst := range resp.Result {
 		result[idx] = &types.ScriptResult{
 			Endpoint: types.Endpoint{
 				AgentID:     rst.BKAgentID,
@@ -317,12 +317,12 @@ func (h *handler) TransferFile(ctx context.Context, opts *types.TransferOptions,
 func (h *handler) QueryFileTransmissionResult(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
 	[]*types.TransferResult, error) {
 
-	eps := make([]*Endpoint, 0, len(endpoints))
-	for _, endpoint := range endpoints {
-		eps = append(eps, &Endpoint{
+	eps := make([]*Endpoint, len(endpoints))
+	for idx, endpoint := range endpoints {
+		eps[idx] = &Endpoint{
 			BKAgentID:     endpoint.AgentID,
 			BKContainerID: endpoint.ContainerID,
-		})
+		}
 	}
 
 	req := &GetTransferFileResultReq{
@@ -334,8 +334,8 @@ func (h *handler) QueryFileTransmissionResult(ctx context.Context, taskID string
 		return nil, err
 	}
 
-	result := make([]*types.TransferResult, len(resp.Data.Result))
-	for idx, rst := range resp.Data.Result {
+	result := make([]*types.TransferResult, len(resp.Result))
+	for idx, rst := range resp.Result {
 		result[idx] = &types.TransferResult{
 			Source: types.Endpoint{
 				AgentID:     rst.Content.SourceAgentID,
@@ -369,7 +369,7 @@ func (h *handler) QueryFileTransmissionResult(ctx context.Context, taskID string
 func (h *handler) TerminateFileTransmission(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
 	string, error) {
 
-	eps := make([]*Endpoint, 0, len(endpoints))
+	eps := make([]*Endpoint, len(endpoints))
 	for idx, endpoint := range endpoints {
 		eps[idx] = &Endpoint{
 			BKAgentID:     endpoint.AgentID,
