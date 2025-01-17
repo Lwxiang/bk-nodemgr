@@ -28,7 +28,7 @@ type testHeaderSetter struct{}
 
 // GetAuthHeader ...
 func (testHeaderSetter) GetAuthHeader() (string, error) {
-	return os.Getenv("bk-apigw-authheader"), nil
+	return os.Getenv("BK_APIGW_AUTHHEADER"), nil
 }
 
 // testClient ...
@@ -47,14 +47,14 @@ func testClient(t *testing.T) Handler {
 
 	clientCap := &client.Capability{
 		Client:               httpClient,
-		Discover:             discovery.NewDiscovery("apigateway", []string{os.Getenv("bk-apigw-endpoint")}),
+		Discover:             discovery.NewDiscovery("apigateway", []string{os.Getenv("BK_APIGW_ENDPOINT")}),
 		ToleranceLatencyTime: client.ToleranceLatencyTimeDefault,
 		MetricOpts:           client.MetricOption{},
 		Logger:               logger.LoggerDefault{},
 	}
 
 	h, err := New(clientCap, &Config{
-		TenantID:     "0",
+		TenantID:     os.Getenv("BK_APIGW_TENANT_ID"),
 		HeaderSetter: testHeaderSetter{},
 	})
 	if err != nil {

@@ -367,9 +367,9 @@ func Test_handler_QueryScriptExecutionResult(t *testing.T) {
 					t.Errorf("QueryScriptExecutionResult() status = %v, wantStatus %v", v.Status, tt.wantStatus)
 					return
 				}
-			}
 
-			t.Logf("query-script: %#v", resp)
+				t.Logf("query-script: %#v", v)
+			}
 		})
 	}
 }
@@ -597,9 +597,9 @@ func Test_handler_QueryFileTransmissionResult(t *testing.T) {
 					t.Errorf("QueryFileTransmissionResult() status = %v, wantStatus %v", v.StatusCode, tt.wantStatuses)
 					return
 				}
-			}
 
-			t.Logf("query-file: %#v", resp)
+				t.Logf("query-file: %#v", v)
+			}
 		})
 	}
 }
