@@ -58,7 +58,7 @@ type Service struct {
 	manager *manager.Manager
 
 	// topoStorage bk nodeman topo storage
-	topoStorage *topoStorage.DefaultStorage
+	topoStorage topoStorage.Storage
 
 	// cmdbHandler cmdb handler
 	cmdbHandler cmdb.Handler
@@ -100,12 +100,10 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		return nil, err
 	}
 
-	svc.topoStorage = topoStorage.NewStorage(&topoStorage.StorageConfig{
-		MongoDB:            conf.MongoDB,
-		Database:           TopoStorageDatabase,
-		BusinessCollection: TopoStorageBusinessCollection,
-		HostCollection:     TopoStorageHostCollection,
-	})
+	svc.topoStorage = topoStorage.NewStorage(&topoStorage.Config{
+		MongoDB:  conf.MongoDB,
+		Database: TopoStorageDatabase,
+	}, blog.GlobalLogger{})
 
 	svc.manager = manager.NewManager(&manager.Config{
 		Redis:   conf.Redis,

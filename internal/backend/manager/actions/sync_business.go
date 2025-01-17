@@ -95,7 +95,7 @@ func (a *ActionSyncBusinessFromCMDB) Do(ctx *workflow.ActionContext) error {
 		for idx := range businesses {
 			business := businesses[idx]
 			fn := func() error {
-				if err := a.topoStorage.UpsertBusiness(&business); err != nil {
+				if err := a.topoStorage.UpsertBusiness(ctx.Ctx, &business); err != nil {
 					return err
 				}
 

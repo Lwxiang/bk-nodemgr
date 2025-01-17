@@ -15,51 +15,41 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/business"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
-	defaultPingTimeout = 3 * time.Second
+	pingTimeoutDefault = 3 * time.Second
 )
 
-// Storage defines the storage interface.
-type Storage interface {
-	// CheckHealthz checks the healthz of the storage.
-	CheckHealthz() error
-
-	// UpsertBusiness updates or inserts a business.
-	UpsertBusiness(biz *types.Business) error
-}
-
 // NewStorage creates a new topology storage.
-func NewStorage(config *StorageConfig) *DefaultStorage {
-	return &DefaultStorage{
+func NewStorage(config *Config, logger logger.Logger) Storage {
+	return &storage{
 		config:    config,
 		isRunning: false,
+		logger:    logger,
 	}
 }
 
-// StorageConfig defines the config of the topology storage.
-type StorageConfig struct {
+// Config defines the config of the topology storage.
+type Config struct {
 	MongoDB config.MongoDB
 
 	Database string
-
-	BusinessCollection string
-	HostCollection     string
 }
 
-// DefaultStorage implements the Storage interface.
-type DefaultStorage struct {
+// storage implements the Storage interface.
+type storage struct {
 	// config
-	config *StorageConfig
+	config *Config
 
 	// state
 	isRunning bool
@@ -68,29 +58,38 @@ type DefaultStorage struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
+	logger logger.Logger
+
 	// mongo
-	mongoClient *mongo.Client
+	mongoClient   *mongo.Client
+	mongoDatabase *mongo.Database
+
+	daoBusiness business.Handler
 }
 
 // Start starts the topology storage.
-func (ds *DefaultStorage) Start(ctx context.Context) error {
+func (ds *storage) Start(ctx context.Context) error {
 	if ds.isRunning {
+		ds.logger.Warn("trying to start storage, but it is already running, stack(%v)", debug.Stack())
 		return errors.New("storage already started")
 	}
 
-	if err := ds.initializeMongoDB(ctx); err != nil {
+	if err := ds.initMongoDB(ctx); err != nil {
+		ds.logger.Errorf("failed to init mongo client, err: %v", err)
 		return err
 	}
+
+	ds.initDao()
 
 	ds.ctx, ds.cancel = context.WithCancel(ctx)
 	ds.isRunning = true
 
-	blog.Info("successfully started storage")
+	ds.logger.Info("successfully started storage")
 
 	return nil
 }
 
-func (ds *DefaultStorage) initializeMongoDB(ctx context.Context) error {
+func (ds *storage) initMongoDB(ctx context.Context) error {
 	var err error
 	ds.mongoClient, err = mongo.Connect(
 		ctx,
@@ -105,29 +104,35 @@ func (ds *DefaultStorage) initializeMongoDB(ctx context.Context) error {
 		},
 	)
 	if err != nil {
-		blog.Errorf("failed to connect to mongo client: %v", err)
+		ds.logger.Errorf("failed to connect to mongo client, err: %v", err)
 
 		return err
 	}
+
+	ds.mongoDatabase = ds.mongoClient.Database(ds.config.Database)
 
 	if err = ds.mongoClient.Ping(ctx, nil); err != nil {
-		blog.Errorf("failed to ping mongo client: %v", err)
+		ds.logger.Errorf("failed to ping mongo client, err: %v", err)
 
 		return err
 	}
 
-	blog.Infof("successfully initialized mongo client: %v", ds.config.MongoDB.Hosts)
+	ds.logger.Infof("successfully initialized mongo client, hosts(%v)", ds.config.MongoDB.Hosts)
 
 	return nil
 }
 
+func (ds *storage) initDao() {
+	ds.daoBusiness = business.New(ds.mongoDatabase, ds.logger)
+}
+
 // CheckHealthz checks the healthz of the topology storage.
-func (ds *DefaultStorage) CheckHealthz() error {
-	if ds.mongoClient == nil {
+func (ds *storage) CheckHealthz() error {
+	if ds.mongoDatabase == nil {
 		return errors.New("mongo client not initialized")
 	}
 
-	ctx, cancel := context.WithDeadline(ds.ctx, time.Now().Add(defaultPingTimeout))
+	ctx, cancel := context.WithDeadline(ds.ctx, time.Now().Add(pingTimeoutDefault))
 	defer cancel()
 
 	if err := ds.mongoClient.Ping(ctx, nil); err != nil {
@@ -138,54 +143,20 @@ func (ds *DefaultStorage) CheckHealthz() error {
 }
 
 // UpsertBusiness updates or inserts a business.
-func (ds *DefaultStorage) UpsertBusiness(biz *types.Business) error {
-	data := &Business{}
-	data.fromRuntime(biz)
-
-	filter, upsert, opts := (&TableBusiness{}).upsertParams(data)
-
-	result, err := ds.mongoClient.Database(ds.config.Database).Collection(ds.config.BusinessCollection).
-		UpdateOne(ds.ctx, filter, upsert, opts)
-	if err != nil {
-		return err
+func (ds *storage) UpsertBusiness(ctx context.Context, biz *types.Business) error {
+	if err := ds.daoBusiness.Upsert(ctx, biz); err != nil {
+		return fmt.Errorf("failed to upsert business: %v", err)
 	}
-
-	if result.UpsertedCount > 0 {
-		blog.Infof("successfully upserted business(%d)", data.BizID)
-
-		return nil
-	}
-
-	if result.MatchedCount > 0 {
-		blog.Infof("successfully updated business(%d)", data.BizID)
-
-		return nil
-	}
-
-	blog.Warnf("try to upsert business but no changes made. biz-id(%d)", data.BizID)
 
 	return nil
 }
 
 // ListBusinesses lists all businesses.
-func (ds *DefaultStorage) ListBusinesses() ([]*types.Business, error) {
-	data := make([]*types.Business, 0)
-
-	result, err := ds.mongoClient.Database(ds.config.Database).Collection(ds.config.BusinessCollection).
-		Find(ds.ctx, bson.D{{Key: "basic.is_deleted", Value: false}})
+func (ds *storage) ListBusinesses(ctx context.Context) ([]*types.Business, error) {
+	bizs, err := ds.daoBusiness.ListAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for result.Next(ds.ctx) {
-		table := &TableBusiness{}
-		if err := result.Decode(table); err != nil {
-			blog.Warnf("failed to decode business: %v", err)
-
-			continue
-		}
-		data = append(data, table.Data.toRuntime())
-	}
-
-	return data, nil
+	return bizs, nil
 }
