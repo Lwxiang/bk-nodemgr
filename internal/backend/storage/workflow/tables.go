@@ -14,7 +14,7 @@ package workflow
 import (
 	"time"
 
-	baseStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 )
 
 // StoppingTask represents a workflow stopping task.
@@ -25,8 +25,8 @@ type StoppingTask struct {
 
 // TableStoppingTask represents the complete db structures of a stopping task.
 type TableStoppingTask struct {
-	baseStorage.BasicInfo `json:"basic" bson:"basic"`
-	Data                  *StoppingTask `json:"data" bson:"data"`
+	base.BasicInfo `json:"basic" bson:"basic"`
+	Data           *StoppingTask `json:"data" bson:"data"`
 }
 
 // ActionData represents a action data.
@@ -64,8 +64,8 @@ type TaskData struct {
 
 // TableTaskData represents the complete db structures of a task data.
 type TableTaskData struct {
-	baseStorage.BasicInfo `json:"basic" bson:"basic"`
-	Data                  *TaskData `json:"data" bson:"data"`
+	base.BasicInfo `json:"basic" bson:"basic"`
+	Data           *TaskData `json:"data" bson:"data"`
 }
 
 // TableTaskDataChangeEvent represents the complete db structures of a task data change event.

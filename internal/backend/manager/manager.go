@@ -33,12 +33,17 @@ type IManager interface {
 
 	// StartPipeline starts all reserved pipelines.
 	StartPipeline(name PipelineName, timeout time.Duration) error
+
+	// Start starts the manager.
+	Start(ctx context.Context) error
 }
 
 // NewManager creates a new manager.
 func NewManager(config *Config, cmdbHandler cmdb.Handler, topoStorage topoStorage.Storage) *Manager {
 	return &Manager{
 		config:      config,
+		isRunning:   false,
+		workflowMgr: nil,
 		cmdbHandler: cmdbHandler,
 		topoStorage: topoStorage,
 	}

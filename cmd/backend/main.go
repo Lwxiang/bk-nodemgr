@@ -28,7 +28,11 @@ import (
 
 func init() {
 	gin.DebugPrintFunc = func(format string, args ...interface{}) {
-		fmt.Fprintf(blog.WriterDebug{}, format, args...)
+		_, err := fmt.Fprintf(blog.WriterDebug{}, format, args...)
+		if err != nil {
+			fmt.Printf("failed to write gin debug log, err: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	machinerylog.Set(logger{})
@@ -103,13 +107,13 @@ func main() {
 				os.Exit(1)
 			}
 
-			service, err := service.NewService(conf)
+			svc, err := service.NewService(conf)
 			if err != nil {
 				fmt.Printf("failed to create service: %v\n", err)
 				os.Exit(1)
 			}
 
-			if err := service.Start(context.Background()); err != nil {
+			if err := svc.Start(context.Background()); err != nil {
 				fmt.Printf("failed to start service: %v\n", err)
 				os.Exit(1)
 			}

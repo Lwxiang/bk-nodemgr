@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	baseStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -79,7 +79,7 @@ func (s *Storage) CreateTaskData(data *workflow.TaskData) error {
 	_, err := s.mongoClient.Database(s.config.Database).Collection(s.config.TaskCollection).InsertOne(
 		context.Background(),
 		&TableTaskData{
-			BasicInfo: baseStorage.NewBasicInfo(),
+			BasicInfo: base.NewBasicInfo(),
 			Data:      s.convertTaskData2Table(data),
 		})
 
@@ -121,7 +121,7 @@ func (s *Storage) MarkTaskStopping(taskID string) error {
 	_, err := s.mongoClient.Database(s.config.Database).Collection(s.config.StoppingCollection).InsertOne(
 		context.Background(),
 		&TableStoppingTask{
-			BasicInfo: baseStorage.NewBasicInfo(),
+			BasicInfo: base.NewBasicInfo(),
 			Data: &StoppingTask{
 				TaskID:   taskID,
 				ExpireAt: time.Now().Add(30 * time.Minute),
@@ -164,7 +164,7 @@ func (s *Storage) WatchTaskStopping(ctx context.Context, taskID string) <-chan s
 	return c
 }
 
-// Start start storage.
+// Start storage.
 func (s *Storage) Start(ctx context.Context) error {
 	if s.isRunning {
 		return errors.New("storage already started")

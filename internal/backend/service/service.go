@@ -33,6 +33,8 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.mongodb.org/mongo-driver/mongo"
+	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -53,16 +55,6 @@ type Service struct {
 	// cancelFunc is used to cancel the service and all associated operations.
 	cancelFunc context.CancelFunc
 
-	// Note: the following fields are initialized in the Start() and could not be used in other package.
-	// manager workflow management.
-	manager *manager.Manager
-
-	// topoStorage bk nodeman topo storage
-	topoStorage topoStorage.Storage
-
-	// cmdbHandler cmdb handler
-	cmdbHandler cmdb.Handler
-
 	// router is the entry point of the service, routing requests to different capabilities.
 	servers []*rest.Server
 
@@ -72,50 +64,42 @@ type Service struct {
 }
 
 const (
-	// TopoStorageDatabase bk node manager database name.
-	TopoStorageDatabase = "bknodeman_topo"
-
-	// TopoStorageBusinessCollection bk node manager business collection name.
-	TopoStorageBusinessCollection = "business"
-
-	// TopoStorageHostCollection bk node manager host collection name.
-	TopoStorageHostCollection = "host"
-)
-
-const (
 	//RouterNameHttpServer defines the name of http server router.
 	RouterNameHttpServer = "http-server"
+
+	// MongoDatabaseName bk node manager mongo database name.
+	MongoDatabaseName = "bk-nodeman"
 )
 
 // NewService creates a new backend service.
 func NewService(conf *config.BackendService) (*Service, error) {
 	svc := &Service{
-		conf: conf,
+		conf:       conf,
+		Capability: new(options.Capability),
 	}
+
 	svc.ctx, svc.cancelFunc = context.WithCancel(context.Background())
 
 	var err error
-	svc.cmdbHandler, err = newCMDBHandler(conf.CMDB)
+	svc.Capability.CmdbHandler, err = newCMDBHandler(conf.CMDB)
 	if err != nil {
 		return nil, err
 	}
 
-	svc.topoStorage = topoStorage.NewStorage(&topoStorage.Config{
-		MongoDB:  conf.MongoDB,
-		Database: TopoStorageDatabase,
-	}, blog.GlobalLogger{})
+	mongoClient, err := initMongoDB(&conf.MongoDB)
+	if err != nil {
+		return nil, err
+	}
 
-	svc.manager = manager.NewManager(&manager.Config{
+	svc.Capability.TopoStorage, err = topoStorage.NewStorage(mongoClient, MongoDatabaseName, blog.GlobalLogger{})
+	if err != nil {
+		return nil, err
+	}
+
+	svc.Capability.Manager = manager.NewManager(&manager.Config{
 		Redis:   conf.Redis,
 		MongoDB: conf.MongoDB,
-	}, svc.cmdbHandler, svc.topoStorage)
-
-	svc.Capability = &options.Capability{
-
-		Manager:     svc.manager,
-		TopoStorage: svc.topoStorage,
-		CmdbHandler: svc.cmdbHandler,
-	}
+	}, svc.Capability.CmdbHandler, svc.Capability.TopoStorage)
 
 	httpServer := rest.NewServer(svc.ctx, RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
 		loggerWriter{},
@@ -128,6 +112,26 @@ func NewService(conf *config.BackendService) (*Service, error) {
 	svc.servers = append(svc.servers, httpServer)
 
 	return svc, nil
+}
+
+func initMongoDB(conf *config.MongoDB) (*mongo.Client, error) {
+	mongoClient, err := mongo.Connect(
+		context.Background(),
+		&mongoOptions.ClientOptions{
+			Hosts: conf.Hosts,
+			Auth: &mongoOptions.Credential{
+				Username:      conf.Username,
+				Password:      conf.Password,
+				AuthSource:    conf.AuthSource,
+				AuthMechanism: conf.AuthMechanism,
+			},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return mongoClient, nil
 }
 
 // loggerWriter implements rest.LoggerWriter.
@@ -241,15 +245,7 @@ func (svc *Service) Start(ctx context.Context) error {
 
 	svc.ctx, svc.cancelFunc = context.WithCancel(ctx)
 
-	if err := svc.topoStorage.Start(ctx); err != nil {
-		blog.Errorf("failed to start topo storage, err: %v", err)
-
-		return err
-	}
-
-	if err := svc.manager.Start(ctx); err != nil {
-		blog.Errorf("failed to start manager, err: %v", err)
-
+	if err := svc.Capability.Start(ctx); err != nil {
 		return err
 	}
 

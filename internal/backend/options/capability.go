@@ -12,8 +12,11 @@
 package options
 
 import (
+	"context"
+
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 )
 
@@ -21,8 +24,26 @@ import (
 type Capability struct {
 	// Manager workflow management.
 	Manager manager.IManager
-	// TopoStorage bk nodeman topo storage
+
+	// TopoStorage bk nodeman topo storage.
 	TopoStorage topo.Storage
-	// CmdbHandler cmdb handler
+
+	// CmdbHandler cmdb handler.
 	CmdbHandler cmdb.Handler
+
+	// Logger logger
+	Logger logger.Logger
+}
+
+// Start ...
+func (c *Capability) Start(ctx context.Context) error {
+	if err := c.TopoStorage.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := c.Manager.Start(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
