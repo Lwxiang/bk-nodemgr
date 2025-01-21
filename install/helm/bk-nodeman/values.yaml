@@ -482,7 +482,7 @@ externalMongodb:
 ## Nodeman backend.
 ##
 backend:
-  ## @param backend.enabled Enable backend
+  ## @param backend, enabled Enable backend
   ##
   enabled: true
 
@@ -518,6 +518,10 @@ backend:
   ## @param configs module configs
   ##
   config:
+    ## mode: release or debug, default is release.
+    mode: release
+
+    ## defines the backend server related settings.
     http_server:
       bind_ip: 0.0.0.0
       port: 8000
@@ -559,6 +563,7 @@ backend:
         # the password to decrypt the certificate.
         password:
 
+    ## defines the log related settings.
     log:
       dir: /bk-nodeman/log
       level: INFO
