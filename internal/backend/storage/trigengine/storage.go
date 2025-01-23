@@ -8,5 +8,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package workflow ...
-package workflow
+// Package trigengine ...
+package trigengine
+
+import (
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/trigengine"
+)
+
+// Storage defines the storage interface.
+type Storage interface {
+	trigengine.Storage
+	base.Interface
+}

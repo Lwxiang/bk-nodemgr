@@ -8,5 +8,18 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package workflow ...
-package workflow
+// Package operationdef ...
+package operationdef
+
+import (
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef/actiondef"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+)
+
+// syncingFromCMDB
+func syncingFromCMDB(mgr operengine.OperInstEngine) *operengine.OperationDef {
+	pipeline := operengine.NewOperationDef(string(SyncFromCmdb)).
+		Next(mgr.GetRegisteredAction(actiondef.SyncBusinessFromCMDB))
+
+	return pipeline
+}

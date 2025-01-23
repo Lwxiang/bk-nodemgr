@@ -114,7 +114,7 @@ func Test_mutex_Lock(t *testing.T) {
 			}
 
 			if tt.isUnlock {
-				if result, err := m.Unlock(); (err != nil) || result != true {
+				if err := m.Unlock(); (err != nil) || result != true {
 					t.Errorf("Unlock() error = %v, wantUnlock %v", err, tt.isUnlock)
 				}
 			}
@@ -220,7 +220,7 @@ func Test_mutex_Unlock(t *testing.T) {
 			}
 
 			if tt.isUnlock {
-				if result, err := m.Unlock(); (err != nil) || result != true {
+				if err := m.Unlock(); (err != nil) || result != true {
 					t.Errorf("Unlock() error = %v, wantUnlock %v", err, tt.isUnlock)
 				}
 			}
@@ -230,7 +230,7 @@ func Test_mutex_Unlock(t *testing.T) {
 				time.Sleep(time.Second * 10)
 			}
 
-			got, err := m.Unlock()
+			err := m.Unlock()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Unlock() error = %v, wantErr %v", err, tt.wantErr)
 				return

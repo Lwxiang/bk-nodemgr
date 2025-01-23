@@ -60,14 +60,14 @@ func (m mutex) TryLock() error {
 }
 
 // Unlock unlocks the given key.
-func (m mutex) Unlock() (bool, error) {
+func (m mutex) Unlock() error {
 	ctx := context.Background()
 	result, err := m.mutex.UnlockContext(ctx)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return result, nil
+	return nil
 }
 
 // Name ...

@@ -8,25 +8,23 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package storage ...
-package storage
+// Package operationdef ...
+package operationdef
 
 import (
-	"time"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
-// BasicInfo represents a basic info for every table.
-type BasicInfo struct {
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
-	IsDeleted bool      `json:"is_deleted" bson:"is_deleted"`
-}
+// Name is the pipeline name.
+type Name string
 
-// NewBasicInfo creates a new BasicInfo.
-func NewBasicInfo() BasicInfo {
-	return BasicInfo{
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		IsDeleted: false,
+const (
+	SyncFromCmdb Name = "sync-from-cmdb"
+)
+
+// Factory ...
+func Factory() map[Name]func(mgr operengine.OperInstEngine) *operengine.OperationDef {
+	return map[Name]func(mgr operengine.OperInstEngine) *operengine.OperationDef{
+		SyncFromCmdb: syncingFromCMDB,
 	}
 }

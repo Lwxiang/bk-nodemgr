@@ -17,168 +17,140 @@ import (
 	"fmt"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/actions"
-	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
-	workflowStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/workflow"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef/actiondef"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
-// IManager defines the manager interface.
-type IManager interface {
+// Manager defines the manager interface.
+type Manager interface {
+	// Start starts the manager.
+	Start(ctx context.Context) error
+
 	// CheckHealth checks the health of manager.
 	CheckHealth() error
 
 	// StartPipeline starts all reserved pipelines.
-	StartPipeline(name PipelineName, timeout time.Duration) error
-
-	// Start starts the manager.
-	Start(ctx context.Context) error
+	StartPipeline(name operationdef.Name, timeout time.Duration) error
 }
 
 // NewManager creates a new manager.
-func NewManager(config *Config, cmdbHandler cmdb.Handler, topoStorage topoStorage.Storage) *Manager {
-	return &Manager{
-		config:      config,
-		isRunning:   false,
-		workflowMgr: nil,
-		cmdbHandler: cmdbHandler,
-		topoStorage: topoStorage,
+func NewManager(conf Config, logger logger.Logger) (Manager, error) {
+	if err := conf.Validate(); err != nil {
+		return nil, err
 	}
+
+	mgr := &manager{
+		logger:         logger,
+		isRunning:      false,
+		operInstEngine: nil,
+		conf:           conf,
+	}
+
+	var err error
+	mgr.operInstEngine, err = operengine.NewOperInstEngine(
+		1,
+		operengine.WithRedis(
+			mgr.conf.WorkflowConfig.Redis.Addr,
+			mgr.conf.WorkflowConfig.Redis.Password,
+			mgr.conf.WorkflowConfig.Redis.DB),
+		mgr.conf.OperInstStorage,
+		operengine.WithLogger(mgr.logger))
+	if err != nil {
+		return nil, err
+	}
+
+	return mgr, nil
 }
 
-// Config defines the configuration of manager.
-type Config struct {
-	Redis   config.Redis
-	MongoDB config.MongoDB
-}
-
-// Manager provides to operate nodeman tasks.
-type Manager struct {
-	// config
-	config *Config
+// manager provides to operate nodeman tasks.
+type manager struct {
+	logger logger.Logger
 
 	// state
 	isRunning bool
 
-	workflowMgr *workflow.Manager
-	cmdbHandler cmdb.Handler
-	topoStorage topoStorage.Storage
+	operInstEngine operengine.OperInstEngine
+
+	// config
+	conf Config
 }
 
 // Start starts the manager.
-func (mgr *Manager) Start(ctx context.Context) error {
+func (mgr *manager) Start(ctx context.Context) error {
 	if mgr.isRunning {
 		return errors.New("manager already started")
 	}
 
-	if err := mgr.initializeWorkflowManager(ctx); err != nil {
+	if ctx == nil {
+		return errors.New("context is nil")
+	}
+
+	if err := mgr.conf.Validate(); err != nil {
+		return fmt.Errorf("config is invalid, err: %v", err)
+	}
+
+	if err := mgr.startOperEngineManager(ctx); err != nil {
 		return err
 	}
 
 	mgr.isRunning = true
 
-	blog.Info("successfully started manager")
+	mgr.logger.Info("successfully started manager")
 
 	return nil
 }
 
 // CheckHealth checks the health of manager.
-func (mgr *Manager) CheckHealth() error {
+func (mgr *manager) CheckHealth() error {
 	if !mgr.isRunning {
 		return errors.New("manager is not running")
 	}
 
-	if mgr.cmdbHandler == nil {
-		return errors.New("cmdb handler is not initialized")
+	if err := mgr.conf.TopoStorage.CheckHealthz(); err != nil {
+		return fmt.Errorf("topo storage is unhealthy, err: %v", err)
 	}
 
-	if mgr.topoStorage == nil {
-		return errors.New("topo storage is not initialized")
+	if mgr.operInstEngine == nil {
+		return errors.New("task engine manager is not initialized")
 	}
 
-	if err := mgr.topoStorage.CheckHealthz(); err != nil {
-		return fmt.Errorf("topo storage is unhealthy: %v", err)
-	}
-
-	if mgr.workflowMgr == nil {
-		return errors.New("workflow manager is not initialized")
-	}
-
-	if err := mgr.workflowMgr.CheckHealth(); err != nil {
-		return fmt.Errorf("workflow manager is unhealthy: %v", err)
+	if err := mgr.operInstEngine.CheckHealth(); err != nil {
+		return fmt.Errorf("operation instance engine manager is unhealthy, err: %v", err)
 	}
 
 	return nil
 }
 
-func (mgr *Manager) initializeWorkflowManager(ctx context.Context) error {
-	workflowStg := workflowStorage.NewStorage(&workflowStorage.StorageConfig{
-		MongoDB:            mgr.config.MongoDB,
-		Database:           "nodeman",
-		TaskCollection:     "task",
-		StoppingCollection: "stopping_task",
-	})
-
-	if err := workflowStg.Start(ctx); err != nil {
+func (mgr *manager) startOperEngineManager(ctx context.Context) error {
+	// TODO: implement me
+	if err := mgr.registerActionDefs(); err != nil {
 		return err
 	}
 
-	mgr.workflowMgr = workflow.NewManager(
-		&workflow.ManagerConfig{
-			Redis:     mgr.config.Redis,
-			MongoDB:   mgr.config.MongoDB,
-			WorkerNum: 1,
-		}, workflowStg)
-
-	if err := mgr.initializeActionDefs(); err != nil {
-		return err
-	}
-
-	if err := mgr.workflowMgr.Start(ctx); err != nil {
+	if err := mgr.operInstEngine.Start(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// initializeActionDefs init action defs
-func (mgr *Manager) initializeActionDefs() error {
-	return mgr.workflowMgr.RegisterActions(
-		actions.NewActionSyncBusinessFromCMDB(mgr.cmdbHandler, mgr.topoStorage),
+// registerActionDefs init action defs
+func (mgr *manager) registerActionDefs() error {
+	return mgr.operInstEngine.RegisterActions(
+		actiondef.NewActionSyncBusinessFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage),
 	)
 }
 
-// startSyncingFromCMDB start a period task to keep syncing from cmdb
-// TODO: implement
-func (mgr *Manager) startSyncingFromCMDB() {
-	task, err := pipelineFactory[PipelineSyncFromCmdb](mgr.workflowMgr).
-		NewPeriodTask(10*time.Minute, "*/1 * * * *")
-	if err != nil {
-		blog.Warnf("failed to create syncing from cmdb task: %v", err)
-
-		return
-	}
-
-	if err := mgr.workflowMgr.DispatchPeriodTask(task); err != nil {
-		blog.Warnf("failed to dispatch syncing from cmdb task: %v", err)
-
-		return
-	}
-
-	blog.Info("successfully started period task keep syncing from cmdb")
-}
-
 // StartPipeline start a pre-defined pipeline
-func (mgr *Manager) StartPipeline(name PipelineName, timeout time.Duration) error {
-	task, err := pipelineFactory[name](mgr.workflowMgr).NewTask(timeout)
+func (mgr *manager) StartPipeline(name operationdef.Name, timeout time.Duration) error {
+	task, err := operationdef.Factory()[name](mgr.operInstEngine).NewInstance(timeout)
 	if err != nil {
 		return err
 	}
 
-	if err := mgr.workflowMgr.DispatchTask(task); err != nil {
+	if err := mgr.operInstEngine.DispatchOperationInst(task); err != nil {
 		return err
 	}
 

@@ -15,7 +15,9 @@ import (
 	"context"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
+	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 )
@@ -23,10 +25,16 @@ import (
 // Capability encapsulates the various capabilities the service supports.
 type Capability struct {
 	// Manager workflow management.
-	Manager manager.IManager
+	Manager manager.Manager
 
 	// TopoStorage bk nodeman topo storage.
 	TopoStorage topo.Storage
+
+	// TrigEngineStorage bk nodeman trigengine storage.
+	TrigEngineStorage trigengine.Storage
+
+	// OperInstStorage bk nodeman operation_inst storage.
+	OperInstStorage operinstdataStorage.Storage
 
 	// CmdbHandler cmdb handler.
 	CmdbHandler cmdb.Handler
@@ -38,6 +46,14 @@ type Capability struct {
 // Start ...
 func (c *Capability) Start(ctx context.Context) error {
 	if err := c.TopoStorage.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := c.TrigEngineStorage.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := c.OperInstStorage.Start(ctx); err != nil {
 		return err
 	}
 

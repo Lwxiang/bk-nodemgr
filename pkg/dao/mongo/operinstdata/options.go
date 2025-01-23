@@ -8,5 +8,23 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package workflow ...
-package workflow
+// Package operinstdata ...
+package operinstdata
+
+import "go.mongodb.org/mongo-driver/bson"
+
+// OptFn option of find.
+type OptFn func(f bson.D) bson.D
+
+// WithOperInstID ...
+func WithOperInstID(id ...string) OptFn {
+	if len(id) == 1 {
+		return func(f bson.D) bson.D {
+			return append(f, bson.E{Key: "data.oper_inst_id", Value: id[0]})
+		}
+	}
+
+	return func(f bson.D) bson.D {
+		return append(f, bson.E{Key: "data.oper_inst_id", Value: bson.M{"$in": id}})
+	}
+}

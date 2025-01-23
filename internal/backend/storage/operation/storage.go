@@ -8,19 +8,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package runtime ...
-package runtime
+// Package operation ...
+package operation
 
 import (
-	"context"
-	"errors"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
-// Lock ...
-type Lock interface {
-	Acquire(ctx context.Context, key string) (bool, error)
-	Release(key string) error
+// Storage defines the storage interface.
+type Storage interface {
+	base.Interface
+	operengine.OperationStorage
 }
-
-// ErrLockFailed this error is returned when the lock cannot be acquired.
-var ErrLockFailed = errors.New("failed to acquire lock")

@@ -8,5 +8,12 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package workflow ...
-package workflow
+// Package actiondef is the action definition for operation inst engine manager.
+package actiondef
+
+type Name string
+
+const (
+	// SyncBusinessFromCMDB defines the name of this action.
+	SyncBusinessFromCMDB = "sync_business_from_cmdb"
+)

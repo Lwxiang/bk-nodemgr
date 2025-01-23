@@ -22,7 +22,7 @@ type Mutex interface {
 	TryLock() error
 
 	// Unlock release the lock.
-	Unlock() (bool, error)
+	Unlock() error
 
 	// Name returns the name of the lock.
 	Name() string
@@ -47,16 +47,16 @@ func (m *mutexDefault) TryLock() error {
 }
 
 // Unlock release a lock.
-func (m *mutexDefault) Unlock() (bool, error) {
+func (m *mutexDefault) Unlock() error {
 	if m.value == nil {
-		return false, errors.New("unlock failed")
+		return errors.New("unlock failed")
 	}
 
 	m.m.Unlock()
 
 	m.value = nil
 
-	return true, nil
+	return nil
 }
 
 // Name returns the name of the lock.

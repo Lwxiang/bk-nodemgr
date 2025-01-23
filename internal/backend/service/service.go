@@ -13,6 +13,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"runtime"
 
@@ -21,7 +22,9 @@ import (
 	apiv3 "git.woa.com/bk-gse/bk-nodeman/internal/backend/router/api-v3"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/basic"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/healthz"
+	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
@@ -58,9 +61,9 @@ type Service struct {
 	// router is the entry point of the service, routing requests to different capabilities.
 	servers []*rest.Server
 
-	// Note: Capability is initialized in the Start() and could not be used in other package.
-	// Capability is the capability of the service.
-	Capability *options.Capability
+	// Note: Cap is initialized in the Start() and could not be used in other package.
+	// Cap is the capability of the service.
+	Cap *options.Capability
 }
 
 const (
@@ -74,14 +77,16 @@ const (
 // NewService creates a new backend service.
 func NewService(conf *config.BackendService) (*Service, error) {
 	svc := &Service{
-		conf:       conf,
-		Capability: new(options.Capability),
+		conf: conf,
+		Cap: &options.Capability{
+			Logger: blog.GlobalLogger{},
+		},
 	}
 
 	svc.ctx, svc.cancelFunc = context.WithCancel(context.Background())
 
 	var err error
-	svc.Capability.CmdbHandler, err = newCMDBHandler(conf.CMDB)
+	svc.Cap.CmdbHandler, err = newCMDBHandler(conf.CMDB)
 	if err != nil {
 		return nil, err
 	}
@@ -91,23 +96,45 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		return nil, err
 	}
 
-	svc.Capability.TopoStorage, err = topoStorage.NewStorage(mongoClient, MongoDatabaseName, blog.GlobalLogger{})
+	svc.Cap.TopoStorage, err = topoStorage.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	svc.Capability.Manager = manager.NewManager(&manager.Config{
-		Redis:   conf.Redis,
-		MongoDB: conf.MongoDB,
-	}, svc.Capability.CmdbHandler, svc.Capability.TopoStorage)
+	svc.Cap.TrigEngineStorage, err = trigengine.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	svc.Cap.OperInstStorage, err = operinstdataStorage.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	svc.Cap.Manager, err = manager.NewManager(manager.Config{
+		CmdbHandler:     svc.Cap.CmdbHandler,
+		TopoStorage:     svc.Cap.TopoStorage,
+		OperInstStorage: svc.Cap.OperInstStorage,
+		WorkflowConfig: manager.WorkflowConfig{
+			WorkNodeNum: 1,
+			Redis: manager.RedisConfig{
+				Addr:     fmt.Sprintf("%s:%d", conf.Redis.Host, conf.Redis.Port),
+				Password: conf.Redis.Password,
+				DB:       conf.Redis.DB,
+			},
+		},
+	}, blog.GlobalLogger{})
+	if err != nil {
+		return nil, err
+	}
 
 	httpServer := rest.NewServer(svc.ctx, RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
-		loggerWriter{},
+		loggerWriterAdaptor{},
 		rest.WithPing(),
-		withHealthz(svc.Capability),
-		withMetrics(svc.Capability),
-		withAPIV3(svc.Capability),
-		withBasic(svc.Capability),
+		withHealthz(svc.Cap),
+		withMetrics(svc.Cap),
+		withAPIV3(svc.Cap),
+		withBasic(svc.Cap),
 	)
 	svc.servers = append(svc.servers, httpServer)
 
@@ -134,14 +161,14 @@ func initMongoDB(conf *config.MongoDB) (*mongo.Client, error) {
 	return mongoClient, nil
 }
 
-// loggerWriter implements rest.LoggerWriter.
-type loggerWriter struct{}
+// loggerWriterAdaptor implements rest.LoggerWriter.
+type loggerWriterAdaptor struct{}
 
-func (l loggerWriter) InfoWriter() io.Writer {
+func (l loggerWriterAdaptor) InfoWriter() io.Writer {
 	return blog.WriterInfo{}
 }
 
-func (l loggerWriter) ErrorWriter() io.Writer {
+func (l loggerWriterAdaptor) ErrorWriter() io.Writer {
 	return blog.WriterError{}
 }
 
@@ -245,7 +272,7 @@ func (svc *Service) Start(ctx context.Context) error {
 
 	svc.ctx, svc.cancelFunc = context.WithCancel(ctx)
 
-	if err := svc.Capability.Start(ctx); err != nil {
+	if err := svc.Cap.Start(ctx); err != nil {
 		return err
 	}
 

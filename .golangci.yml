@@ -172,6 +172,9 @@ issues:
   # To list all excluded by default patterns execute `golangci-lint run --help`.
   # Default: true
   exclude-use-default: false
+  # Make issues output unique by line.
+  # Default: true
+  uniq-by-line: true
   # If set to true, `exclude` and `exclude-rules` regular expressions become case-sensitive.
   # Default: false
   exclude-case-sensitive: false
@@ -292,9 +295,6 @@ output:
   # Print linter name in the end of issue text.
   # Default: true
   print-linter-name: true
-  # Make issues output unique by line.
-  # Default: true
-  uniq-by-line: true
   # Add a prefix to the output file references.
   # Default: ""
   path-prefix: ""
@@ -625,6 +625,8 @@ linters-settings:
       - s *scheduler
       - m *Manager
       - d *dao
+      - s *storage
+      - s *Storages
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false

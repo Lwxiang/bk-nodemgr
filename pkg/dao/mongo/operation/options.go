@@ -8,29 +8,39 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package manager is use to manage the workflow pipeline.
-package manager
+// Package operation ...
+package operation
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/actions"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-type PipelineName string
+// OptFn option of find.
+type OptFn func(f bson.D) bson.D
 
-const (
-	PipelineSyncFromCmdb PipelineName = "sync-from-cmdb"
-)
+// WithTriggerID filter by trigger id
+func WithTriggerID(triggerID ...string) OptFn {
+	if len(triggerID) == 1 {
+		return func(f bson.D) bson.D {
+			return append(f, bson.E{Key: "data.trigger_id", Value: triggerID[0]})
+		}
+	}
 
-// pipelineFactory
-var pipelineFactory = map[PipelineName]func(workflowMgr operengine.OperInstEngine) *operengine.OperationDef{
-	PipelineSyncFromCmdb: syncingFromCMDB,
+	return func(f bson.D) bson.D {
+		return append(f, bson.E{Key: "data.trigger_id", Value: bson.M{"$in": triggerID}})
+	}
 }
 
-// syncingFromCMDB
-func syncingFromCMDB(opraengineMgr operengine.OperInstEngine) *operengine.OperationDef {
-	pipeline := operengine.NewOperationDef(string(PipelineSyncFromCmdb)).
-		Next(opraengineMgr.GetRegisteredAction(actions.ActionNameSyncBusinessFromCMDB))
+// WithStatus filters by state
+func WithStatus(states ...operengine.OperationState) OptFn {
+	if len(states) == 1 {
+		return func(f bson.D) bson.D {
+			return append(f, bson.E{Key: "data.state", Value: states[0]})
+		}
+	}
 
-	return pipeline
+	return func(f bson.D) bson.D {
+		return append(f, bson.E{Key: "data.state", Value: bson.M{"$in": states}})
+	}
 }

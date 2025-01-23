@@ -1,0 +1,60 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making 蓝鲸智云-节点管理(BlueKing-BK-NODEMAN) available.
+ * Copyright (C) 2017-2022 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at https://opensource.org/licenses/MIT
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+// Package operinstdata ...
+package operinstdata
+
+import (
+	"time"
+
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
+)
+
+// TableName operation instance data table name.
+const TableName = "operation_inst_data"
+
+// ActionInstData represents a action data.
+type ActionInstData struct {
+	OperInstID string    `json:"oper_inst_id" bson:"oper_inst_id"`
+	Name       string    `json:"name" bson:"name"`
+	Index      int       `json:"index" bson:"index"`
+	State      string    `json:"state" bson:"state"`
+	StartedAt  time.Time `json:"started_at" bson:"started_at"`
+	EndedAt    time.Time `json:"ended_at" bson:"ended_at"`
+	StoppedAt  time.Time `json:"stopped_at" bson:"stopped_at"`
+	Messages   []string  `json:"messages" bson:"messages"`
+	Content    string    `json:"content" bson:"content"`
+}
+
+// OperInstData represents a operation instance data.
+type OperInstData struct {
+	OperInstID        string                     `json:"oper_inst_id" bson:"oper_inst_id"`
+	ActionNames       []string                   `json:"actions" bson:"actions"`
+	ActionInstDataMap map[string]*ActionInstData `json:"action_data" bson:"action_data"`
+	OperationDefName  string                     `json:"pipeline" bson:"pipeline"`
+	ParentOperInstID  string                     `json:"parent_oper_inst_id" bson:"parent_oper_inst_id"`
+
+	Timeout time.Duration `json:"timeout" bson:"timeout"`
+
+	InitContent string `json:"init_content" bson:"init_content"`
+
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	StartedAt time.Time `json:"started_at" bson:"started_at"`
+	EndedAt   time.Time `json:"ended_at" bson:"ended_at"`
+	StoppedAt time.Time `json:"stopped_at" bson:"stopped_at"`
+}
+
+// UniqueKey unique key of the table.
+func (data *OperInstData) UniqueKey() string {
+	return data.OperInstID
+}
+
+// TableOperInstData represents the complete db structures of an operation instance data.
+type TableOperInstData base.TableBroker[*OperInstData]

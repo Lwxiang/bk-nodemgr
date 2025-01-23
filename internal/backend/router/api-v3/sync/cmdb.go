@@ -13,7 +13,7 @@ package sync
 
 import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/criteria/constant"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef"
 	types "git.woa.com/bk-gse/bk-nodeman/internal/backend/types/router/api-v3"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
@@ -30,7 +30,7 @@ func (h *handler) SyncCmdbHost(ctx *rest.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	err := h.manager.StartPipeline(manager.PipelineSyncFromCmdb, constant.PipelineTimeoutDefault)
+	err := h.manager.StartPipeline(operationdef.SyncFromCmdb, constant.PipelineTimeoutDefault)
 	if err != nil {
 		blog.Errorf("failed to start sync cmdb host pipeline, err: %v", err)
 		return nil, err
