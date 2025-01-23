@@ -70,8 +70,8 @@ func (c *cli) getCommonHeader() (http.Header, error) {
 }
 
 // ListBizHosts ...
-func (c *cli) listBizHosts(ctx context.Context, req *ReqListBizHosts) (*RespListBizHosts, error) {
-	resp := new(BaseBroker[*RespListBizHosts])
+func (c *cli) listBizHosts(ctx context.Context, req *ListBizHostsReq) (*ListBizHostsResp, error) {
+	resp := new(BaseBroker[*ListBizHostsResp])
 	header, err := c.getCommonHeader()
 	if err != nil {
 		return nil, err
@@ -95,8 +95,8 @@ func (c *cli) listBizHosts(ctx context.Context, req *ReqListBizHosts) (*RespList
 }
 
 // searchBusiness search cmdb business.
-func (c *cli) searchBusiness(ctx context.Context, req *ReqSearchBusiness) (*RespSearchBusiness, error) {
-	resp := new(BaseBroker[*RespSearchBusiness])
+func (c *cli) searchBusiness(ctx context.Context, req *SearchBusinessReq) (*SearchBusinessResp, error) {
+	resp := new(BaseBroker[*SearchBusinessResp])
 	header, err := c.getCommonHeader()
 	if err != nil {
 		return nil, err
@@ -115,6 +115,31 @@ func (c *cli) searchBusiness(ctx context.Context, req *ReqSearchBusiness) (*Resp
 
 	if err := resp.IsFailed(); err != nil {
 		return nil, fmt.Errorf("search business failed, err: %v", err)
+	}
+
+	return resp.Data, nil
+}
+
+// searchCloudArea search cloud area.
+func (c *cli) searchCloudArea(ctx context.Context, req *SearchCloudAreaReq) (*SearchCloudAreaResp, error) {
+	resp := new(BaseBroker[*SearchCloudAreaResp])
+	header, err := c.getCommonHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.client.Post().
+		SubResourcef("/findmany/cloudarea").
+		WithContext(ctx).
+		WithHeaders(header).
+		Body(req).
+		Do().Into(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := resp.IsFailed(); err != nil {
+		return nil, fmt.Errorf("search cloud area failed, err: %v", err)
 	}
 
 	return resp.Data, nil

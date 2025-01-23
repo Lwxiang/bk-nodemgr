@@ -267,26 +267,26 @@ func (resp *BaseBroker[T]) IsFailed() error {
 	return nil
 }
 
-// ReqListBizHosts describe the request data of list_biz_hosts.
-type ReqListBizHosts struct {
+// ListBizHostsReq describe the request data of list_biz_hosts.
+type ListBizHostsReq struct {
 	// response page settings.
 	Page Page `json:"page"`
 
 	// biz id of this request.
 	BKBizID int64 `json:"bk_biz_id"`
 
-	// expected resposne fields.
+	// expected response fields.
 	Fields []string `json:"fields"`
 }
 
-// RespListBizHosts describe the response data of list_biz_hosts.
-type RespListBizHosts struct {
+// ListBizHostsResp describe the response data of list_biz_hosts.
+type ListBizHostsResp struct {
 	Count int         `json:"count"`
 	Info  []*HostInfo `json:"info"`
 }
 
-// ReqSearchBusiness describe the request data of search_business.
-type ReqSearchBusiness struct {
+// SearchBusinessReq describe the request data of search_business.
+type SearchBusinessReq struct {
 	// BKSupplierAccount ...
 	BKSupplierAccount string `json:"bk_supplier_account"`
 
@@ -297,8 +297,28 @@ type ReqSearchBusiness struct {
 	Fields []string `json:"fields"`
 }
 
-// RespSearchBusiness describe the response data of search_business.
-type RespSearchBusiness struct {
+// SearchBusinessResp describe the response data of search_business.
+type SearchBusinessResp struct {
 	Count int             `json:"count"`
 	Info  []*BusinessInfo `json:"info"`
+}
+
+// SearchCloudAreaReq describe the request data of search_cloud_area.
+type SearchCloudAreaReq struct {
+	Page Page `json:"page"`
+}
+
+// SearchCloudAreaResp describe the response data of search_cloud_area.
+type SearchCloudAreaResp struct {
+	Count int          `json:"count"`
+	Info  []*CloudArea `json:"info"`
+}
+
+// CloudArea cloud area info
+type CloudArea struct {
+	BkCloudID         int64     `json:"bk_cloud_id"`
+	BkCloudName       string    `json:"bk_cloud_name"`
+	BkSupplierAccount string    `json:"bk_supplier_account"`
+	CreateTime        time.Time `json:"create_time"`
+	LastTime          time.Time `json:"last_time"`
 }

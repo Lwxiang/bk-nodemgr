@@ -39,6 +39,9 @@ type NetArea struct {
 
 	// cloud-id is the unique identifier for a net-area.
 	CloudID int64
+
+	// cloud-name is the name of a net-area.
+	CloudName string
 }
 
 // Host represents a cmdb host.

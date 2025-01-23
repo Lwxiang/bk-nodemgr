@@ -67,6 +67,7 @@ func testClient(t *testing.T) Handler {
 // Test_handler_ListBizHosts ...
 func Test_handler_ListBizHosts(t *testing.T) {
 	type args struct {
+		ctx  context.Context
 		biz  types.Business
 		page types.Page
 	}
@@ -78,6 +79,7 @@ func Test_handler_ListBizHosts(t *testing.T) {
 		{
 			name: "base",
 			args: args{
+				ctx: context.Background(),
 				biz: types.Business{
 					TenantID: "",
 					BizID:    2,
@@ -91,11 +93,28 @@ func Test_handler_ListBizHosts(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: " nil content",
+			args: args{
+				ctx: nil,
+				biz: types.Business{
+					TenantID: "",
+					BizID:    2,
+					BizName:  "",
+				},
+				page: types.Page{
+					Start: 0,
+					Limit: 500,
+					Sort:  "",
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			got, err := h.ListBizHosts(context.Background(), tt.args.biz, tt.args.page)
+			got, err := h.ListBizHosts(tt.args.ctx, tt.args.biz, tt.args.page)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ListBizHosts() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -111,6 +130,7 @@ func Test_handler_ListBizHosts(t *testing.T) {
 // Test_handler_SearchBusiness ...
 func Test_handler_SearchBusiness(t *testing.T) {
 	type args struct {
+		ctx  context.Context
 		page types.Page
 	}
 	tests := []struct {
@@ -121,6 +141,7 @@ func Test_handler_SearchBusiness(t *testing.T) {
 		{
 			name: "base",
 			args: args{
+				ctx: context.Background(),
 				page: types.Page{
 					Start: 0,
 					Limit: 500,
@@ -129,11 +150,23 @@ func Test_handler_SearchBusiness(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "nil content",
+			args: args{
+				ctx: nil,
+				page: types.Page{
+					Start: 0,
+					Limit: 500,
+					Sort:  "",
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			got, err := h.SearchBusiness(context.Background(), tt.args.page)
+			got, err := h.SearchBusiness(tt.args.ctx, tt.args.page)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SearchBusiness() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -141,6 +174,58 @@ func Test_handler_SearchBusiness(t *testing.T) {
 
 			for _, biz := range got {
 				t.Logf("biz: %v", biz)
+			}
+		})
+	}
+}
+
+// Test_handler_SearchNetArea ...
+func Test_handler_SearchNetArea(t *testing.T) {
+	type args struct {
+		ctx  context.Context
+		page types.Page
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				ctx: context.Background(),
+				page: types.Page{
+					Start: 0,
+					Limit: 500,
+					Sort:  "",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "nil content",
+			args: args{
+				ctx: nil,
+				page: types.Page{
+					Start: 0,
+					Limit: 500,
+					Sort:  "",
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			got, err := h.SearchNetArea(tt.args.ctx, tt.args.page)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SearchNetArea() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			for _, netArea := range got {
+				t.Logf("netArea: %v", netArea)
 			}
 		})
 	}
