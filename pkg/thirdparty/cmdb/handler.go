@@ -46,7 +46,7 @@ func (h *handler) ListBizHosts(ctx context.Context, biz types.Business, page typ
 	req := &ListBizHostsReq{
 		BKBizID: biz.BizID,
 		Page: Page{
-			Start: page.Start,
+			Start: page.Offset,
 			Limit: page.Limit,
 			Sort:  page.Sort,
 		},
@@ -81,8 +81,9 @@ func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.
 	}
 
 	req := &SearchBusinessReq{
+		BKSupplierAccount: "tencent",
 		Page: Page{
-			Start: page.Start,
+			Start: page.Offset,
 			Limit: page.Limit,
 			Sort:  page.Sort,
 		},
@@ -115,7 +116,7 @@ func (h *handler) SearchNetArea(ctx context.Context, page types.Page) ([]types.N
 
 	req := &SearchCloudAreaReq{
 		Page: Page{
-			Start: page.Start,
+			Start: page.Offset,
 			Limit: page.Limit,
 			Sort:  page.Sort,
 		},

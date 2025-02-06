@@ -86,9 +86,9 @@ func Test_handler_ListBizHosts(t *testing.T) {
 					BizName:  "",
 				},
 				page: types.Page{
-					Start: 0,
-					Limit: 500,
-					Sort:  "",
+					Offset: 0,
+					Limit:  500,
+					Sort:   "",
 				},
 			},
 			wantErr: false,
@@ -103,9 +103,9 @@ func Test_handler_ListBizHosts(t *testing.T) {
 					BizName:  "",
 				},
 				page: types.Page{
-					Start: 0,
-					Limit: 500,
-					Sort:  "",
+					Offset: 0,
+					Limit:  500,
+					Sort:   "",
 				},
 			},
 			wantErr: true,
@@ -143,9 +143,9 @@ func Test_handler_SearchBusiness(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				page: types.Page{
-					Start: 0,
-					Limit: 500,
-					Sort:  "",
+					Offset: 0,
+					Limit:  500,
+					Sort:   "",
 				},
 			},
 			wantErr: false,
@@ -155,9 +155,9 @@ func Test_handler_SearchBusiness(t *testing.T) {
 			args: args{
 				ctx: nil,
 				page: types.Page{
-					Start: 0,
-					Limit: 500,
-					Sort:  "",
+					Offset: 0,
+					Limit:  500,
+					Sort:   "",
 				},
 			},
 			wantErr: true,
@@ -195,9 +195,9 @@ func Test_handler_SearchNetArea(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				page: types.Page{
-					Start: 0,
-					Limit: 500,
-					Sort:  "",
+					Offset: 0,
+					Limit:  500,
+					Sort:   "",
 				},
 			},
 			wantErr: false,
@@ -207,9 +207,9 @@ func Test_handler_SearchNetArea(t *testing.T) {
 			args: args{
 				ctx: nil,
 				page: types.Page{
-					Start: 0,
-					Limit: 500,
-					Sort:  "",
+					Offset: 0,
+					Limit:  500,
+					Sort:   "",
 				},
 			},
 			wantErr: true,

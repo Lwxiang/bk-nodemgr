@@ -76,8 +76,8 @@ func (a *ActionSyncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error
 	gp.SetLimit(10)
 
 	page := types.Page{
-		Start: 0,
-		Limit: 500,
+		Offset: 0,
+		Limit:  500,
 	}
 	for {
 		businesses, err := a.cmdbHandler.SearchBusiness(context.Background(), page)
@@ -105,7 +105,7 @@ func (a *ActionSyncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error
 			gp.Go(fn)
 		}
 
-		page.Start += page.Limit
+		page.Offset += page.Limit
 	}
 
 	if err := gp.Wait(); err != nil {
