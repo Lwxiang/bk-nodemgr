@@ -335,3 +335,93 @@ func TestToInt64Default(t *testing.T) {
 		})
 	}
 }
+
+// TestMapToStruct ...
+func TestMapToStruct(t *testing.T) {
+	type args struct {
+		m   map[string]any
+		dst any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				m: map[string]any{
+					"name": "test",
+				},
+				dst: &struct {
+					Name string `json:"name"`
+				}{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple struct",
+			args: args{
+				m: map[string]any{
+					"name": "test",
+					"sub": map[string]any{
+						"name": "sub",
+					},
+				},
+				dst: &struct {
+					Name string `json:"name"`
+					Sub  struct {
+						Name string `json:"name"`
+					} `json:"sub"`
+				}{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "not a pointer",
+			args: args{
+				m: map[string]any{
+					"name": "test",
+					"sub": map[string]any{
+						"name": "sub",
+					},
+				},
+				dst: struct {
+					Name string `json:"name"`
+					Sub  struct {
+						Name string `json:"name"`
+						Age  int    `json:"age"`
+					} `json:"sub"`
+				}{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "not a struct",
+			args: args{
+				m: map[string]any{
+					"name": "test",
+					"sub": map[string]any{
+						"name": "sub",
+					},
+				},
+				dst: &[]string{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := MapToStruct(tt.args.m, tt.args.dst)
+			if err != nil {
+				t.Logf("err: %v", err)
+			}
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MapToStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			t.Logf("dst: %+v", tt.args.dst)
+		})
+	}
+}

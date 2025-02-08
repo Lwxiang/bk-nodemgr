@@ -171,3 +171,25 @@ func ToInt64Default(value interface{}, defaultVal int64) int64 {
 
 	return val
 }
+
+// MapToStruct map to struct.
+func MapToStruct(m map[string]any, dst any) error {
+	typeof := reflect.TypeOf(dst)
+	if typeof.Kind() != reflect.Ptr {
+		return fmt.Errorf("dst must be a pointer, pointer-kind(%v)", typeof.Kind())
+	}
+
+	if typeof.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("dst must be a struct pointer, target-kind(%v)", typeof.Elem().Kind())
+	}
+
+	data, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("failed to marshal map: %w", err)
+	}
+
+	if err := json.Unmarshal(data, dst); err != nil {
+		return fmt.Errorf("failed to unmarshal into dst: %w", err)
+	}
+	return nil
+}
