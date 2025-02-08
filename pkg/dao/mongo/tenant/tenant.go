@@ -59,7 +59,7 @@ func buildUpsertParams(tenant *Tenant) (bson.D, bson.D, *mongoOptions.UpdateOpti
 	nowTime := time.Now()
 
 	// update tenant by tenant_id.
-	filter := bson.D{{Key: "data.tenant_id", Value: tenant.TenantID}}
+	filter := bson.D{{Key: "data.tenant_id", Value: tenant.ID}}
 
 	// insert as creation or update data only.
 	update := bson.D{

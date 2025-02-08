@@ -47,8 +47,8 @@ func GetMode() Mode {
 }
 
 const (
-	// idKey tenant id key stored in context.
-	idKey = "nodeman_tenant_id"
+	// IDKey tenant id key stored in context.
+	IDKey = "nodeman_tenant_id"
 
 	// SingleModeTenantID tenant id for single mode.
 	SingleModeTenantID = "single"
@@ -60,7 +60,7 @@ func GetID(ctx context.Context) (string, error) {
 		return "", errors.New("context is nil")
 	}
 
-	tenantID, ok := ctx.Value(idKey).(string)
+	tenantID, ok := ctx.Value(IDKey).(string)
 	if !ok {
 		return "", errors.New("tenant_id not found in context")
 	}
@@ -94,12 +94,12 @@ func SetID(ctx context.Context, tenantID string) (context.Context, error) {
 	}
 
 	if instance.mode == ModeSingle {
-		return context.WithValue(ctx, idKey, SingleModeTenantID), nil
+		return context.WithValue(ctx, IDKey, SingleModeTenantID), nil
 	}
 
 	if err := validate(tenantID); err != nil {
 		return nil, err
 	}
 
-	return context.WithValue(ctx, idKey, tenantID), nil
+	return context.WithValue(ctx, IDKey, tenantID), nil
 }

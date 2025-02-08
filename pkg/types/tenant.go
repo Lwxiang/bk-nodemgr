@@ -8,28 +8,17 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package tenant ...
-package tenant
+// Package types ...
+package types
 
-import (
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
-)
-
-// TableName tenant table name.
-const TableName = "tenant"
-
-// Tenant represents a tenant.
-// ID should be the unique key.
+// Tenant represents a blueking tenant.
 type Tenant struct {
-	ID     string `json:"id" bson:"id"`
-	Name   string `json:"name" bson:"name"`
-	Status bool   `json:"status" bson:"status"`
-}
+	// tenant-id is the unique identifier for a tenant in a Blueking environment.
+	ID string
 
-// UniqueKey unique key of the table.
-func (t *Tenant) UniqueKey() string {
-	return t.ID
-}
+	// name of the tenant.
+	Name string
 
-// TableTenant represents the complete db structures of a tenant.
-type TableTenant base.TableBroker[*Tenant]
+	// Status if the tenant is enabled or disabled.
+	Status bool
+}

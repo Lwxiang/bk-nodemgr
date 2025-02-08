@@ -12,16 +12,6 @@
 // Everything from API or Database should be converted into types in this package before using.
 package types
 
-// Tenant represents a blueking tenant.
-type Tenant struct {
-	// tenant-id is the unique identifier for a tenant in a Blueking environment.
-	TenantID string
-
-	// there is only one admin tenant in a Blueking environment.
-	// others are all normal tenants.
-	IsAdmin bool
-}
-
 // Business represents a cmdb business under a tenant.
 type Business struct {
 	// belongs to.

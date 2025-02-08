@@ -86,8 +86,9 @@ func Test_handler_Upsert(t *testing.T) {
 			name: "test1",
 			args: args{
 				tenant: &types.Tenant{
-					TenantID: "0",
-					IsAdmin:  true,
+					ID:     "0",
+					Name:   "test",
+					Status: false,
 				},
 			},
 			wantErr: false,
@@ -96,8 +97,9 @@ func Test_handler_Upsert(t *testing.T) {
 			name: "test2",
 			args: args{
 				tenant: &types.Tenant{
-					TenantID: "1",
-					IsAdmin:  false,
+					ID:     "1",
+					Name:   "test",
+					Status: false,
 				},
 			},
 			wantErr: false,
@@ -106,8 +108,9 @@ func Test_handler_Upsert(t *testing.T) {
 			name: "test3",
 			args: args{
 				tenant: &types.Tenant{
-					TenantID: "2",
-					IsAdmin:  true,
+					ID:     "2",
+					Name:   "test",
+					Status: false,
 				},
 			},
 			wantErr: false,

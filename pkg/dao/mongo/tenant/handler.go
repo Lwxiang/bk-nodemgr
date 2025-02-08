@@ -39,8 +39,9 @@ func New(client *mongo.Database, logger logger.Logger) Handler {
 // Upsert updates or inserts a host.
 func (h *handler) Upsert(ctx context.Context, tenant *types.Tenant) error {
 	data := &Tenant{
-		TenantID: tenant.TenantID,
-		IsAdmin:  tenant.IsAdmin,
+		ID:     tenant.ID,
+		Name:   tenant.Name,
+		Status: tenant.Status,
 	}
 	if err := h.dao.upsert(ctx, data); err != nil {
 		return err
@@ -59,8 +60,9 @@ func (h *handler) ListAll(ctx context.Context) ([]*types.Tenant, error) {
 	data := make([]*types.Tenant, len(tenants))
 	for idx, tenant := range tenants {
 		data[idx] = &types.Tenant{
-			TenantID: tenant.TenantID,
-			IsAdmin:  tenant.IsAdmin,
+			ID:     tenant.ID,
+			Name:   tenant.Name,
+			Status: tenant.Status,
 		}
 	}
 
