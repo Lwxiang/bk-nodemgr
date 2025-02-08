@@ -21,6 +21,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/service"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	machinerylog "github.com/RichardKnop/machinery/v2/log"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -106,6 +107,20 @@ func main() {
 				fmt.Printf("invalid mode: %s\n", conf.RunMode)
 				os.Exit(1)
 			}
+
+			fmt.Printf("run mode: %s\n", conf.RunMode)
+
+			switch tenant.Mode(conf.TenantMode) {
+			case tenant.ModeSingle:
+				tenant.SetMode(tenant.ModeSingle)
+			case tenant.ModeMultiple:
+				tenant.SetMode(tenant.ModeMultiple)
+			default:
+				fmt.Printf("invalid tenant mode: %s\n", conf.TenantMode)
+				os.Exit(1)
+			}
+
+			fmt.Printf("tenant mode: %s\n", conf.TenantMode)
 
 			svc, err := service.NewService(conf)
 			if err != nil {

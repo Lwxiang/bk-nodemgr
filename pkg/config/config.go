@@ -139,7 +139,8 @@ const (
 
 // BackendService the config of backend service.
 type BackendService struct {
-	RunMode    RunMode    `yaml:"mode" usage:"run mode of service"`
+	RunMode    RunMode    `yaml:"run_mode" usage:"run mode of service"`
+	TenantMode string     `yaml:"tenant_mode" usage:"tenant mode of service"`
 	CMDB       CMDB       `yaml:"cmdb" usage:"cmdb config of backend service"`
 	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
 	Redis      Redis      `yaml:"redis" usage:"redis config of backend service"`
