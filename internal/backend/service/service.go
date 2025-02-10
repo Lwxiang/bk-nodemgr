@@ -13,6 +13,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"runtime"
@@ -258,7 +259,7 @@ func newApiGwHeaderSetter(conf *config.APIGateway) apigw.HeaderSetter {
 }
 
 // Start starts the backend service.
-func (svc *Service) Start(ctx context.Context) error {
+func (svc *Service) Start() error {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	logConfig := blog.NewLogConfig()
@@ -270,9 +271,7 @@ func (svc *Service) Start(ctx context.Context) error {
 	logConfig.AlsoToStdErr = svc.conf.Log.AlsoToStdErr
 	blog.InitLogs(logConfig)
 
-	svc.ctx, svc.cancelFunc = context.WithCancel(ctx)
-
-	if err := svc.Cap.Start(ctx); err != nil {
+	if err := svc.Cap.Start(svc.ctx); err != nil {
 		return err
 	}
 
@@ -281,6 +280,8 @@ func (svc *Service) Start(ctx context.Context) error {
 	for _, server := range svc.servers {
 		// server start will block until server stop, so we need to run it in a goroutine.
 		fn := func() error {
+			blog.Infof("started server. name(%s), ip(%s), port(%d)", server.Name(), server.IP(), server.Port())
+
 			if err := server.Start(); err != nil {
 				return err
 			}
@@ -288,7 +289,6 @@ func (svc *Service) Start(ctx context.Context) error {
 			return nil
 		}
 		gp.Go(fn)
-		blog.Infof("started server. name(%s), ip(%s), port(%d)", server.Name(), server.IP(), server.Port())
 	}
 
 	// wait until all servers stopped or application error.
@@ -296,6 +296,25 @@ func (svc *Service) Start(ctx context.Context) error {
 		blog.Errorf("failed to start servers, err: %v", err)
 		return err
 	}
+
+	return nil
+}
+
+// GracefulShutdown ...
+func (svc *Service) GracefulShutdown() error {
+	if svc.ctx == nil || svc.cancelFunc == nil {
+		return errors.New("service is not running")
+	}
+
+	defer svc.cancelFunc()
+
+	err := svc.Cap.GracefulShutdown()
+	if err != nil {
+		blog.Errorf("failed to shutdown capability, err: %v", err)
+		return err
+	}
+
+	blog.CloseLogs()
 
 	return nil
 }

@@ -31,6 +31,9 @@ type Manager interface {
 	// CheckHealth checks the health of manager.
 	CheckHealth() error
 
+	// GracefulShutdown ...
+	GracefulShutdown() error
+
 	// StartPipeline starts all reserved pipelines.
 	StartPipeline(name operationdef.Name, timeout time.Duration) error
 }
@@ -118,6 +121,19 @@ func (mgr *manager) CheckHealth() error {
 
 	if err := mgr.operInstEngine.CheckHealth(); err != nil {
 		return fmt.Errorf("operation instance engine manager is unhealthy, err: %v", err)
+	}
+
+	return nil
+}
+
+// GracefulShutdown ...
+func (mgr *manager) GracefulShutdown() error {
+	if !mgr.isRunning {
+		return errors.New("manager is not running")
+	}
+
+	if err := mgr.operInstEngine.GracefulShutdown(); err != nil {
+		return err
 	}
 
 	return nil

@@ -44,6 +44,9 @@ type OperInstEngine interface {
 	// CheckHealth ...
 	CheckHealth() error
 
+	// GracefulShutdown ...
+	GracefulShutdown() error
+
 	// DispatchOperationInst ...
 	DispatchOperationInst(operation *OperationInst) error
 
@@ -101,8 +104,8 @@ func WithLogger(logger logger.Logger) OptionsFunc {
 	}
 }
 
-// EnvironmentFunc will be used to set the environment for the engine.
-type EnvironmentFunc func(m *engine)
+// ServerOptionFn will be used to set the server's backend and broker.
+type ServerOptionFn func(m *engine)
 
 const (
 	redisMaxIdle                = 10
@@ -115,7 +118,7 @@ const (
 )
 
 // WithRedis sets the redis broker for the engine.
-func WithRedis(address, password string, db int) EnvironmentFunc {
+func WithRedis(address, password string, db int) ServerOptionFn {
 	return func(e *engine) {
 		e.mConfig.Redis = &machineryConfig.RedisConfig{
 			MaxIdle:                redisMaxIdle,
@@ -133,13 +136,14 @@ func WithRedis(address, password string, db int) EnvironmentFunc {
 }
 
 // NewOperInstEngine creates a new OperationInst engine.
-func NewOperInstEngine(workerNum int, envFunc EnvironmentFunc, storage OperationInstStorage, opts ...OptionsFunc) (
+func NewOperInstEngine(workerNum int, envFunc ServerOptionFn, storage OperationInstStorage, opts ...OptionsFunc) (
 	OperInstEngine, error) {
 
 	e := &engine{
 		mConfig: &machineryConfig.Config{
 			DefaultQueue:    DefaultQueueName,
 			ResultsExpireIn: ResultsExpireInDefault,
+			NoUnixSignals:   true,
 		},
 		isRunning:            false,
 		registeredActionDefs: make(map[string]ActionDef),
@@ -179,6 +183,29 @@ func (e *engine) Start(ctx context.Context) error {
 	return nil
 }
 
+// GracefulShutdown shuts down the engine gracefully.
+func (e *engine) GracefulShutdown() error {
+	if !e.isRunning {
+		return errors.New("engine is not running")
+	}
+
+	if e.isComsuming {
+		go e.broker.StopConsuming()
+	}
+
+	e.isRunning = false
+	e.isComsuming = false
+
+	defer e.cancel()
+
+	err := <-e.launchWorkerErr
+	if !errors.Is(err, machinery.ErrWorkerQuitGracefully) {
+		return err
+	}
+
+	return nil
+}
+
 // CheckHealth checks the health of the engine.
 func (e *engine) CheckHealth() error {
 	if !e.isRunning {
@@ -194,18 +221,6 @@ func (e *engine) CheckHealth() error {
 	}
 
 	return nil
-}
-
-func (e *engine) WaitWorkerShutdown() error {
-	if !e.isRunning {
-		return errors.New("engine is not running")
-	}
-
-	if !e.isComsuming {
-		return errors.New("worker is not running")
-	}
-
-	return <-e.launchWorkerErr
 }
 
 // RegisterAction registers a OperationInst engine action.
@@ -442,8 +457,10 @@ func (e *engine) do(ctx context.Context, actionName string, operationInstID stri
 	case <-terminatingC:
 		return fmt.Errorf("operation inst has been terminated, operation-inst-id(%s), action-name(%s)",
 			operationInstID, actionName)
+	case <-ctx.Done():
+		return fmt.Errorf("operation engine context done, operation-inst-id(%s), action-name(%s)",
+			operationInstID, actionName)
 	}
-	// TODO: graceful shutdown when engine context done.
 }
 
 func (e *engine) flashActionInstData(data *ActionInstData, inst *OperationInst) error {

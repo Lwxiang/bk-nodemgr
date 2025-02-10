@@ -12,7 +12,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -128,18 +127,26 @@ func main() {
 				os.Exit(1)
 			}
 
-			if err := svc.Start(context.Background()); err != nil {
+			go func() {
+				// listening signal
+				signalC := make(chan os.Signal, 1)
+				signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
+				receivedSignal := <-signalC
+
+				if err := svc.GracefulShutdown(); err != nil {
+					fmt.Printf("failed to graceful shutdown service: %v\n", err)
+					os.Exit(1)
+				}
+
+				fmt.Printf("received signal(%s), going to exit server\n", receivedSignal.String())
+
+				os.Exit(1)
+			}()
+
+			if err := svc.Start(); err != nil {
 				fmt.Printf("failed to start service: %v\n", err)
 				os.Exit(1)
 			}
-
-			// listening signal
-			// TODO: handle SIGTERM and do graceful shutdown.
-			signalC := make(chan os.Signal, 1)
-			signal.Notify(signalC, syscall.SIGINT, syscall.SIGTERM)
-			receivedSignal := <-signalC
-
-			fmt.Printf("received signal(%s), going to exit server\n", receivedSignal.String())
 		},
 	}
 

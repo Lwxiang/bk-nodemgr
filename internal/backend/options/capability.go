@@ -63,3 +63,12 @@ func (c *Capability) Start(ctx context.Context) error {
 
 	return nil
 }
+
+// GracefulShutdown ...
+func (c *Capability) GracefulShutdown() error {
+	if err := c.Manager.GracefulShutdown(); err != nil {
+		return err
+	}
+
+	return nil
+}
