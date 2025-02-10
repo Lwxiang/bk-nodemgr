@@ -18,6 +18,7 @@ import (
 	"sync"
 )
 
+// Mode tenant mode.
 type Mode string
 
 const (
@@ -60,13 +61,13 @@ func GetID(ctx context.Context) (string, error) {
 		return "", errors.New("context is nil")
 	}
 
+	if instance.mode == ModeSingle {
+		return SingleModeTenantID, nil
+	}
+
 	tenantID, ok := ctx.Value(IDKey).(string)
 	if !ok {
 		return "", errors.New("tenant_id not found in context")
-	}
-
-	if tenantID == SingleModeTenantID {
-		return tenantID, nil
 	}
 
 	if err := validate(tenantID); err != nil {

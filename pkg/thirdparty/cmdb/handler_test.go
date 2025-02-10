@@ -20,6 +20,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/ssl"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"github.com/joho/godotenv"
 )
@@ -66,6 +67,8 @@ func testClient(t *testing.T) Handler {
 
 // Test_handler_ListBizHosts ...
 func Test_handler_ListBizHosts(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "0")
+
 	type args struct {
 		ctx  context.Context
 		biz  types.Business
@@ -79,7 +82,7 @@ func Test_handler_ListBizHosts(t *testing.T) {
 		{
 			name: "base",
 			args: args{
-				ctx: context.Background(),
+				ctx: ctx,
 				biz: types.Business{
 					TenantID: "",
 					BizID:    2,
@@ -93,28 +96,11 @@ func Test_handler_ListBizHosts(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name: " nil content",
-			args: args{
-				ctx: nil,
-				biz: types.Business{
-					TenantID: "",
-					BizID:    2,
-					BizName:  "",
-				},
-				page: types.Page{
-					Offset: 0,
-					Limit:  500,
-					Sort:   "",
-				},
-			},
-			wantErr: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			got, err := h.ListBizHosts(tt.args.ctx, tt.args.biz, tt.args.page)
+			got, err := h.ListBizHosts(tt.args.ctx, tt.args.biz.BizID, tt.args.page)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ListBizHosts() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -129,6 +115,8 @@ func Test_handler_ListBizHosts(t *testing.T) {
 
 // Test_handler_SearchBusiness ...
 func Test_handler_SearchBusiness(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "0")
+
 	type args struct {
 		ctx  context.Context
 		page types.Page
@@ -141,7 +129,7 @@ func Test_handler_SearchBusiness(t *testing.T) {
 		{
 			name: "base",
 			args: args{
-				ctx: context.Background(),
+				ctx: ctx,
 				page: types.Page{
 					Offset: 0,
 					Limit:  500,
@@ -149,18 +137,6 @@ func Test_handler_SearchBusiness(t *testing.T) {
 				},
 			},
 			wantErr: false,
-		},
-		{
-			name: "nil content",
-			args: args{
-				ctx: nil,
-				page: types.Page{
-					Offset: 0,
-					Limit:  500,
-					Sort:   "",
-				},
-			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -181,6 +157,8 @@ func Test_handler_SearchBusiness(t *testing.T) {
 
 // Test_handler_SearchNetArea ...
 func Test_handler_SearchNetArea(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "0")
+
 	type args struct {
 		ctx  context.Context
 		page types.Page
@@ -193,7 +171,7 @@ func Test_handler_SearchNetArea(t *testing.T) {
 		{
 			name: "normal",
 			args: args{
-				ctx: context.Background(),
+				ctx: ctx,
 				page: types.Page{
 					Offset: 0,
 					Limit:  500,
@@ -201,18 +179,6 @@ func Test_handler_SearchNetArea(t *testing.T) {
 				},
 			},
 			wantErr: false,
-		},
-		{
-			name: "nil content",
-			args: args{
-				ctx: nil,
-				page: types.Page{
-					Offset: 0,
-					Limit:  500,
-					Sort:   "",
-				},
-			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

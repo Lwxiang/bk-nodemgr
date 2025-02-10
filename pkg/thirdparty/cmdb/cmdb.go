@@ -23,6 +23,7 @@ import (
 
 // This file only supports requesting and getting responses.
 
+// HeaderSetter ...
 type HeaderSetter interface {
 	GetAuthHeader() (string, error)
 }
@@ -53,11 +54,10 @@ func newClient(c *client.Capability, conf *Config) (*cli, error) {
 }
 
 // getCommonHeader get cmdb common header.
-func (c *cli) getCommonHeader() (http.Header, error) {
+func (c *cli) getCommonHeader(tenantID string) (http.Header, error) {
 	header := http.Header{}
 	header.Set(restheader.RIDKey, restheader.RIDGenerator())
-
-	// TODO: 接入租户信息
+	header.Set(restheader.TenantIDKey, tenantID)
 
 	authHeader, err := c.config.HeaderSetter.GetAuthHeader()
 	if err != nil {
@@ -72,7 +72,7 @@ func (c *cli) getCommonHeader() (http.Header, error) {
 // ListBizHosts ...
 func (c *cli) listBizHosts(ctx context.Context, req *ListBizHostsReq) (*ListBizHostsResp, error) {
 	resp := new(BaseBroker[*ListBizHostsResp])
-	header, err := c.getCommonHeader()
+	header, err := c.getCommonHeader(req.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +97,11 @@ func (c *cli) listBizHosts(ctx context.Context, req *ListBizHostsReq) (*ListBizH
 // searchBusiness search cmdb business.
 func (c *cli) searchBusiness(ctx context.Context, req *SearchBusinessReq) (*SearchBusinessResp, error) {
 	resp := new(BaseBroker[*SearchBusinessResp])
-	header, err := c.getCommonHeader()
+	header, err := c.getCommonHeader(req.TenantID)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: access tenant information.
 	err = c.client.Post().
 		SubResourcef("/biz/search/%s", req.BKSupplierAccount).
 		WithContext(ctx).
@@ -123,7 +122,7 @@ func (c *cli) searchBusiness(ctx context.Context, req *SearchBusinessReq) (*Sear
 // searchCloudArea search cloud area.
 func (c *cli) searchCloudArea(ctx context.Context, req *SearchCloudAreaReq) (*SearchCloudAreaResp, error) {
 	resp := new(BaseBroker[*SearchCloudAreaResp])
-	header, err := c.getCommonHeader()
+	header, err := c.getCommonHeader(req.TenantID)
 	if err != nil {
 		return nil, err
 	}

@@ -105,7 +105,7 @@ func TestGetID(t *testing.T) {
 		{
 			name: "with tenant id",
 			args: args{
-				ctx: context.WithValue(context.Background(), idKey, "test"),
+				ctx: context.WithValue(context.Background(), IDKey, "test"),
 			},
 			want:    "test",
 			wantErr: false,
@@ -152,7 +152,7 @@ func TestSetID(t *testing.T) {
 				ctx:      context.Background(),
 				tenantID: "test",
 			},
-			want:    context.WithValue(context.Background(), idKey, "test"),
+			want:    context.WithValue(context.Background(), IDKey, "test"),
 			wantErr: false,
 		},
 	}

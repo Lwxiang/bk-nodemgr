@@ -269,6 +269,9 @@ func (resp *BaseBroker[T]) IsFailed() error {
 
 // ListBizHostsReq describe the request data of list_biz_hosts.
 type ListBizHostsReq struct {
+	// tenant id of this request.
+	TenantID string `json:"-"`
+
 	// response page settings.
 	Page Page `json:"page"`
 
@@ -287,6 +290,9 @@ type ListBizHostsResp struct {
 
 // SearchBusinessReq describe the request data of search_business.
 type SearchBusinessReq struct {
+	// tenant id of this request.
+	TenantID string `json:"-"`
+
 	// BKSupplierAccount ...
 	BKSupplierAccount string `json:"bk_supplier_account"`
 
@@ -305,6 +311,9 @@ type SearchBusinessResp struct {
 
 // SearchCloudAreaReq describe the request data of search_cloud_area.
 type SearchCloudAreaReq struct {
+	// tenant id of this request.
+	TenantID string `json:"-"`
+
 	Page Page `json:"page"`
 }
 

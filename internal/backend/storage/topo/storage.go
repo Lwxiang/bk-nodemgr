@@ -24,4 +24,10 @@ type Storage interface {
 
 	// UpsertBusiness updates or inserts a business.
 	UpsertBusiness(ctx context.Context, biz *types.Business) error
+
+	// ListBusinesses ...
+	ListBusinesses(ctx context.Context) ([]*types.Business, error)
+
+	// UpsertHosts updates or inserts host.
+	UpsertHosts(ctx context.Context, host ...*types.Host) error
 }

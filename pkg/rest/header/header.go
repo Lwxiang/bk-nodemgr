@@ -35,7 +35,7 @@ const (
 	BKGWJWTTokenKey = "X-Bkapi-JWT"
 
 	// TenantIDKey is tenant id header key.
-	TenantIDKey = "HTTP_BLUEKING_SUPPLIER_ID"
+	TenantIDKey = "X-Bk-Tenant-Id"
 
 	// BKGWAuthKey is blueking api gateway authorization header key.
 	BKGWAuthKey = "X-Bkapi-Authorization"

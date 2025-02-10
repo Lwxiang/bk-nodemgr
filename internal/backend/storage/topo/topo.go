@@ -18,6 +18,7 @@ import (
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/business"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/host"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -55,10 +56,13 @@ type storage struct {
 	base.Storage
 
 	daoBusiness business.Handler
+
+	daoHost host.Handler
 }
 
 func (ds *storage) initDao() error {
 	ds.daoBusiness = business.New(ds.Database, ds.Logger)
+	ds.daoHost = host.New(ds.Database, ds.Logger)
 
 	return nil
 }
@@ -88,4 +92,17 @@ func (ds *storage) ListBusinesses(ctx context.Context) ([]*types.Business, error
 	}
 
 	return bizs, nil
+}
+
+// UpsertHosts ...
+func (ds *storage) UpsertHosts(ctx context.Context, hosts ...*types.Host) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
+
+	if err := ds.daoHost.UpsertMany(ctx, hosts); err != nil {
+		return fmt.Errorf("failed to upsert hosts: %v", err)
+	}
+
+	return nil
 }

@@ -2,9 +2,9 @@ package cmdb
 
 import (
 	"context"
-	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 )
 
@@ -14,7 +14,7 @@ import (
 // Handler the handler of cmdb.
 type Handler interface {
 	// ListBizHosts list biz hosts
-	ListBizHosts(ctx context.Context, biz types.Business, page types.Page) ([]types.Host, error)
+	ListBizHosts(ctx context.Context, BizID int64, page types.Page) ([]*types.Host, error)
 
 	// SearchBusiness search business
 	SearchBusiness(ctx context.Context, page types.Page) ([]types.Business, error)
@@ -38,13 +38,15 @@ func New(c *client.Capability, conf *Config) (Handler, error) {
 }
 
 // ListBizHosts list biz hosts
-func (h *handler) ListBizHosts(ctx context.Context, biz types.Business, page types.Page) ([]types.Host, error) {
-	if ctx == nil {
-		return nil, errors.New("ctx is nil")
+func (h *handler) ListBizHosts(ctx context.Context, BizID int64, page types.Page) ([]*types.Host, error) {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	req := &ListBizHostsReq{
-		BKBizID: biz.BizID,
+		TenantID: tenantID,
+		BKBizID:  BizID,
 		Page: Page{
 			Start: page.Offset,
 			Limit: page.Limit,
@@ -57,11 +59,10 @@ func (h *handler) ListBizHosts(ctx context.Context, biz types.Business, page typ
 		return nil, err
 	}
 
-	hosts := make([]types.Host, len(resp.Info))
+	hosts := make([]*types.Host, len(resp.Info))
 	for idx, host := range resp.Info {
-		hosts[idx] = types.Host{
-			// TODO: 补充租户信息
-			TenantID: "",
+		hosts[idx] = &types.Host{
+			TenantID: tenantID,
 			CloudID:  host.BKCloudID,
 			BizID:    req.BKBizID,
 			HostID:   host.BKHostID,
@@ -76,11 +77,13 @@ func (h *handler) ListBizHosts(ctx context.Context, biz types.Business, page typ
 
 // SearchBusiness search business
 func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.Business, error) {
-	if ctx == nil {
-		return nil, errors.New("ctx is nil")
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	req := &SearchBusinessReq{
+		TenantID:          tenantID,
 		BKSupplierAccount: "tencent",
 		Page: Page{
 			Start: page.Offset,
@@ -97,9 +100,8 @@ func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.
 
 	bizs := make([]types.Business, len(resp.Info))
 	for idx, business := range resp.Info {
-		// TODO: 补充租户信息
 		bizs[idx] = types.Business{
-			TenantID: "",
+			TenantID: tenantID,
 			BizID:    business.BKBizID,
 			BizName:  business.BKBizName,
 		}
@@ -110,11 +112,13 @@ func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.
 
 // SearchNetArea search net area
 func (h *handler) SearchNetArea(ctx context.Context, page types.Page) ([]types.NetArea, error) {
-	if ctx == nil {
-		return nil, errors.New("ctx is nil")
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	req := &SearchCloudAreaReq{
+		TenantID: tenantID,
 		Page: Page{
 			Start: page.Offset,
 			Limit: page.Limit,
@@ -129,9 +133,8 @@ func (h *handler) SearchNetArea(ctx context.Context, page types.Page) ([]types.N
 
 	netAreas := make([]types.NetArea, len(resp.Info))
 	for idx, netArea := range resp.Info {
-		// TODO: 补充租户信息
 		netAreas[idx] = types.NetArea{
-			TenantID:  "",
+			TenantID:  tenantID,
 			CloudID:   netArea.BkCloudID,
 			CloudName: netArea.BkCloudName,
 		}
