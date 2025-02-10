@@ -13,46 +13,71 @@ package host
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Handler host handler interface.
 type Handler interface {
-	Upsert(ctx context.Context, host *types.Host) error
+	UpsertMany(ctx context.Context, hosts []*types.Host) error
 	ListAll(ctx context.Context) ([]*types.Host, error)
 }
 
 type handler struct {
-	dao *dao
+	client *mongo.Database
+	logger logger.Logger
+	daoMap map[string]*dao
+}
+
+// tenantDao get a tenantDao dao.
+func (h *handler) tenantDao(tenantID string) *dao {
+	d, ok := h.daoMap[tenantID]
+	if !ok {
+		h.daoMap[tenantID] = newDao(tenantID, h.client, h.logger)
+		d = h.daoMap[tenantID]
+	}
+
+	return d
 }
 
 // New create a new host handler.
 func New(client *mongo.Database, logger logger.Logger) Handler {
 	return &handler{
-		dao: newDao(client, logger),
+		client: client,
+		logger: logger,
+		daoMap: make(map[string]*dao),
 	}
 }
 
-// Upsert updates or inserts a host.
-func (h *handler) Upsert(ctx context.Context, host *types.Host) error {
-	if host == nil {
-		return errors.New("host is nil")
+// UpsertMany updates or inserts hosts.
+func (h *handler) UpsertMany(ctx context.Context, hosts []*types.Host) error {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return err
 	}
 
-	data := &Host{
-		TenantID: host.TenantID,
-		CloudID:  host.CloudID,
-		BizID:    host.BizID,
-		HostID:   host.HostID,
-		InnerIP:  host.InnerIP,
-		Mac:      host.Mac,
-		OSType:   host.OSType,
+	data := make([]*Host, len(hosts))
+	for idx, host := range hosts {
+		data[idx] = &Host{
+			TenantID: host.TenantID,
+			CloudID:  host.CloudID,
+			BizID:    host.BizID,
+			HostID:   host.HostID,
+			InnerIP:  host.InnerIP,
+			Mac:      host.Mac,
+			OSType:   host.OSType,
+		}
+
+		if data[idx].TenantID != tenantID {
+			return fmt.Errorf("tenantID not match, ctx-tenantID(%s), host-tenantID(%s)", tenantID, host.TenantID)
+		}
 	}
-	if err := h.dao.upsert(ctx, data); err != nil {
+
+	if err := h.tenantDao(tenantID).upsertMany(ctx, data); err != nil {
 		return err
 	}
 
@@ -61,7 +86,12 @@ func (h *handler) Upsert(ctx context.Context, host *types.Host) error {
 
 // ListAll list all host.
 func (h *handler) ListAll(ctx context.Context) ([]*types.Host, error) {
-	hosts, err := h.dao.listAll(ctx)
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	hosts, err := h.tenantDao(tenantID).listAll(ctx)
 	if err != nil {
 		return nil, err
 	}

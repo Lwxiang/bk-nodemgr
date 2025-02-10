@@ -21,8 +21,8 @@ import (
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func newDao(client *mongo.Database, logger logger.Logger) *dao {
-	return &dao{client: client.Collection(TableName), logger: logger}
+func newDao(tenantID string, client *mongo.Database, logger logger.Logger) *dao {
+	return &dao{client: client.Collection(TableName(tenantID)), logger: logger}
 }
 
 type dao struct {
@@ -30,26 +30,20 @@ type dao struct {
 	logger logger.Logger
 }
 
-// upsert updates or inserts a host.
-func (d *dao) upsert(ctx context.Context, host *Host) error {
-	filter, upsert, opts := buildUpsertParams(host)
-	result, err := d.client.UpdateOne(ctx, filter, upsert, opts)
+// ensureIndexes ensures the required indexes for the collection.
+func (d *dao) ensureIndexes(ctx context.Context) error {
+	var indexes []mongo.IndexModel
+
+	indexes = append(indexes, mongo.IndexModel{
+		Keys: bson.D{{Key: "data.biz_id", Value: 1}},
+	})
+
+	_, err := d.client.Indexes().CreateMany(ctx, indexes)
 	if err != nil {
 		return err
 	}
 
-	switch {
-	case result.UpsertedCount > 0:
-		{
-			d.logger.Infof("successfully upserted host, unique-key(%s)", host.UniqueKey())
-		}
-	case result.MatchedCount > 0:
-		{
-			d.logger.Infof("successfully updated host, unique-key(%s)", host.UniqueKey())
-		}
-	default:
-		d.logger.Warnf("try to upsert host but no changes made, unique-key(%s)", host.UniqueKey())
-	}
+	d.logger.Infof("successfully created required indexes")
 
 	return nil
 }
@@ -104,4 +98,54 @@ func (d *dao) listAll(ctx context.Context) ([]*Host, error) {
 	}
 
 	return hosts, nil
+}
+
+// upsertMany upsert many hosts.
+func (d *dao) upsertMany(ctx context.Context, hosts []*Host) error {
+	models := buildUpsertManyParams(hosts)
+
+	result, err := d.client.BulkWrite(ctx, models)
+	if err != nil {
+		return err
+	}
+
+	if result.UpsertedCount > 0 {
+		d.logger.Infof("successfully inserted hosts, inserted-count(%v)", result.UpsertedCount)
+	}
+
+	if result.MatchedCount > 0 {
+		d.logger.Infof("successfully updated hosts, update-count(%v)", result.MatchedCount)
+	}
+
+	return nil
+}
+
+// buildUpsertManyParams build upsert many params.
+func buildUpsertManyParams(hosts []*Host) []mongo.WriteModel {
+	var models []mongo.WriteModel
+	nowTime := time.Now()
+
+	for _, host := range hosts {
+		filter := bson.D{{Key: "data.host_id", Value: host.HostID}}
+
+		update := bson.D{
+			{
+				Key: "$set",
+				Value: bson.M{
+					"basic.is_deleted": false,
+					"basic.updated_at": nowTime,
+					"data":             host,
+				},
+			},
+			{
+				Key: "$setOnInsert",
+				Value: bson.M{
+					"basic.created_at": nowTime,
+				},
+			},
+		}
+
+		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update).SetUpsert(true))
+	}
+	return models
 }

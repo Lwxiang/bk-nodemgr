@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -52,51 +53,7 @@ func testClient(t *testing.T) Handler {
 	return New(mongoClient.Database(os.Getenv("MONGO_DATABASE")), logger.LoggerDefault{})
 }
 
-// Test_handler_Upsert ...
-func Test_handler_Upsert(t *testing.T) {
-	type args struct {
-		host *types.Host
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "test",
-			args: args{
-				host: &types.Host{
-					TenantID: "0",
-					CloudID:  1,
-					BizID:    1,
-					HostID:   1,
-					InnerIP:  "127.0.0.1",
-					Mac:      "11:11:11:11:11:11",
-					OSType:   "Linux",
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "upsert nil",
-			args: args{
-				host: nil,
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := testClient(t)
-			if err := h.Upsert(context.Background(), tt.args.host); (err != nil) != tt.wantErr {
-				t.Errorf("Upsert() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-//
-
+// Test_handler_ListAll ...
 func Test_handler_ListAll(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -118,6 +75,90 @@ func Test_handler_ListAll(t *testing.T) {
 
 			for _, v := range got {
 				t.Logf("ListAll() got = %v", v)
+			}
+		})
+	}
+}
+
+// UpsertMany upsert many hosts.
+func Test_handler_UpsertMany(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "test")
+
+	type args struct {
+		ctx   context.Context
+		hosts []*types.Host
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "nil ctx",
+			args: args{
+				ctx:   nil,
+				hosts: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil hosts",
+			args: args{
+				ctx:   ctx,
+				hosts: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty hosts",
+			args: args{
+				ctx:   ctx,
+				hosts: []*types.Host{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "normal",
+			args: args{
+				ctx: ctx,
+				hosts: []*types.Host{
+					{
+						TenantID: "test",
+						CloudID:  1,
+						BizID:    1,
+						HostID:   1,
+						InnerIP:  "127.0.0.1",
+						Mac:      "123",
+						OSType:   "centos",
+					},
+					{
+						TenantID: "test",
+						CloudID:  1,
+						BizID:    2,
+						HostID:   2,
+						InnerIP:  "127.0.0.21",
+						Mac:      "123",
+						OSType:   "centos",
+					},
+					{
+						TenantID: "test",
+						CloudID:  1,
+						BizID:    3,
+						HostID:   3,
+						InnerIP:  "127.0.0.3",
+						Mac:      "123",
+						OSType:   "centos",
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			if err := h.UpsertMany(tt.args.ctx, tt.args.hosts); (err != nil) != tt.wantErr {
+				t.Errorf("UpsertMany() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

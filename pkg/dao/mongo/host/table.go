@@ -12,13 +12,16 @@
 package host
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 )
 
 // TableName host table name.
-const TableName = "host"
+func TableName(tenantID string) string {
+	return fmt.Sprintf("host-%s", tenantID)
+}
 
 // Host represents a host.
 type Host struct {
