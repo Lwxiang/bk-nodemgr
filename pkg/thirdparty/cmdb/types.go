@@ -248,8 +248,8 @@ type ObjectInfo struct {
 // RespCommon describe the common part of response data.
 type RespCommon struct {
 	Result  bool   `json:"result"`
-	Code    int    `json:"bk_error_code"`
-	Message string `json:"bk_error_message"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 // BaseBroker describe the base broker.
