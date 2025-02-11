@@ -277,7 +277,9 @@ func (svc *Service) Start() error {
 
 	// start servers
 	gp := gopool.NewPool()
-	for _, server := range svc.servers {
+	for idx, _ := range svc.servers {
+		server := svc.servers[idx]
+
 		// server start will block until server stop, so we need to run it in a goroutine.
 		fn := func() error {
 			blog.Infof("started server. name(%s), ip(%s), port(%d)", server.Name(), server.IP(), server.Port())

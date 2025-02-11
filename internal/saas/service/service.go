@@ -119,7 +119,9 @@ func (svc *Service) Start(ctx context.Context) error {
 
 	// start servers
 	gp := gopool.NewPool()
-	for _, server := range svc.servers {
+	for idx, _ := range svc.servers {
+		server := svc.servers[idx]
+
 		// server start will block until router stop, so we need to run it in a goroutine.
 		fn := func() error {
 			if err := server.Start(); err != nil {
