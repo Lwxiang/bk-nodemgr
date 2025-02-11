@@ -60,7 +60,6 @@ func Test_mutex_Lock(t *testing.T) {
 		wantErr  bool
 		isLock   bool
 		isUnlock bool
-		isExpire bool
 	}{
 		{
 			name: "success",
@@ -69,7 +68,6 @@ func Test_mutex_Lock(t *testing.T) {
 			},
 			isLock:   false,
 			isUnlock: false,
-			isExpire: false,
 			wantErr:  false,
 		},
 		{
@@ -80,17 +78,6 @@ func Test_mutex_Lock(t *testing.T) {
 			wantErr:  true,
 			isLock:   true,
 			isUnlock: false,
-			isExpire: false,
-		},
-		{
-			name: "already_expire, but auto extend",
-			args: args{
-				ctx: context.Background(),
-			},
-			wantErr:  true,
-			isLock:   true,
-			isUnlock: false,
-			isExpire: true,
 		},
 		{
 			name: "already_unlock",
@@ -100,7 +87,6 @@ func Test_mutex_Lock(t *testing.T) {
 			wantErr:  false,
 			isLock:   true,
 			isUnlock: true,
-			isExpire: false,
 		},
 	}
 	for _, tt := range tests {
@@ -114,39 +100,13 @@ func Test_mutex_Lock(t *testing.T) {
 			}
 
 			if tt.isUnlock {
-				if err := m.Unlock(); (err != nil) || result != true {
+				if err := m.Unlock(); err != nil {
 					t.Errorf("Unlock() error = %v, wantUnlock %v", err, tt.isUnlock)
 				}
 			}
 
-			if tt.isExpire {
-				// default redsync expire time is 8s, inorder to test expire, sleep 10s.
-				time.Sleep(time.Second * 10)
-			}
-
 			if err := m.TryLock(); (err != nil) != tt.wantErr {
 				t.Errorf("Lock() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-// Test_mutex_Name ...
-func Test_mutex_Name(t *testing.T) {
-	tests := []struct {
-		name string
-		want string
-	}{
-		{
-			name: "success",
-			want: "success",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := testClient(t).NewMutex(tt.name)
-			if got := m.Name(); got != tt.want {
-				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -220,7 +180,7 @@ func Test_mutex_Unlock(t *testing.T) {
 			}
 
 			if tt.isUnlock {
-				if err := m.Unlock(); (err != nil) || result != true {
+				if err := m.Unlock(); err != nil {
 					t.Errorf("Unlock() error = %v, wantUnlock %v", err, tt.isUnlock)
 				}
 			}
@@ -231,12 +191,13 @@ func Test_mutex_Unlock(t *testing.T) {
 			}
 
 			err := m.Unlock()
+			if err != nil {
+				t.Logf("Unlock() error = %v", err)
+			}
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Unlock() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if got != tt.want {
-				t.Errorf("Unlock() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

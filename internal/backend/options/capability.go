@@ -18,6 +18,7 @@ import (
 	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/locker"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 )
@@ -41,6 +42,9 @@ type Capability struct {
 
 	// Logger logger
 	Logger logger.Logger
+
+	// LockerFactory locker factory
+	LockerFactory locker.MutexFactory
 }
 
 // Start ...

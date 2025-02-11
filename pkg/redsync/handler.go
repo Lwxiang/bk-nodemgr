@@ -13,6 +13,7 @@ package redsync
 
 import (
 	"context"
+	"fmt"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/locker"
 	"github.com/go-redsync/redsync/v4"
@@ -65,6 +66,10 @@ func (m mutex) Unlock() error {
 	result, err := m.mutex.UnlockContext(ctx)
 	if err != nil {
 		return err
+	}
+
+	if !result {
+		return fmt.Errorf("unlock failed, lock-name(%s)", m.mutex.Name())
 	}
 
 	return nil

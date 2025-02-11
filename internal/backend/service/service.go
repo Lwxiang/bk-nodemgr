@@ -28,6 +28,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/redsync"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
@@ -37,6 +38,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -92,6 +94,13 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		return nil, err
 	}
 
+	redisClient, err := initRedis(&conf.Redis)
+	if err != nil {
+		return nil, err
+	}
+
+	svc.Cap.LockerFactory = redsync.New(redisClient)
+
 	mongoClient, err := initMongoDB(&conf.MongoDB)
 	if err != nil {
 		return nil, err
@@ -140,6 +149,21 @@ func NewService(conf *config.BackendService) (*Service, error) {
 	svc.servers = append(svc.servers, httpServer)
 
 	return svc, nil
+}
+
+func initRedis(conf *config.Redis) (*redis.Client, error) {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+		Password: conf.Password,
+		DB:       conf.DB,
+	})
+
+	_, err := redisClient.Ping(context.Background()).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	return redisClient, nil
 }
 
 func initMongoDB(conf *config.MongoDB) (*mongo.Client, error) {
