@@ -14,6 +14,7 @@ package conv
 import (
 	"encoding/json"
 	"math"
+	"reflect"
 	"testing"
 )
 
@@ -615,6 +616,219 @@ func TestToString(t *testing.T) {
 
 			if got != tt.want {
 				t.Errorf("ToString() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// StructToMap struct to map
+func TestStructToMap(t *testing.T) {
+	type args struct {
+		obj interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				obj: struct {
+					Name string `json:"name"`
+					Age  int    `json:"age"`
+				}{"test", 123},
+			},
+			want: map[string]interface{}{
+				"name": "test",
+				"age":  123,
+			},
+			wantErr: false,
+		},
+		{
+			name: "ignore some field",
+			args: args{
+				obj: struct {
+					Name string `json:"name"`
+					Age  int    `json:"-"`
+				}{"test", 123},
+			},
+			want: map[string]interface{}{
+				"name": "test",
+			},
+			wantErr: false,
+		},
+		{
+			name: "struct pointer",
+			args: args{
+				obj: &struct {
+					Name string `json:"name"`
+					Age  int    `json:"age"`
+				}{
+					Name: "test",
+					Age:  123,
+				},
+			},
+			want: map[string]interface{}{
+				"name": "test",
+				"age":  123,
+			},
+			wantErr: false,
+		},
+		{
+			name: "nil struct pointer",
+			args: args{
+				obj: (*struct {
+					Name string `json:"name"`
+					Age  int    `json:"age"`
+				})(nil),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := StructToMap(tt.args.obj)
+			if (err != nil) != tt.wantErr {
+				t.Logf("StructToMap() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("StructToMap() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			keys := make([]string, 0)
+
+			for k, _ := range got {
+				keys = append(keys, k)
+			}
+
+			for k, _ := range tt.want {
+				keys = append(keys, k)
+			}
+
+			SliceUnique(keys)
+
+			for _, key := range keys {
+				t.Logf("got[%v] = %v,\t want[%v] = %v\n", key, got[key], key, tt.want[key])
+			}
+		})
+	}
+}
+
+// StructToMapIgnoreError struct to map
+func TestStructToMapIgnoreError(t *testing.T) {
+	type args struct {
+		obj interface{}
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string]interface{}
+	}{
+		{
+			name: "normal",
+			args: args{
+				obj: struct {
+					Name string `json:"name"`
+					Age  int    `json:"age"`
+				}{"test", 123},
+			},
+			want: map[string]interface{}{
+				"name": "test",
+				"age":  123,
+			},
+		},
+		{
+			name: "occur error, but ignore",
+			args: args{
+				obj: []string{"a", "b", "c"},
+			},
+			want: map[string]interface{}{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := StructToMapIgnoreError(tt.args.obj)
+
+			if len(got) == 0 {
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("StructToMapIgnoreError() = %#v, want %#v", got, tt.want)
+				}
+			}
+
+			keys := make([]string, 0)
+
+			for k, _ := range got {
+				keys = append(keys, k)
+			}
+
+			for k, _ := range tt.want {
+				keys = append(keys, k)
+			}
+
+			SliceUnique(keys)
+
+			for _, key := range keys {
+				t.Logf("got[%v] = %v,\t want[%v] = %v\n", key, got[key], key, tt.want[key])
+			}
+		})
+	}
+}
+
+// SliceUnique slice unique.
+func TestSliceUnique(t *testing.T) {
+	type args[T comparable] struct {
+		source []T
+	}
+	type testCase[T comparable] struct {
+		name string
+		args args[T]
+		want []T
+	}
+	tests := []testCase[string]{
+		{
+			name: "normal",
+			args: args[string]{
+				source: []string{"a", "b", "a", "c"},
+			},
+			want: []string{"a", "b", "c"},
+		},
+		{
+			name: "nil",
+			args: args[string]{
+				source: nil,
+			},
+			want: nil,
+		},
+		{
+			name: "empty",
+			args: args[string]{
+				source: []string{},
+			},
+			want: []string{},
+		},
+		{
+			name: "single element",
+			args: args[string]{
+				source: []string{"a"},
+			},
+			want: []string{"a"},
+		},
+		{
+			name: "all unique",
+			args: args[string]{
+				source: []string{"a", "b", "c", "d"},
+			},
+			want: []string{"a", "b", "c", "d"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SliceUnique(tt.args.source); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SliceUnique() = %v, want %v", got, tt.want)
 			}
 		})
 	}

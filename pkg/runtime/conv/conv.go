@@ -173,6 +173,8 @@ func ToInt64Default(value interface{}, defaultVal int64) int64 {
 }
 
 // MapToStruct map to struct.
+// Note: dst must be a pointer.
+// Note: this function is based on json.Marshal and json.Unmarshal, so it will allow json tags.
 func MapToStruct(m map[string]any, dst any) error {
 	typeof := reflect.TypeOf(dst)
 	if typeof.Kind() != reflect.Ptr {
@@ -300,4 +302,61 @@ func ToStringDefault(value interface{}, defaultVal string) string {
 	}
 
 	return str
+}
+
+// StructToMap convert struct to map.
+// Note: this function is based on json.Marshal and json.Unmarshal, so it will allow json tags.
+func StructToMap(obj interface{}) (map[string]interface{}, error) {
+	v := reflect.ValueOf(obj)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return nil, errors.New("obj is not struct")
+	}
+
+	result := make(map[string]any)
+	jsonBytes, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(jsonBytes, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// StructToMapIgnoreError convert struct to map, ignore error.
+// this function should only be used in certain situations where an error is not possible
+// note: please make sure the obj is a struct or a pointer to a struct
+func StructToMapIgnoreError(obj interface{}) map[string]interface{} {
+	result, err := StructToMap(obj)
+	if err != nil {
+		return make(map[string]interface{})
+	}
+
+	return result
+}
+
+// SliceUnique this is a function used to deduplicate slice.
+func SliceUnique[T comparable](source []T) []T {
+	if source == nil {
+		return nil
+	}
+
+	target := make([]T, 0)
+
+	uniqueMap := make(map[T]struct{})
+	for _, one := range source {
+		if _, exists := uniqueMap[one]; !exists {
+			target = append(target, one)
+			uniqueMap[one] = struct{}{}
+		}
+	}
+
+	return target
 }
