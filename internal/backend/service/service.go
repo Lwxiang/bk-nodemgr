@@ -130,11 +130,11 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		TopoStorage:     svc.Cap.TopoStorage,
 		OperInstStorage: svc.Cap.OperInstStorage,
 		WorkflowConfig: manager.WorkflowConfig{
-			WorkNodeNum: 1,
+			WorkNodeNum: conf.Workflow.WorkerNum,
 			Redis: manager.RedisConfig{
-				Addr:     fmt.Sprintf("%s:%d", conf.Redis.Host, conf.Redis.Port),
-				Password: conf.Redis.Password,
-				DB:       conf.Redis.DB,
+				Addr:     fmt.Sprintf("%s:%d", conf.Workflow.Redis.Host, conf.Workflow.Redis.Port),
+				Password: conf.Workflow.Redis.Password,
+				DB:       conf.Workflow.Redis.DB,
 			},
 		},
 	}, blog.GlobalLogger{})

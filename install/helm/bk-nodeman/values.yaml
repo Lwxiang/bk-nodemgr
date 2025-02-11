@@ -519,7 +519,10 @@ backend:
   ##
   config:
     ## mode: release or debug, default is release.
-    mode: release
+    run_mode: release
+
+    ## tenant_mode: multi or single, default is single.
+    tenant_mode: single
 
     ## defines the backend http server related settings.
     http_server:
@@ -530,6 +533,17 @@ backend:
     admin_server:
       bind_ip: 0.0.0.0
       port: 6666
+
+    ## defines the workflow related settings.
+    workflow:
+      # worker_num is the number of workers.
+      worker_num: 1
+      # redis is the redis config.
+      redis:
+        host: 127.0.0.1
+        port: 6377
+        password: 123456
+        db: 0
 
     # defines the CMDB (BK API gateway) related settings.
     cmdb:

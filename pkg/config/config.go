@@ -57,6 +57,11 @@ type Redis struct {
 	DB       int    `yaml:"db" usage:"db of redis"`
 }
 
+// Validate configures the config.
+func (conf Redis) Validate() error {
+	return nil
+}
+
 // MongoDB the config of mongodb.
 type MongoDB struct {
 	Hosts         []string `yaml:"hosts" usage:"hosts list of mongodb"`
@@ -133,6 +138,25 @@ type TLSConfig struct {
 	Password string `yaml:"password"`
 }
 
+// Workflow the config of workflow.
+type Workflow struct {
+	WorkerNum int   `yaml:"worker_num" usage:"worker num of workflow"`
+	Redis     Redis `yaml:"redis" usage:"redis config of backend service"`
+}
+
+// Validate validates the config.
+func (conf Workflow) Validate() error {
+	if conf.WorkerNum <= 0 {
+		return fmt.Errorf("worker num must be greater than 0, worker-num(%d)", conf.WorkerNum)
+	}
+
+	if err := conf.Redis.Validate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // RunMode the run mode of service.
 type RunMode string
 
@@ -146,14 +170,15 @@ const (
 
 // BackendService the config of backend service.
 type BackendService struct {
-	RunMode     RunMode     `yaml:"run_mode" usage:"run mode of service"`
-	TenantMode  string      `yaml:"tenant_mode" usage:"tenant mode of service"`
-	CMDB        CMDB        `yaml:"cmdb" usage:"cmdb config of backend service"`
-	HTTPServer  HTTPServer  `yaml:"http_server" usage:"http server config of backend service"`
+	RunMode    RunMode    `yaml:"run_mode" usage:"run mode of service"`
+	TenantMode string     `yaml:"tenant_mode" usage:"tenant mode of service"`
+	CMDB       CMDB       `yaml:"cmdb" usage:"cmdb config of backend service"`
+	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
+	Redis      Redis      `yaml:"redis" usage:"redis config of backend service"`
+	MongoDB    MongoDB    `yaml:"mongodb" usage:"mongodb config of backend service"`
+	Log        Log        `yaml:"log" usage:"log config of backend service"`
+	Workflow   Workflow   `yaml:"workflow" usage:"workflow config of backend service"`
 	AdminServer AdminServer `yaml:"admin_server" usage:"admin server config of backend service"`
-	Redis       Redis       `yaml:"redis" usage:"redis config of backend service"`
-	MongoDB     MongoDB     `yaml:"mongodb" usage:"mongodb config of backend service"`
-	Log         Log         `yaml:"log" usage:"log config of backend service"`
 }
 
 // NewBackendService generates a new BackendService with default values.
@@ -189,7 +214,10 @@ func (b *BackendService) LoadFromFile(path string) error {
 
 // Validate validates the config.
 func (b *BackendService) Validate() error {
-	// TODO: validate the config
+	if err := b.Workflow.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
