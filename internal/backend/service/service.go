@@ -20,6 +20,7 @@ import (
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/admin"
 	apiv3 "git.woa.com/bk-gse/bk-nodeman/internal/backend/router/api-v3"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/basic"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/healthz"
@@ -72,6 +73,9 @@ type Service struct {
 const (
 	//RouterNameHttpServer defines the name of http server router.
 	RouterNameHttpServer = "http-server"
+
+	//RouterNameAdminServer defines the name of admin server router.
+	RouterNameAdminServer = "admin-server"
 
 	// MongoDatabaseName bk node manager mongo database name.
 	MongoDatabaseName = "bk-nodeman"
@@ -148,6 +152,16 @@ func NewService(conf *config.BackendService) (*Service, error) {
 	)
 	svc.servers = append(svc.servers, httpServer)
 
+	adminServer := rest.NewServer(svc.ctx, RouterNameAdminServer, conf.AdminServer.BindIP, conf.AdminServer.Port,
+		loggerWriterAdaptor{},
+		rest.WithPing(),
+		withHealthz(svc.Cap),
+		withMetrics(svc.Cap),
+		withAdmin(svc.Cap),
+	)
+
+	svc.servers = append(svc.servers, adminServer)
+
 	return svc, nil
 }
 
@@ -222,6 +236,13 @@ func withAPIV3(capability *options.Capability) rest.OptionFunc {
 func withBasic(capability *options.Capability) rest.OptionFunc {
 	return func(rg *gin.RouterGroup) {
 		basic.Load(rg, capability)
+	}
+}
+
+// withAdmin load admin.
+func withAdmin(capability *options.Capability) rest.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		admin.Load(rg, capability)
 	}
 }
 

@@ -521,10 +521,15 @@ backend:
     ## mode: release or debug, default is release.
     mode: release
 
-    ## defines the backend server related settings.
+    ## defines the backend http server related settings.
     http_server:
       bind_ip: 0.0.0.0
       port: 8000
+
+    ## defines the backend admin server related settings.
+    admin_server:
+      bind_ip: 0.0.0.0
+      port: 6666
 
     # defines the CMDB (BK API gateway) related settings.
     cmdb:

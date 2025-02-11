@@ -83,6 +83,13 @@ type HTTPServer struct {
 	StaticDir string `yaml:"static_dir"`
 }
 
+// AdminServer the config of admin service.
+type AdminServer struct {
+	BindIP    string `yaml:"bind_ip"`
+	Port      int    `yaml:"port"`
+	StaticDir string `yaml:"static_dir"`
+}
+
 // APIGateway the config of api-gateway.
 type APIGateway struct {
 	// Endpoints is a seed list of host:port addresses of api gateway nodes.
@@ -139,13 +146,14 @@ const (
 
 // BackendService the config of backend service.
 type BackendService struct {
-	RunMode    RunMode    `yaml:"run_mode" usage:"run mode of service"`
-	TenantMode string     `yaml:"tenant_mode" usage:"tenant mode of service"`
-	CMDB       CMDB       `yaml:"cmdb" usage:"cmdb config of backend service"`
-	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
-	Redis      Redis      `yaml:"redis" usage:"redis config of backend service"`
-	MongoDB    MongoDB    `yaml:"mongodb" usage:"mongodb config of backend service"`
-	Log        Log        `yaml:"log" usage:"log config of backend service"`
+	RunMode     RunMode     `yaml:"run_mode" usage:"run mode of service"`
+	TenantMode  string      `yaml:"tenant_mode" usage:"tenant mode of service"`
+	CMDB        CMDB        `yaml:"cmdb" usage:"cmdb config of backend service"`
+	HTTPServer  HTTPServer  `yaml:"http_server" usage:"http server config of backend service"`
+	AdminServer AdminServer `yaml:"admin_server" usage:"admin server config of backend service"`
+	Redis       Redis       `yaml:"redis" usage:"redis config of backend service"`
+	MongoDB     MongoDB     `yaml:"mongodb" usage:"mongodb config of backend service"`
+	Log         Log         `yaml:"log" usage:"log config of backend service"`
 }
 
 // NewBackendService generates a new BackendService with default values.
