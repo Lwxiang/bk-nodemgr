@@ -15,33 +15,27 @@ import (
 	"context"
 )
 
-// OperationInstStorage represents a OperationInst engine storage handler.
-// it will be used to store the custom records during OperationInst scheduling.
-type OperationInstStorage interface {
-	// CreateOperationInstData will create the OperationInst param.
-	CreateOperationInstData(ctx context.Context, data *OperationInstData) error
+// OperInstStorage represents a OperInst operInstMgr storage handler.
+// it will be used to store the custom records during OperInst scheduling.
+type OperInstStorage interface {
+	// GetOperInstData will get the OperInst param.
+	GetOperInstData(ctx context.Context, operationInstID string) (*OperInstData, error)
 
-	// GetOperInstData will get the OperationInst param.
-	GetOperInstData(ctx context.Context, operationInstID string) (*OperationInstData, error)
+	// UpsertOperInstData will insert/update the OperInst param.
+	UpsertOperInstData(ctx context.Context, data *OperInstData) error
 
-	// UpdateOperationInstData will update the OperationInst param.
-	UpdateOperationInstData(ctx context.Context, data *OperationInstData) error
+	// MarkOperInstStopping will mark the OperInst is stopping.
+	MarkOperInstStopping(ctx context.Context, operationInstID string) error
 
-	// MarkOperationInstStopping will mark the OperationInst is stopping.
-	MarkOperationInstStopping(ctx context.Context, operationInstID string) error
-
-	// WatchOperInstStopping will return a chan, when the OperationInst is stopping, it will close the chan.
+	// WatchOperInstStopping will return a chan, when the OperInst is stopping, it will close the chan.
 	WatchOperInstStopping(ctx context.Context, operationInstID string) <-chan struct{}
 }
 
-// OperationStorage represents a Operation engine storage handler.
+// OperationStorage represents a Operation operInstMgr storage handler.
 type OperationStorage interface {
-	// CreateOperation will create an Operation in the database.
-	CreateOperation(operation *Operation) error
-
 	// GetOperation will get an Operation from the database.
-	GetOperation(operationID string) (*Operation, error)
+	GetOperation(ctx context.Context, operationID string) (*Operation, error)
 
-	// UpdateOperation will update an Operation in the database.
-	UpdateOperation(operation *Operation) error
+	// UpsertOperation will insert or update an Operation in the database.
+	UpsertOperation(ctx context.Context, operation *Operation) error
 }

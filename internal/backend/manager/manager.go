@@ -15,10 +15,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef/actiondef"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/workflowdef"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
@@ -34,8 +32,11 @@ type Manager interface {
 	// GracefulShutdown ...
 	GracefulShutdown() error
 
-	// StartPipeline starts all reserved pipelines.
-	StartPipeline(name operationdef.Name, timeout time.Duration) error
+	// ExecuteOperation executes the operation.
+	ExecuteOperation(name workflowdef.OperDefName, triggerID string, param *operengine.OperInstParam) error
+
+	// RetryOperation retries the operation.
+	RetryOperation(operationID string, param *operengine.OperInstParam) error
 }
 
 // NewManager creates a new manager.
@@ -45,21 +46,29 @@ func NewManager(conf Config, logger logger.Logger) (Manager, error) {
 	}
 
 	mgr := &manager{
-		logger:         logger,
-		isRunning:      false,
-		operInstEngine: nil,
-		conf:           conf,
+		logger:      logger,
+		isRunning:   false,
+		operInstMgr: nil,
+		conf:        conf,
 	}
 
 	var err error
-	mgr.operInstEngine, err = operengine.NewOperInstEngine(
-		1,
+	mgr.operInstMgr, err = operengine.NewOperInstMgr(
+		mgr.conf.WorkflowConfig.WorkNodeNum,
 		operengine.WithRedis(
 			mgr.conf.WorkflowConfig.Redis.Addr,
 			mgr.conf.WorkflowConfig.Redis.Password,
 			mgr.conf.WorkflowConfig.Redis.DB),
 		mgr.conf.OperInstStorage,
 		operengine.WithLogger(mgr.logger))
+	if err != nil {
+		return nil, err
+	}
+
+	mgr.operMgr, err = operengine.NewOperationMgr(
+		mgr.operInstMgr,
+		mgr.conf.OperStorage,
+		operengine.OperMgrWithLogger(mgr.logger))
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +83,8 @@ type manager struct {
 	// state
 	isRunning bool
 
-	operInstEngine operengine.OperInstEngine
+	operInstMgr operengine.OperInstMgr
+	operMgr     operengine.OperationMgr
 
 	// config
 	conf Config
@@ -115,11 +125,11 @@ func (mgr *manager) CheckHealth() error {
 		return fmt.Errorf("topo storage is unhealthy, err: %v", err)
 	}
 
-	if mgr.operInstEngine == nil {
+	if mgr.operInstMgr == nil {
 		return errors.New("task engine manager is not initialized")
 	}
 
-	if err := mgr.operInstEngine.CheckHealth(); err != nil {
+	if err := mgr.operInstMgr.CheckHealth(); err != nil {
 		return fmt.Errorf("operation instance engine manager is unhealthy, err: %v", err)
 	}
 
@@ -132,7 +142,7 @@ func (mgr *manager) GracefulShutdown() error {
 		return errors.New("manager is not running")
 	}
 
-	if err := mgr.operInstEngine.GracefulShutdown(); err != nil {
+	if err := mgr.operInstMgr.GracefulShutdown(); err != nil {
 		return err
 	}
 
@@ -145,7 +155,7 @@ func (mgr *manager) startOperEngineManager(ctx context.Context) error {
 		return err
 	}
 
-	if err := mgr.operInstEngine.Start(ctx); err != nil {
+	if err := mgr.operInstMgr.Start(ctx); err != nil {
 		return err
 	}
 
@@ -154,19 +164,40 @@ func (mgr *manager) startOperEngineManager(ctx context.Context) error {
 
 // registerActionDefs init action defs
 func (mgr *manager) registerActionDefs() error {
-	return mgr.operInstEngine.RegisterActions(
-		actiondef.NewActionSyncBusinessFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage),
+	return mgr.operInstMgr.RegisterActions(
+		workflowdef.NewActionSyncBusinessFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage),
+		workflowdef.NewActionSyncHostFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage),
+		workflowdef.NewActionGenAllBizHostSyncOper(mgr.conf.TopoStorage, mgr.operMgr),
 	)
 }
 
-// StartPipeline start a pre-defined pipeline
-func (mgr *manager) StartPipeline(name operationdef.Name, timeout time.Duration) error {
-	task, err := operationdef.Factory()[name](mgr.operInstEngine).NewInstance(timeout)
-	if err != nil {
-		return err
+// ExecuteOperation execute an operation.
+func (mgr *manager) ExecuteOperation(name workflowdef.OperDefName, triggerID string, param *operengine.OperInstParam) error {
+	builder, ok := workflowdef.OperBuilderRegistry()[name]
+	if !ok {
+		return fmt.Errorf("operation builder not found, name: %s", name)
 	}
 
-	if err := mgr.operInstEngine.DispatchOperationInst(task); err != nil {
+	operation := builder(triggerID)
+	err := mgr.operMgr.ExecuteOperation(operation, param)
+	if err != nil {
+		return fmt.Errorf("execute operation failed, name: %s, err: %v", name, err)
+	}
+
+	return nil
+}
+
+// RetryOperation ...
+func (mgr *manager) RetryOperation(operationID string, param *operengine.OperInstParam) error {
+	if len(operationID) == 0 {
+		return errors.New("operation id is empty")
+	}
+
+	if param == nil {
+		return errors.New("param is nil")
+	}
+
+	if err := mgr.operMgr.RetryOperation(operationID, param); err != nil {
 		return err
 	}
 

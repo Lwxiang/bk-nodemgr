@@ -41,7 +41,7 @@ func (d *dao) upsert(ctx context.Context, data *OperInstData) error {
 	switch {
 	case result.UpsertedCount > 0:
 		{
-			d.logger.Infof("successfully upserted data, unique-key(%s)", data.UniqueKey())
+			d.logger.Infof("successfully inserted data, unique-key(%s)", data.UniqueKey())
 		}
 	case result.MatchedCount > 0:
 		{

@@ -14,65 +14,74 @@ package operengine
 import (
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
-	// OperationMaxInstNum define a max instance number of an operation.
-	OperationMaxInstNum = 100
+	// OperInstMaxNum define a max instance number of an operation.
+	OperInstMaxNum = 100
 )
+
+// NewOperation creates a new operation.
+func NewOperation(triggerID string, defSnapshot OperDefSnapshot) *Operation {
+	return &Operation{
+		TriggerID:   triggerID,
+		OperationID: uuid.New().String(),
+		DefSnapshot: defSnapshot,
+		OperInstIDs: []string{},
+		State:       OperationStateInit,
+	}
+}
 
 // Operation ...
 type Operation struct {
-	TriggerID        string
-	OperationID      string
-	defSnapshot      OperationDefSnapshot
-	operationInstIDs []string
-	state            OperationState
-}
-
-// Validate the operation.
-func (operation *Operation) Validate() error {
-	// TODO: Validate the operation.
-	return nil
+	TriggerID   string
+	OperationID string
+	DefSnapshot OperDefSnapshot
+	OperInstIDs []string
+	State       OperationState
 }
 
 // CheckEnforceability check if an operation can be executed.
 func (operation *Operation) CheckEnforceability() error {
 	// check the operation instance length.
-	if len(operation.operationInstIDs) > OperationMaxInstNum {
-		return fmt.Errorf("operation can not be executed, operation-inst-length(%d)", len(operation.operationInstIDs))
+	if len(operation.OperInstIDs) > OperInstMaxNum {
+		return fmt.Errorf("operation can not be executed, operation-inst-length(%d)", len(operation.OperInstIDs))
 	}
 
-	// check the state of operation.
-	switch operation.state {
+	// check the State of operation.
+	switch operation.State {
 	// in this case, operation can be executed.
 	case OperationStateInit, OperationStateRunning, OperationStateFailed:
 	// in default, operation can not be executed.
 	default:
-		return fmt.Errorf("operation can not be executed, state(%s)", operation.state)
+		return fmt.Errorf("operation can not be executed, State(%s)", operation.State)
 	}
 
 	return nil
 }
 
-// getLatestOperationInstID ...
-func (operation *Operation) getLatestOperationInstID() string {
-	if len(operation.operationInstIDs) == 0 {
+// getLatestOperInstID ...
+func (operation *Operation) getLatestOperInstID() string {
+	if len(operation.OperInstIDs) == 0 {
 		return ""
 	}
 
-	return operation.operationInstIDs[len(operation.operationInstIDs)-1]
+	return operation.OperInstIDs[len(operation.OperInstIDs)-1]
 }
 
-// OperationDefSnapshot defines the snapshot of operationDef.
-type OperationDefSnapshot struct {
-	OperationDefName string   `json:"pipeline_name"`
-	ActionNames      []string `json:"action_names"`
+// OperDefSnapshot defines the snapshot of operationDef.
+type OperDefSnapshot struct {
+	OperDefName string
+	ActionNames []string
 }
 
-// OperationInstParam ...
-type OperationInstParam struct {
+// OperInstParam ...
+type OperInstParam struct {
 	// Timeout define the timeout of operation instance.
-	Timeout  time.Duration
-	Metadata map[string]any
+	Timeout time.Duration
+
+	// InitContent define the init content of operation instance.
+	InitContent map[string]map[string]any
 }

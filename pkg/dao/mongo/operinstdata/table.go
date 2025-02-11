@@ -22,6 +22,7 @@ const TableName = "operation_inst_data"
 
 // ActionInstData represents a action data.
 type ActionInstData struct {
+	TriggerID  string    `json:"trigger_id" bson:"trigger_id"`
 	OperInstID string    `json:"oper_inst_id" bson:"oper_inst_id"`
 	Name       string    `json:"name" bson:"name"`
 	Index      int       `json:"index" bson:"index"`

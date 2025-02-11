@@ -15,6 +15,7 @@ import (
 	"context"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operation"
 	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
@@ -37,6 +38,9 @@ type Capability struct {
 	// OperInstStorage bk nodeman operation_inst storage.
 	OperInstStorage operinstdataStorage.Storage
 
+	// OperStorage bk nodeman operation storage.
+	OperStorage operation.Storage
+
 	// CmdbHandler cmdb handler.
 	CmdbHandler cmdb.Handler
 
@@ -58,6 +62,10 @@ func (c *Capability) Start(ctx context.Context) error {
 	}
 
 	if err := c.OperInstStorage.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := c.OperStorage.Start(ctx); err != nil {
 		return err
 	}
 

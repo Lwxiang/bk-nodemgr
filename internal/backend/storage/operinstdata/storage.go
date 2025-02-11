@@ -19,5 +19,5 @@ import (
 // Storage defines the storage interface.
 type Storage interface {
 	base.Interface
-	operengine.OperationInstStorage
+	operengine.OperInstStorage
 }

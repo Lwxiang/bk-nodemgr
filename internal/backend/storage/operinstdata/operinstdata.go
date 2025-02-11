@@ -118,25 +118,8 @@ type StopEventSubscription struct {
 	C          chan<- struct{}
 }
 
-// CreateOperationInstData create a new task data.
-func (s *storage) CreateOperationInstData(ctx context.Context, data *operengine.OperationInstData) error {
-	if ctx == nil {
-		return errors.New("context is nil")
-	}
-
-	if data == nil {
-		return errors.New("operation inst data is nil")
-	}
-
-	if err := s.operinstdataDao.Upsert(ctx, data); err != nil {
-		return fmt.Errorf("failed to create operation inst data: %v", err)
-	}
-
-	return nil
-}
-
 // GetOperInstData get task data.
-func (s *storage) GetOperInstData(ctx context.Context, operInstID string) (*operengine.OperationInstData, error) {
+func (s *storage) GetOperInstData(ctx context.Context, operInstID string) (*operengine.OperInstData, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
@@ -153,8 +136,8 @@ func (s *storage) GetOperInstData(ctx context.Context, operInstID string) (*oper
 	return data, nil
 }
 
-// UpdateOperationInstData update task data.
-func (s *storage) UpdateOperationInstData(ctx context.Context, data *operengine.OperationInstData) error {
+// UpsertOperInstData update task data.
+func (s *storage) UpsertOperInstData(ctx context.Context, data *operengine.OperInstData) error {
 	if err := s.operinstdataDao.Upsert(ctx, data); err != nil {
 		return fmt.Errorf("failed to update operation inst data, operation-inst(%v), err: %v", data, err)
 	}
@@ -162,8 +145,8 @@ func (s *storage) UpdateOperationInstData(ctx context.Context, data *operengine.
 	return nil
 }
 
-// MarkOperationInstStopping mark task stopping.
-func (s *storage) MarkOperationInstStopping(ctx context.Context, operationInstID string) error {
+// MarkOperInstStopping mark task stopping.
+func (s *storage) MarkOperInstStopping(ctx context.Context, operationInstID string) error {
 	err := s.stopoperinstDao.Upsert(ctx, operationInstID)
 	if err != nil {
 		return fmt.Errorf("failed to mark operation inst stopping failed, operation-inst-id(%v), err: %v",

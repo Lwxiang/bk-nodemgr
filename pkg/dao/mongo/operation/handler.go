@@ -13,60 +13,95 @@ package operation
 
 import (
 	"context"
+	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	workflows "google.golang.org/api/workflows/v1beta"
 )
 
 // Handler operation handler interface.
 type Handler interface {
-	Create(ctx context.Context, operation *workflows.Operation) error
-	Update(ctx context.Context, operation *workflows.Operation) error
-	Upsert(ctx context.Context, operation *workflows.Operation) error
-	FindAll(ctx context.Context) (*workflows.Operation, error)
-	Find(ctx context.Context, opts ...OptFn) (*workflows.Operation, error)
-	FindOne(ctx context.Context, opts ...OptFn) (*workflows.Operation, error)
-}
+	// Upsert insert or update an operation.
+	Upsert(ctx context.Context, operation *operengine.Operation) error
 
-// New create a new business handler.
-func New(client *mongo.Database, logger logger.Logger) Handler {
-	return &handler{
-		dao: newDao(client, logger),
-	}
+	// FindOne if not specified, the first undeleted record is returned.
+	FindOne(ctx context.Context, opts ...OptFn) (*operengine.Operation, error)
 }
 
 type handler struct {
 	dao *dao
 }
 
-func (h *handler) Create(ctx context.Context, operation *workflows.Operation) error {
-	//TODO implement me
-	panic("implement me")
+// New ...
+func New(client *mongo.Database, logger logger.Logger) Handler {
+	return &handler{
+		dao: newDao(client, logger),
+	}
 }
 
-func (h *handler) Update(ctx context.Context, operation *workflows.Operation) error {
-	//TODO implement me
-	panic("implement me")
-}
+// FindOne ...
+func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.Operation, error) {
+	if ctx == nil {
+		return nil, errors.New("ctx is nil")
+	}
 
-func (h *handler) FindAll(ctx context.Context) (*workflows.Operation, error) {
-	//TODO implement me
-	panic("implement me")
-}
+	filter := bson.D{{Key: "basic.is_deleted", Value: false}}
+	for _, opt := range opts {
+		filter = opt(filter)
+	}
 
-func (h *handler) Find(ctx context.Context, opts ...OptFn) (*workflows.Operation, error) {
-	//TODO implement me
-	panic("implement me")
-}
+	operations, err := h.dao.find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
 
-func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*workflows.Operation, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(operations) == 0 {
+		return nil, nil
+	}
+
+	operation := operations[0]
+
+	data := &operengine.Operation{
+		TriggerID:   operation.TriggerID,
+		OperationID: operation.OperationID,
+		DefSnapshot: operengine.OperDefSnapshot{
+			OperDefName: operation.DefSnapshot.OperDefName,
+			ActionNames: operation.DefSnapshot.ActionNames,
+		},
+		OperInstIDs: operation.OperInstIDs,
+		State:       operengine.OperationState(operation.State),
+	}
+
+	return data, nil
+
 }
 
 // Upsert ...
-func (h *handler) Upsert(ctx context.Context, operation *workflows.Operation) error {
-	//TODO implement me
-	panic("implement me")
+func (h *handler) Upsert(ctx context.Context, operation *operengine.Operation) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if operation == nil {
+		return nil
+	}
+
+	data := &Operation{
+		OperationID: operation.OperationID,
+		TriggerID:   operation.TriggerID,
+		OperInstIDs: operation.OperInstIDs,
+		DefSnapshot: DefSnapshot{
+			OperDefName: operation.DefSnapshot.OperDefName,
+			ActionNames: operation.DefSnapshot.ActionNames,
+		},
+		State: string(operation.State),
+	}
+
+	if err := h.dao.upsert(ctx, data); err != nil {
+		return err
+	}
+
+	return nil
 }

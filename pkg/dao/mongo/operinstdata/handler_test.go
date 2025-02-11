@@ -15,8 +15,10 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -63,7 +65,7 @@ func Test_handler_FindOne(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "",
+			name: "normal",
 			args: args{
 				ctx: context.Background(),
 				opts: []OptFn{
@@ -82,8 +84,71 @@ func Test_handler_FindOne(t *testing.T) {
 				return
 			}
 
+			t.Logf("got = %#v\n", got)
+
 			for name, data := range got.ActionInstDataMap {
 				t.Logf("action = %s, data = %#v\n", name, data)
+			}
+		})
+	}
+}
+
+// Test_handler_Upsert ...
+func Test_handler_Upsert(t *testing.T) {
+	type args struct {
+		ctx  context.Context
+		data *operengine.OperInstData
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				ctx: context.Background(),
+				data: &operengine.OperInstData{
+					OperInstID:       "operation-inst-7bd49883-bcc9-4776-80ff-d3d37ca4143f",
+					OperationDefName: "",
+					ActionNames:      []string{"action-1"},
+					ActionInstDataMap: map[string]*operengine.ActionInstData{
+						"action-1": {
+							TriggerID:  "trigger-1",
+							OperInstID: "operation-inst-7bd49883-bcc9-4776-80ff-d3d37ca4143f",
+							Name:       "action-1",
+							Index:      0,
+							State:      "success",
+							StartedAt:  time.Time{},
+							EndedAt:    time.Time{},
+							Messages:   nil,
+							Content: map[string]any{
+								"biz": "1",
+							},
+						},
+					},
+					InitContent: map[string]map[string]any{},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "nil init content",
+			args: args{
+				ctx: context.Background(),
+				data: &operengine.OperInstData{
+					OperInstID:  "operation-inst-7bd49883-bcc9-4776-80ff-d3d37ca4143f",
+					InitContent: nil,
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			if err := h.Upsert(tt.args.ctx, tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("Upsert() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

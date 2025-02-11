@@ -11,7 +11,9 @@
 // Package operengine ...
 package operengine
 
-import "testing"
+import (
+	"testing"
+)
 
 // Test_evaluateActionInstanceState ...
 func Test_evaluateActionInstanceState(t *testing.T) {
@@ -36,7 +38,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "success",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateSuccess,
+					State: ActionInstStateSuccess,
 				},
 			},
 			want:    true,
@@ -46,7 +48,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "skipped",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateSkipped,
+					State: ActionInstStateSkipped,
 				},
 			},
 			want:    true,
@@ -56,7 +58,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "failed",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateFailed,
+					State: ActionInstStateFailed,
 				},
 			},
 			want:    false,
@@ -66,7 +68,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "timeout",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateTimeout,
+					State: ActionInstStateTimeout,
 				},
 			},
 			want:    false,
@@ -76,7 +78,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "terminated",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateTerminated,
+					State: ActionInstStateTerminated,
 				},
 			},
 			want:    false,
@@ -86,7 +88,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "running",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateRunning,
+					State: ActionInstStateRunning,
 				},
 			},
 			want:    false,
@@ -96,7 +98,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "pending",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStatePending,
+					State: ActionInstStatePending,
 				},
 			},
 			want:    false,
@@ -115,13 +117,13 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := evaluateActionInstanceState(tt.args.data)
+			got, err := checkActionInstState(tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("evaluateActionInstanceState() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("checkActionInstState() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("evaluateActionInstanceState() got = %v, want %v", got, tt.want)
+				t.Errorf("checkActionInstState() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

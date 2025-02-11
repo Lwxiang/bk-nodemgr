@@ -12,15 +12,14 @@
 package operengine
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 )
 
 // ActionInstData action instance.
 type ActionInstData struct {
+	TriggerID  string
 	OperInstID string
 	Name       string
 	Index      int
@@ -29,7 +28,7 @@ type ActionInstData struct {
 	EndedAt    time.Time
 	StoppedAt  time.Time
 	Messages   []string
-	Content    string
+	Content    map[string]any
 }
 
 // Info ...
@@ -42,8 +41,8 @@ func (data *ActionInstData) Log(messages ...string) {
 	data.Messages = append(data.Messages, messages...)
 }
 
-// OperationInstData OperationInst data.
-type OperationInstData struct {
+// OperInstData OperInst data.
+type OperInstData struct {
 	OperInstID        string
 	OperationDefName  string
 	ActionNames       []string
@@ -51,7 +50,7 @@ type OperationInstData struct {
 	ParentOperInstID  string
 	Timeout           time.Duration
 
-	InitContent string
+	InitContent map[string]map[string]any
 
 	CreatedAt time.Time
 	StartedAt time.Time
@@ -59,17 +58,14 @@ type OperationInstData struct {
 	StoppedAt time.Time
 }
 
-// OperationInst is a operationDef instance.
-type OperationInst struct {
-	OperInstID   string
-	operationDef *OperationDef
-	data         *OperationInstData
-	storeFn      func(context.Context, *OperationInstData) error
-	mutex        sync.RWMutex
+// OperInst is a operationDef instance.
+type OperInst struct {
+	operationDef *operationDef
+	data         *OperInstData
 }
 
 // Validate  the operation.
-func (o *OperationInst) Validate() error {
+func (o *OperInst) Validate() error {
 	if o == nil {
 		return errors.New("operation is nil")
 	}
@@ -81,9 +77,9 @@ func (o *OperationInst) Validate() error {
 	return nil
 }
 
-// LastActionInstanceState get the last action state.
-func (o *OperationInst) LastActionInstanceState(actionName string) ActionInstState {
-	lastActionInstState := ActionInstanceStateSuccess
+// LastActionInstState get the last action State.
+func (o *OperInst) LastActionInstState(actionName string) ActionInstState {
+	lastActionInstState := ActionInstStateSuccess
 
 	for _, action := range o.data.ActionNames {
 		if action != actionName {
@@ -101,23 +97,11 @@ func (o *OperationInst) LastActionInstanceState(actionName string) ActionInstSta
 }
 
 // GetActionInstData get the action instance.
-func (o *OperationInst) GetActionInstData(actionName string) (*ActionInstData, error) {
+func (o *OperInst) GetActionInstData(actionName string) (*ActionInstData, error) {
 	actionData, ok := o.data.ActionInstDataMap[actionName]
 	if !ok {
 		return nil, fmt.Errorf("action not found, name(%s)", actionName)
 	}
 
 	return actionData, nil
-}
-
-// store will use storeFn to store the OperationInst data into storage.
-func (o *OperationInst) store() error {
-	if o.storeFn == nil {
-		return errors.New("no store method implemented")
-	}
-
-	o.mutex.RLock()
-	defer o.mutex.RUnlock()
-
-	return o.storeFn(context.Background(), o.data)
 }

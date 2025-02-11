@@ -8,18 +8,24 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operationdef ...
-package operationdef
+// Package workflow ...
+package workflow
 
-import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef/actiondef"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
-)
+import "errors"
 
-// syncingFromCMDB
-func syncingFromCMDB(mgr operengine.OperInstEngine) *operengine.OperationDef {
-	pipeline := operengine.NewOperationDef(string(SyncFromCmdb)).
-		Next(mgr.GetRegisteredAction(actiondef.SyncBusinessFromCMDB))
+// RetryOperationReq ...
+type RetryOperationReq struct {
+	OperationID string `json:"operation_id" binding:"required"`
+}
 
-	return pipeline
+func (req *RetryOperationReq) Validate() error {
+	if len(req.OperationID) == 0 {
+		return errors.New("operation_id is required")
+	}
+
+	return nil
+}
+
+// RetryOperationResp ...
+type RetryOperationResp struct {
 }

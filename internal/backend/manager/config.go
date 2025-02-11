@@ -14,15 +14,21 @@ package manager
 import (
 	"errors"
 
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operation"
 	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/locker"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 )
 
 // Config defines the config of manager.
 type Config struct {
-	CmdbHandler     cmdb.Handler
-	TopoStorage     topoStorage.Storage
+	CmdbHandler cmdb.Handler
+	TopoStorage topoStorage.Storage
+
+	LockerFactory locker.MutexFactory
+
+	OperStorage     operation.Storage
 	OperInstStorage operinstdataStorage.Storage
 
 	WorkflowConfig

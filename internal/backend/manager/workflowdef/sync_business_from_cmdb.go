@@ -8,8 +8,8 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package actions is the actions for workflow manager.
-package actions
+// Package actiondef ...
+package workflowdef
 
 import (
 	"context"
@@ -23,53 +23,59 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
-// NewActionSyncBusinessFromCMDB creates a new ActionSyncBusinessFromCMDB.
-func NewActionSyncBusinessFromCMDB(cmdbHandler cmdb.Handler, topoStorage topo.Storage) *ActionSyncBusinessFromCMDB {
-	return &ActionSyncBusinessFromCMDB{
+// NewActionSyncBusinessFromCMDB creates a new syncBusinessFromCMDB.
+func NewActionSyncBusinessFromCMDB(cmdbHandler cmdb.Handler, topoStorage topo.Storage) operengine.ActionDef {
+	return &syncBusinessFromCMDB{
 		cmdbHandler: cmdbHandler,
 		topoStorage: topoStorage,
 	}
 }
 
-const (
-	// ActionNameSyncBusinessFromCMDB defines the name of this action.
-	ActionNameSyncBusinessFromCMDB = "sync_business_from_cmdb"
-)
-
-// ActionSyncBusinessFromCMDB sync business info from cmdb.
-type ActionSyncBusinessFromCMDB struct {
+// syncBusinessFromCMDB sync business info from cmdb.
+type syncBusinessFromCMDB struct {
 	cmdbHandler cmdb.Handler
 	topoStorage topo.Storage
 }
 
 // Name returns the name of the action.
-func (a *ActionSyncBusinessFromCMDB) Name() string {
-	return ActionNameSyncBusinessFromCMDB
+func (a *syncBusinessFromCMDB) Name() string {
+	return SyncBizFromCMDB
 }
 
 // Version returns the version of the action.
-func (a *ActionSyncBusinessFromCMDB) Version() string {
+func (a *syncBusinessFromCMDB) Version() string {
 	return "v1"
 }
 
 // Description returns the description of the action.
-func (a *ActionSyncBusinessFromCMDB) Description() string {
+func (a *syncBusinessFromCMDB) Description() string {
 	return "sync business info from cmdb and update to storage"
 }
 
 // Timeout returns the timeout of this action.
-func (a *ActionSyncBusinessFromCMDB) Timeout() time.Duration {
+func (a *syncBusinessFromCMDB) Timeout() time.Duration {
 	return 1 * time.Minute
 }
 
 // MaxRetryCount returns the max retry count of this action.
-func (a *ActionSyncBusinessFromCMDB) MaxRetryCount() uint {
-	return 0
+func (a *syncBusinessFromCMDB) MaxRetryCount() uint {
+	return 2
 }
 
-// Do executes the action.
-func (a *ActionSyncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error {
-	blog.Infof("start syncing business info from cmdb. info: %s", ctx.Data.Info())
+// DelayFn returns the delay of this action.
+func (a *syncBusinessFromCMDB) DelayFn() func() {
+	return func() {
+		time.Sleep(1 * time.Second)
+	}
+}
+
+// Tags returns the tags of this action.
+func (a *syncBusinessFromCMDB) Tags() []operengine.ActionTag {
+	return []operengine.ActionTag{}
+}
+
+// Do the action.
+func (a *syncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error {
 	ctx.Data.Log("start syncing business info from cmdb")
 
 	gp := gopool.NewPool()
@@ -112,8 +118,6 @@ func (a *ActionSyncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error
 		blog.Errorf("failed to sync business info from cmdb. info: %s, err: %v", ctx.Data.Info(), err)
 		return err
 	}
-
-	blog.Infof("succeed to sync business info from cmdb. info: %s", ctx.Data.Info())
 
 	return nil
 }

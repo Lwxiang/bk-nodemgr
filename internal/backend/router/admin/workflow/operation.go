@@ -8,23 +8,39 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operationdef ...
-package operationdef
+// Package workflow ...
+package workflow
 
 import (
+	"time"
+
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
-// Name is the pipeline name.
-type Name string
-
-const (
-	SyncFromCmdb Name = "sync-from-cmdb"
-)
-
-// Factory ...
-func Factory() map[Name]func(mgr operengine.OperInstEngine) *operengine.OperationDef {
-	return map[Name]func(mgr operengine.OperInstEngine) *operengine.OperationDef{
-		SyncFromCmdb: syncingFromCMDB,
+// RetryOperation ...
+func (h *handler) RetryOperation(ctx *rest.Context) (interface{}, error) {
+	req := new(RetryOperationReq)
+	if err := ctx.BindJSON(req); err != nil {
+		return nil, err
 	}
+
+	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+
+	err := h.manager.RetryOperation(req.OperationID, &operengine.OperInstParam{
+		Timeout:     1 * time.Minute,
+		InitContent: map[string]map[string]any{},
+	})
+	if err != nil {
+		h.logger.Errorf("failed to retry operation, err: %v", err)
+		return nil, err
+	}
+
+	h.logger.Infof("successfully started operation: %s", req.OperationID)
+
+	resp := new(RetryOperationResp)
+
+	return resp, nil
 }

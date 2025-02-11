@@ -12,6 +12,7 @@
 package operation
 
 import (
+	"context"
 	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
@@ -22,7 +23,7 @@ import (
 )
 
 // StorageName ...
-const StorageName = "topo"
+const StorageName = "operation"
 
 // NewStorage ...
 func NewStorage(client *mongo.Client, database string, logger logger.Logger) (Storage, error) {
@@ -69,20 +70,29 @@ func (s *storage) check() error {
 	return nil
 }
 
-// CreateOperation ...
-func (s *storage) CreateOperation(operation *operengine.Operation) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 // GetOperation ...
-func (s *storage) GetOperation(operationID string) (*operengine.Operation, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *storage) GetOperation(ctx context.Context, operationID string) (*operengine.Operation, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+
+	oper, err := s.daoOperation.FindOne(ctx, operation.WithOperationID(operationID))
+	if err != nil {
+		return nil, err
+	}
+
+	return oper, nil
 }
 
-// UpdateOperation ...
-func (s *storage) UpdateOperation(operation *operengine.Operation) error {
-	//TODO implement me
-	panic("implement me")
+// UpsertOperation ...
+func (s *storage) UpsertOperation(ctx context.Context, operation *operengine.Operation) error {
+	if ctx == nil {
+		return errors.New("context is nil")
+	}
+
+	if operation == nil {
+		return errors.New("operation is nil")
+	}
+
+	return s.daoOperation.Upsert(ctx, operation)
 }

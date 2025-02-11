@@ -10,3 +10,80 @@
 
 // Package operation ...
 package operation
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+// testClient ...
+func testClient(t *testing.T) Handler {
+	err := godotenv.Load(".env")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	mongoClient, err := mongo.Connect(
+		ctx,
+		&options.ClientOptions{
+			Hosts: []string{
+				os.Getenv("MONGO_ADDRESS"),
+			},
+			Auth: &options.Credential{
+				Username:      os.Getenv("MONGO_USER"),
+				Password:      os.Getenv("MONGO_PASSWORD"),
+				AuthSource:    os.Getenv("MONGO_AUTH_SOURCE"),
+				AuthMechanism: os.Getenv("MONGO_AUTH_MECHANISM"),
+			},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return New(mongoClient.Database(os.Getenv("MONGO_DATABASE")), logger.LoggerDefault{})
+}
+
+// Test_handler_FindOne ...
+func Test_handler_FindOne(t *testing.T) {
+	type args struct {
+		ctx  context.Context
+		opts []OptFn
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "",
+			args: args{
+				ctx:  context.Background(),
+				opts: []OptFn{WithOperationID("35fa1c8a-3089-4a89-9b45-100398698dd2")},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			got, err := h.FindOne(tt.args.ctx, tt.args.opts...)
+			if err != nil {
+				t.Logf("FindOne() error = %v", err)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindOne() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			t.Logf("FindOne() got = %v", got)
+		})
+	}
+}

@@ -19,55 +19,56 @@ import (
 	"github.com/google/uuid"
 )
 
-// OperationInstTimeoutDefault default OperationInst timeout.
-const OperationInstTimeoutDefault = 10 * time.Minute
+// OperInstTimeoutDefault default OperInst timeout.
+const OperInstTimeoutDefault = 10 * time.Minute
 
-// NewOperationDef creates a new OperationDef.
-func NewOperationDef(name string) *OperationDef {
-	return &OperationDef{
+// newOperationDef creates a new operationDef.
+func newOperationDef(name string) *operationDef {
+	return &operationDef{
 		name:       name,
 		actionDefs: make([]ActionDef, 0),
 	}
 }
 
-// OperationDef represents a operationDef definition.
-type OperationDef struct {
+// operationDef represents a operationDef definition.
+type operationDef struct {
 	name       string
 	actionDefs []ActionDef
 }
 
-// Name returns the name of the OperationDef.
-func (def *OperationDef) Name() string {
+// Name returns the name of the operationDef.
+func (def *operationDef) Name() string {
 	return def.name
 }
 
-// Next appends a new action to the OperationDef.
-func (def *OperationDef) Next(actionDef ActionDef) *OperationDef {
+// Next appends a new action to the operationDef.
+func (def *operationDef) Next(actionDef ActionDef) *operationDef {
 	def.actionDefs = append(def.actionDefs, actionDef)
 
 	return def
 }
 
-// OperationInstIDPrefix ...
-const OperationInstIDPrefix = "operation-inst"
+// OperInstIDPrefix ...
+const OperInstIDPrefix = "oper-inst"
 
-// NewInstance creates a new OperationInst.
-func (def *OperationDef) NewInstance(timeout time.Duration) (*OperationInst, error) {
+// NewInstance creates a new OperInst.
+func (def *operationDef) NewInstance(timeout time.Duration) (*OperInst, error) {
 	if err := def.Validate(); err != nil {
 		return nil, err
 	}
 
 	if timeout == 0 {
-		timeout = OperationInstTimeoutDefault
+		timeout = OperInstTimeoutDefault
 	}
 
-	inst := &OperationInst{
-		data: &OperationInstData{
-			OperInstID:        fmt.Sprintf("%s-%s", OperationInstIDPrefix, uuid.NewString()),
+	inst := &OperInst{
+		data: &OperInstData{
+			OperInstID:        fmt.Sprintf("%s-%s", OperInstIDPrefix, uuid.NewString()),
 			OperationDefName:  def.name,
 			ActionNames:       make([]string, len(def.actionDefs)),
 			ActionInstDataMap: make(map[string]*ActionInstData),
 			Timeout:           timeout,
+			InitContent:       make(map[string]map[string]any),
 			CreatedAt:         time.Now().Local(),
 		},
 		operationDef: def,
@@ -79,17 +80,17 @@ func (def *OperationDef) NewInstance(timeout time.Duration) (*OperationInst, err
 			OperInstID: inst.data.OperInstID,
 			Name:       action.Name(),
 			Index:      index,
-			State:      ActionInstanceStatePending,
+			State:      ActionInstStatePending,
 			Messages:   make([]string, 0),
-			Content:    "",
+			Content:    make(map[string]any),
 		}
 	}
 
 	return inst, nil
 }
 
-// Validate validates the OperationDef.
-func (def *OperationDef) Validate() error {
+// Validate validates the operationDef.
+func (def *operationDef) Validate() error {
 	if len(def.actionDefs) == 0 {
 		return errors.New("empty operationDef definition")
 	}

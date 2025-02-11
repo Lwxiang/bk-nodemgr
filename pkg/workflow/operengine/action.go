@@ -34,7 +34,7 @@ type ActionInstContext struct {
 	Data *ActionInstData
 }
 
-// ActionDef represents an operation inst engine action, which is a single basic step of work.
+// ActionDef represents an operation inst operInstMgr action, which is a single basic step of work.
 type ActionDef interface {
 	// Name returns the name of the action
 	Name() string

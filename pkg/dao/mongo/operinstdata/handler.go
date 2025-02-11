@@ -13,6 +13,7 @@ package operinstdata
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
@@ -24,10 +25,10 @@ import (
 // Handler ...
 type Handler interface {
 	// Upsert updates or inserts an OperInstData.
-	Upsert(ctx context.Context, data *operengine.OperationInstData) error
+	Upsert(ctx context.Context, data *operengine.OperInstData) error
 
 	// FindOne ...
-	FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperationInstData, error)
+	FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperInstData, error)
 }
 
 type handler struct {
@@ -42,7 +43,7 @@ func New(client *mongo.Database, logger logger.Logger) Handler {
 }
 
 // Upsert updates or inserts an OperInstData.
-func (h *handler) Upsert(ctx context.Context, data *operengine.OperationInstData) error {
+func (h *handler) Upsert(ctx context.Context, data *operengine.OperInstData) error {
 	if ctx == nil {
 		return errors.New("ctx is nil")
 	}
@@ -58,15 +59,26 @@ func (h *handler) Upsert(ctx context.Context, data *operengine.OperationInstData
 		OperationDefName:  data.OperationDefName,
 		ParentOperInstID:  data.ParentOperInstID,
 		Timeout:           data.Timeout,
-		InitContent:       data.InitContent,
 		CreatedAt:         data.CreatedAt,
 		StartedAt:         data.StartedAt,
 		EndedAt:           data.EndedAt,
 		StoppedAt:         data.StoppedAt,
 	}
 
+	if data.InitContent == nil {
+		return errors.New("invalid init content")
+	}
+
+	bytes, err := json.Marshal(data.InitContent)
+	if err != nil {
+		return err
+	}
+
+	operInstData.InitContent = string(bytes)
+
 	for k, v := range data.ActionInstDataMap {
-		operInstData.ActionInstDataMap[k] = &ActionInstData{
+		actionInstData := &ActionInstData{
+			TriggerID:  v.TriggerID,
 			OperInstID: v.OperInstID,
 			Name:       v.Name,
 			Index:      v.Index,
@@ -75,11 +87,19 @@ func (h *handler) Upsert(ctx context.Context, data *operengine.OperationInstData
 			EndedAt:    v.EndedAt,
 			StoppedAt:  v.StoppedAt,
 			Messages:   v.Messages,
-			Content:    v.Content,
 		}
+
+		bytes, err := json.Marshal(v.Content)
+		if err != nil {
+			return err
+		}
+
+		actionInstData.Content = string(bytes)
+
+		operInstData.ActionInstDataMap[k] = actionInstData
 	}
 
-	err := h.dao.upsert(ctx, operInstData)
+	err = h.dao.upsert(ctx, operInstData)
 	if err != nil {
 		return err
 	}
@@ -88,7 +108,11 @@ func (h *handler) Upsert(ctx context.Context, data *operengine.OperationInstData
 }
 
 // FindOne ...
-func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperationInstData, error) {
+func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperInstData, error) {
+	if ctx == nil {
+		return nil, errors.New("ctx is nil")
+	}
+
 	filter := bson.D{{Key: "basic.is_deleted", Value: false}}
 	for _, opt := range opts {
 		filter = opt(filter)
@@ -105,22 +129,31 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.Opera
 
 	operInstData := operInstDatas[0]
 
-	data := &operengine.OperationInstData{
+	data := &operengine.OperInstData{
 		OperInstID:        operInstData.OperInstID,
 		OperationDefName:  operInstData.OperationDefName,
 		ActionNames:       operInstData.ActionNames,
 		ActionInstDataMap: make(map[string]*operengine.ActionInstData, len(operInstData.ActionInstDataMap)),
 		ParentOperInstID:  operInstData.ParentOperInstID,
 		Timeout:           operInstData.Timeout,
-		InitContent:       operInstData.InitContent,
 		CreatedAt:         operInstData.CreatedAt,
 		StartedAt:         operInstData.StartedAt,
 		EndedAt:           operInstData.EndedAt,
 		StoppedAt:         operInstData.StoppedAt,
 	}
 
+	if len(operInstData.InitContent) == 0 {
+		return nil, errors.New("invalid init content")
+	}
+
+	err = json.Unmarshal([]byte(operInstData.InitContent), &data.InitContent)
+	if err != nil {
+		return nil, err
+	}
+
 	for k, v := range operInstData.ActionInstDataMap {
-		data.ActionInstDataMap[k] = &operengine.ActionInstData{
+		actionInstData := &operengine.ActionInstData{
+			TriggerID:  v.TriggerID,
 			OperInstID: v.OperInstID,
 			Name:       v.Name,
 			Index:      v.Index,
@@ -129,8 +162,14 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.Opera
 			EndedAt:    v.EndedAt,
 			StoppedAt:  v.StoppedAt,
 			Messages:   v.Messages,
-			Content:    v.Content,
 		}
+
+		err = json.Unmarshal([]byte(v.Content), &actionInstData.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		data.ActionInstDataMap[k] = actionInstData
 	}
 
 	return data, nil

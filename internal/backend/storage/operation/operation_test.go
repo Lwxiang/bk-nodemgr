@@ -8,17 +8,15 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operinstdata ...
-package operinstdata
+// Package operation ...
+package operation
 
 import (
 	"context"
 	"os"
 	"testing"
-	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -62,10 +60,11 @@ func testClient(t *testing.T) Storage {
 	return s
 }
 
-func Test_storage_UpsertOperInstData(t *testing.T) {
+// Test_storage_GetOperation ...
+func Test_storage_GetOperation(t *testing.T) {
 	type args struct {
-		ctx  context.Context
-		data *operengine.OperInstData
+		ctx         context.Context
+		operationID string
 	}
 	tests := []struct {
 		name    string
@@ -75,20 +74,8 @@ func Test_storage_UpsertOperInstData(t *testing.T) {
 		{
 			name: "normal",
 			args: args{
-				ctx: context.Background(),
-				data: &operengine.OperInstData{
-					OperInstID:        "",
-					OperationDefName:  "",
-					ActionNames:       nil,
-					ActionInstDataMap: nil,
-					ParentOperInstID:  "",
-					Timeout:           0,
-					InitContent:       map[string]map[string]any{},
-					CreatedAt:         time.Time{},
-					StartedAt:         time.Time{},
-					EndedAt:           time.Time{},
-					StoppedAt:         time.Time{},
-				},
+				ctx:         context.Background(),
+				operationID: "35fa1c8a-3089-4a89-9b45-100398698dd2",
 			},
 			wantErr: false,
 		},
@@ -96,9 +83,16 @@ func Test_storage_UpsertOperInstData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := testClient(t)
-			if err := s.UpsertOperInstData(tt.args.ctx, tt.args.data); (err != nil) != tt.wantErr {
-				t.Errorf("UpsertOperInstData() error = %v, wantErr %v", err, tt.wantErr)
+			got, err := s.GetOperation(tt.args.ctx, tt.args.operationID)
+			if err != nil {
+				t.Logf("GetOperation() error = %v", err)
 			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetOperation() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			t.Logf("got: %+v", got)
 		})
 	}
 }

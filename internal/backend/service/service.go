@@ -24,6 +24,7 @@ import (
 	apiv3 "git.woa.com/bk-gse/bk-nodeman/internal/backend/router/api-v3"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/basic"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/healthz"
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operation"
 	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
 	topoStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
@@ -125,9 +126,16 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		return nil, err
 	}
 
+	svc.Cap.OperStorage, err = operation.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	if err != nil {
+		return nil, err
+	}
+
 	svc.Cap.Manager, err = manager.NewManager(manager.Config{
 		CmdbHandler:     svc.Cap.CmdbHandler,
 		TopoStorage:     svc.Cap.TopoStorage,
+		LockerFactory:   svc.Cap.LockerFactory,
+		OperStorage:     svc.Cap.OperStorage,
 		OperInstStorage: svc.Cap.OperInstStorage,
 		WorkflowConfig: manager.WorkflowConfig{
 			WorkNodeNum: conf.Workflow.WorkerNum,

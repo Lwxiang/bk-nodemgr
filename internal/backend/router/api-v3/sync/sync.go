@@ -15,6 +15,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,6 +23,7 @@ import (
 type handler struct {
 	rg      *gin.RouterGroup
 	manager manager.Manager
+	logger  logger.Logger
 }
 
 // newHandler ...
@@ -30,6 +32,7 @@ func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
 		// this is a sub router, so we can use some special middleware in it and not affect the father router.
 		rg:      rg.Group("/sync"),
 		manager: capability.Manager,
+		logger:  capability.Logger,
 	}
 }
 

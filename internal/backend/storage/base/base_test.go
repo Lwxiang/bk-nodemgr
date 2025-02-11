@@ -182,14 +182,14 @@ func TestStorage_Terminate(t *testing.T) {
 
 			if tt.isTerminated {
 				if err := s.Terminate(); err != nil {
-					t.Errorf("Terminate() error = %v", err)
+					t.Errorf("TerminateOperInst() error = %v", err)
 				}
 
 				time.Sleep(time.Second * 1)
 			}
 
 			if err := s.Terminate(); (err != nil) != tt.wantErr {
-				t.Errorf("Terminate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("TerminateOperInst() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

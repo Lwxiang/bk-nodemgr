@@ -8,36 +8,37 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package admin ...
-package admin
+// Package workflow ...
+package workflow
 
 import (
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/admin/workflow"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"github.com/gin-gonic/gin"
 )
 
 // handler ...
 type handler struct {
-	rg     *gin.RouterGroup
-	logger logger.Logger
+	rg      *gin.RouterGroup
+	manager manager.Manager
+	logger  logger.Logger
 }
 
 // newHandler ...
-func newHandler(rg *gin.RouterGroup, cap *options.Capability) *handler {
+func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
 	return &handler{
 		// this is a sub router, so we can use some special middleware in it and not affect the father router.
-		rg:     rg.Group("/admin"),
-		logger: cap.Logger,
+		rg:      rg.Group("/workflow"),
+		manager: capability.Manager,
+		logger:  capability.Logger,
 	}
 }
 
-// Load ter register the api v3 router.
-func Load(rg *gin.RouterGroup, cap *options.Capability) {
-	h := newHandler(rg, cap)
+// Load load sync handler.
+func Load(rg *gin.RouterGroup, capability *options.Capability) {
+	h := newHandler(rg, capability)
 
-	// TODO: 设置权限封禁
-
-	workflow.Load(h.rg, cap)
+	h.rg.POST("/operation/retry", rest.RestHandlerFunc(h.RetryOperation))
 }

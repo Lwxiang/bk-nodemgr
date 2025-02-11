@@ -12,11 +12,12 @@
 package sync
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/criteria/constant"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/operationdef"
+	"time"
+
+	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/workflowdef"
 	types "git.woa.com/bk-gse/bk-nodeman/internal/backend/types/router/api-v3"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
 // SyncCmdbHost ...
@@ -30,13 +31,16 @@ func (h *handler) SyncCmdbHost(ctx *rest.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	err := h.manager.StartPipeline(operationdef.SyncFromCmdb, constant.PipelineTimeoutDefault)
+	err := h.manager.ExecuteOperation(workflowdef.OperDefNameSyncBizAndHost, "trigger-1", &operengine.OperInstParam{
+		Timeout:     1 * time.Minute,
+		InitContent: map[string]map[string]any{},
+	})
 	if err != nil {
-		blog.Errorf("failed to start sync cmdb host pipeline, err: %v", err)
+		h.logger.Errorf("failed to start sync cmdb host operation, err: %v", err)
 		return nil, err
 	}
 
-	blog.Infof("successfully started sync cmdb host pipeline.")
+	h.logger.Infof("successfully started sync cmdb host operation.")
 
 	resp := new(types.SyncCmdbHostResp)
 

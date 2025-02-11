@@ -12,8 +12,6 @@
 package operation
 
 import (
-	"strconv"
-
 	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 )
 
@@ -21,24 +19,24 @@ import (
 const TableName = "operation"
 
 // Operation represents an operation under a tenant.
-// BizID should be the unique key.
+// OperationID should be the unique key.
 type Operation struct {
-	OperationID int64    `json:"operation_id" bson:"operation_id"`
-	TriggerID   string   `json:"trigger_id" bson:"trigger_id"`
-	OperInstIDs []string `json:"oper_inst_ids" bson:"oper_inst_ids"`
-	DefSnapshot DefSnapshot
-	State       string `json:"state" bson:"state"`
+	OperationID string      `json:"operation_id" bson:"operation_id"`
+	TriggerID   string      `json:"trigger_id" bson:"trigger_id"`
+	OperInstIDs []string    `json:"oper_inst_ids" bson:"oper_inst_ids"`
+	DefSnapshot DefSnapshot `json:"def_snapshot" bson:"def_snapshot"`
+	State       string      `json:"state" bson:"state"`
 }
 
 // DefSnapshot represents the snapshot of the operation definition.
 type DefSnapshot struct {
-	OperationDefName string   `json:"pipeline_name"`
-	ActionNames      []string `json:"action_names"`
+	OperDefName string   `json:"oper_def_name" bson:"oper_def_name"`
+	ActionNames []string `json:"action_names" bson:"action_names"`
 }
 
 // UniqueKey unique key of the table.
-func (biz *Operation) UniqueKey() string {
-	return strconv.FormatInt(biz.OperationID, 10)
+func (oper *Operation) UniqueKey() string {
+	return oper.OperationID
 }
 
 // TableOperation represents the complete db structures of an operation.

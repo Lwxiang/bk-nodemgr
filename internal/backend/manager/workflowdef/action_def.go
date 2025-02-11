@@ -8,5 +8,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operationdef ...
-package operationdef
+// Package workflowdef is the action definition for operation inst engine manager.
+package workflowdef
+
+const (
+	// SyncBizFromCMDB ...
+	SyncBizFromCMDB = "sync_biz_from_cmdb"
+
+	// SyncHostFromCMDB ...
+	SyncHostFromCMDB = "sync_host_from_cmdb"
+
+	// GenAllBizHostSyncOper ...
+	GenAllBizHostSyncOper = "gen_all_biz_host_sync_oper"
+)

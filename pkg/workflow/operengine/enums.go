@@ -15,55 +15,55 @@ package operengine
 type ActionInstState string
 
 const (
-	// ActionInstanceStatePending action instance state pending.
-	ActionInstanceStatePending ActionInstState = "pending"
+	// ActionInstStatePending action instance state pending.
+	ActionInstStatePending ActionInstState = "pending"
 
-	// ActionInstanceStateRunning action instance state running.
-	ActionInstanceStateRunning ActionInstState = "running"
+	// ActionInstStateRunning action instance state running.
+	ActionInstStateRunning ActionInstState = "running"
 
-	// ActionInstanceStateSuccess action instance state success.
-	ActionInstanceStateSuccess ActionInstState = "success"
+	// ActionInstStateSuccess action instance state success.
+	ActionInstStateSuccess ActionInstState = "success"
 
-	// ActionInstanceStateFailed action instance state failed.
-	ActionInstanceStateFailed ActionInstState = "failed"
+	// ActionInstStateFailed action instance state failed.
+	ActionInstStateFailed ActionInstState = "failed"
 
-	// ActionInstanceStateTimeout action instance state timeout.
-	ActionInstanceStateTimeout ActionInstState = "timeout"
+	// ActionInstStateTimeout action instance state timeout.
+	ActionInstStateTimeout ActionInstState = "timeout"
 
-	// ActionInstanceStateSkipped action instance state skipped.
-	ActionInstanceStateSkipped ActionInstState = "skipped"
+	// ActionInstStateSkipped action instance state skipped.
+	ActionInstStateSkipped ActionInstState = "skipped"
 
-	// ActionInstanceStateTerminated action instance state terminated.
-	ActionInstanceStateTerminated ActionInstState = "terminated"
+	// ActionInstStateTerminated action instance state terminated.
+	ActionInstStateTerminated ActionInstState = "terminated"
 
 	// ActionInstanceStateUnknown action instance state unknown.
 	ActionInstanceStateUnknown ActionInstState = "unknown"
 )
 
-// OperationInstState OperationInst state.
-type OperationInstState string
+// OperInstState OperInst State.
+type OperInstState string
 
 const (
-	// OperationInstStatePending OperationInst state pending.
-	OperationInstStatePending OperationInstState = "pending"
+	// OperInstStatePending OperInst state pending.
+	OperInstStatePending OperInstState = "pending"
 
-	// OperationInstStateRunning OperationInst state running.
-	OperationInstStateRunning OperationInstState = "running"
+	// OperInstStateRunning OperInst state running.
+	OperInstStateRunning OperInstState = "running"
 
-	// OperationInstStateSuccess OperationInst state success.
-	OperationInstStateSuccess OperationInstState = "success"
+	// OperInstStateSuccess OperInst state success.
+	OperInstStateSuccess OperInstState = "success"
 
-	// OperationInstStateFailed OperationInst state failed.
-	OperationInstStateFailed OperationInstState = "failed"
+	// OperInstStateFailed OperInst state failed.
+	OperInstStateFailed OperInstState = "failed"
 
-	// OperationInstStateTimeout OperationInst state timeout.
-	OperationInstStateTimeout OperationInstState = "timeout"
+	// OperInstStateTimeout OperInst state timeout.
+	OperInstStateTimeout OperInstState = "timeout"
 
-	// OperationInstStateSkipped OperationInst state skipped.
-	OperationInstStateSkipped OperationInstState = "skipped"
+	// OperInstStateSkipped OperInst state skipped.
+	OperInstStateSkipped OperInstState = "skipped"
 
-	// OperationInstStateTerminated OperationInst state terminated.
-	OperationInstStateTerminated OperationInstState = "terminated"
+	// OperInstStateTerminated OperInst state terminated.
+	OperInstStateTerminated OperInstState = "terminated"
 )
 
 // OperationState represents the state of an operation.

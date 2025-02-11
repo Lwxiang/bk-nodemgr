@@ -32,6 +32,19 @@ func WithTriggerID(triggerID ...string) OptFn {
 	}
 }
 
+// WithOperationID ...
+func WithOperationID(ids ...string) OptFn {
+	if len(ids) == 1 {
+		return func(f bson.D) bson.D {
+			return append(f, bson.E{Key: "data.operation_id", Value: ids[0]})
+		}
+	}
+
+	return func(f bson.D) bson.D {
+		return append(f, bson.E{Key: "data.operation_id", Value: bson.M{"$in": ids}})
+	}
+}
+
 // WithStatus filters by state
 func WithStatus(states ...operengine.OperationState) OptFn {
 	if len(states) == 1 {
