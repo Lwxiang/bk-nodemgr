@@ -193,3 +193,111 @@ func MapToStruct(m map[string]any, dst any) error {
 	}
 	return nil
 }
+
+// ToString ...
+func ToString(value interface{}) (string, error) {
+	if value == nil {
+		return "", errors.New("value is nil")
+	}
+
+	str, done, err := convNormalTypeToString(value)
+	if done {
+		return str, err
+	}
+
+	str, err = convCustomTypeToString(value)
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}
+
+// convNormalTypeToString convert normal type to string.
+func convNormalTypeToString(value interface{}) (string, bool, error) {
+	// this is the most common case, but it can't handle custom types.
+	switch v := value.(type) {
+	case string:
+		return v, true, nil
+	case bool:
+		return strconv.FormatBool(v), true, nil
+	case int:
+		return strconv.FormatInt(int64(v), 10), true, nil
+	case int64:
+		return strconv.FormatInt(v, 10), true, nil
+	case int32:
+		return strconv.FormatInt(int64(v), 10), true, nil
+	case int16:
+		return strconv.FormatInt(int64(v), 10), true, nil
+	case int8:
+		return strconv.FormatInt(int64(v), 10), true, nil
+	case uint:
+		return strconv.FormatUint(uint64(v), 10), true, nil
+	case uint64:
+		return strconv.FormatUint(v, 10), true, nil
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10), true, nil
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10), true, nil
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10), true, nil
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64), true, nil
+	case float32:
+		return strconv.FormatFloat(float64(v), 'f', -1, 32), true, nil
+	case []byte:
+		return string(v), true, nil
+	case json.Number:
+		return v.String(), true, nil
+	default:
+		return "", false, nil
+	}
+}
+
+// convNormalTypeToString convert normal type to string.
+func convCustomTypeToString(value interface{}) (string, error) {
+	val := reflect.ValueOf(value)
+
+	for val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return "", errors.New("value is nil pointer")
+		}
+		val = val.Elem()
+	}
+
+	switch val.Kind() {
+	case reflect.String:
+		return val.String(), nil
+
+	case reflect.Bool:
+		return strconv.FormatBool(val.Bool()), nil
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return strconv.FormatInt(val.Int(), 10), nil
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(val.Uint(), 10), nil
+
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(val.Float(), 'f', -1, 64), nil
+
+	case reflect.Slice:
+		if val.Type().Elem().Kind() == reflect.Uint8 {
+			return string(val.Bytes()), nil
+		}
+
+		return "", fmt.Errorf("cannot convert slice type to string, element kind(%v)", val.Type().Elem().Kind())
+	default:
+		return "", fmt.Errorf("cannot convert interface to string, kind(%v)", val.Kind())
+	}
+}
+
+// ToStringDefault convert value to string with default value.
+func ToStringDefault(value interface{}, defaultVal string) string {
+	str, err := ToString(value)
+	if err != nil {
+		return defaultVal
+	}
+
+	return str
+}

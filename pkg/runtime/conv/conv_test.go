@@ -425,3 +425,197 @@ func TestMapToStruct(t *testing.T) {
 		})
 	}
 }
+
+// TestToStringDefault
+func TestToStringDefault(t *testing.T) {
+	type args struct {
+		value      interface{}
+		defaultVal string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "val is nil, should return default value",
+			args: args{
+				value:      nil,
+				defaultVal: "default",
+			},
+			want: "default",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ToStringDefault(tt.args.value, tt.args.defaultVal); got != tt.want {
+				t.Errorf("ToStringDefault() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestToString
+func TestToString(t *testing.T) {
+	type args struct {
+		value interface{}
+	}
+
+	var nilPtr *string
+	str := "test"
+	strPtr := &str
+
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		// normal type test.
+		{
+			name:    "nil",
+			args:    args{value: nil},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			args:    args{value: ""},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name:    "normal string",
+			args:    args{value: "hello"},
+			want:    "hello",
+			wantErr: false,
+		},
+		{
+			name:    "int",
+			args:    args{value: 123},
+			want:    "123",
+			wantErr: false,
+		},
+		{
+			name:    "int64",
+			args:    args{value: int64(9223372036854775807)},
+			want:    "9223372036854775807",
+			wantErr: false,
+		},
+		{
+			name:    "uint",
+			args:    args{value: uint(123)},
+			want:    "123",
+			wantErr: false,
+		},
+		{
+			name:    "float64",
+			args:    args{value: 123.456},
+			want:    "123.456",
+			wantErr: false,
+		},
+		{
+			name:    "float32",
+			args:    args{value: float32(123.456)},
+			want:    "123.456",
+			wantErr: false,
+		},
+		{
+			name:    "bool true",
+			args:    args{value: true},
+			want:    "true",
+			wantErr: false,
+		},
+		{
+			name:    "bool false",
+			args:    args{value: false},
+			want:    "false",
+			wantErr: false,
+		},
+		{
+			name:    "nil pointer",
+			args:    args{value: nilPtr},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "string pointer",
+			args:    args{value: strPtr},
+			want:    "test",
+			wantErr: false,
+		},
+		{
+			name:    "[]byte",
+			args:    args{value: []byte("hello")},
+			want:    "hello",
+			wantErr: false,
+		},
+		{
+			name:    "empty []byte",
+			args:    args{value: []byte{}},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name:    "json.Number",
+			args:    args{value: json.Number("123")},
+			want:    "123",
+			wantErr: false,
+		},
+		{
+			name:    "negative number",
+			args:    args{value: -123},
+			want:    "-123",
+			wantErr: false,
+		},
+		{
+			name:    "zero number",
+			args:    args{value: 0},
+			want:    "0",
+			wantErr: false,
+		},
+		{
+			name:    "unsupported slice type tests",
+			args:    args{value: []int{1, 2, 3}},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "complex structural body testing",
+			args:    args{value: struct{ Name string }{"test"}},
+			want:    "",
+			wantErr: true,
+		},
+
+		// special floating point test
+		{
+			name:    "precision floating point testing",
+			args:    args{value: 123.000},
+			want:    "123",
+			wantErr: false,
+		},
+		{
+			name:    "scientific notation floating point test",
+			args:    args{value: 1.23e2},
+			want:    "123",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ToString(tt.args.value)
+			if err != nil {
+				t.Logf("ToString() error = %v", err)
+			}
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ToString() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if got != tt.want {
+				t.Errorf("ToString() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
