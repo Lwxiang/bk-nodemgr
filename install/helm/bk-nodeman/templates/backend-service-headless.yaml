@@ -18,6 +18,6 @@ spec:
   clusterIP: None
   ports:
     - name: service-http
-      port: {{ .Values.backend.config.http_server.port }}
+      port: {{ .Values.backend.config.httpServer.port }}
       targetPort: service-http
 {{- end }}

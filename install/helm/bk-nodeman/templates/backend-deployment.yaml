@@ -103,7 +103,7 @@ spec:
               value: backend
           ports:
             - name: service-http
-              containerPort: {{ .Values.backend.config.http_server.port }}
+              containerPort: {{ .Values.backend.config.httpServer.port }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

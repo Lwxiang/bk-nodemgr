@@ -16,14 +16,18 @@ import (
 	"os"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/envx"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"gopkg.in/yaml.v2"
 )
 
 const (
 	// backend service config default values.
 	defaultBackendRunMode      = RunModeRelease
+	defaultBackendTenantMode   = tenant.ModeSingle
 	defaultBackendHTTPBindIP   = "127.0.0.1"
 	defaultBackendHTTPPort     = 8000
+	defaultBackendAdminBindIP  = "127.0.0.1"
+	defaultBackendAdminPort    = 8001
 	defaultBackendLogDir       = "/bk-nodeman/log/"
 	defaultBackendLogMaxNum    = 10
 	defaultBackendLogMaxSizeMB = 200
@@ -31,9 +35,12 @@ const (
 
 	// saas service config default values.
 	defaultSaasRunMode       = RunModeRelease
+	defaultSaasTenantMode    = tenant.ModeSingle
 	defaultSaasAPIGwUser     = "admin"
 	defaultSaasHTTPBindIP    = "127.0.0.1"
 	defaultSaasHTTPPort      = 5000
+	defaultSaasAdminBindIP   = "127.0.0.1"
+	defaultSaasAdminPort     = 5001
 	defaultSaasHTTPStaticDir = "/bk-nodeman/static/"
 	defaultSaasLogDir        = "/bk-nodeman/log/"
 	defaultSaasLogMaxNum     = 10
@@ -67,32 +74,33 @@ type MongoDB struct {
 	Hosts         []string `yaml:"hosts" usage:"hosts list of mongodb"`
 	Username      string   `yaml:"username" usage:"user of mongodb"`
 	Password      string   `yaml:"password" usage:"password of mongodb"`
-	AuthSource    string   `yaml:"auth_source" usage:"auth source of mongodb"`
-	AuthMechanism string   `yaml:"auth_mechanism" usage:"auth mechanism of mongodb"`
+	Database      string   `yaml:"database" usage:"database of mongodb"`
+	AuthSource    string   `yaml:"authSource" usage:"auth source of mongodb"`
+	AuthMechanism string   `yaml:"authMechanism" usage:"auth mechanism of mongodb"`
 }
 
 // Log the config of log.
 type Log struct {
 	Dir          string `yaml:"dir" usage:"log dir of backend server"`
-	MaxSizeMB    int    `yaml:"max_size_mb" usage:"max size in MBytes of single log file"`
-	MaxNum       int    `yaml:"max_num" usage:"max number of log files"`
+	MaxSizeMB    int    `yaml:"maxSizeMB" usage:"max size in MBytes of single log file"`
+	MaxNum       int    `yaml:"maxNum" usage:"max number of log files"`
 	Level        string `yaml:"level" usage:"log level of backend server. DEBUG, INFO, WARN, ERROR"`
-	ToStdErr     bool   `yaml:"to_stderr" usage:"log to stderr instead of files"`
-	AlsoToStdErr bool   `yaml:"also_to_stderr" usage:"log to stderr in addition to files"`
+	ToStdErr     bool   `yaml:"toStderr" usage:"log to stderr instead of files"`
+	AlsoToStdErr bool   `yaml:"alsoToStderr" usage:"log to stderr in addition to files"`
 }
 
 // HTTPServer the config of http service.
 type HTTPServer struct {
-	BindIP    string `yaml:"bind_ip"`
+	BindIP    string `yaml:"bindIP"`
 	Port      int    `yaml:"port"`
-	StaticDir string `yaml:"static_dir"`
+	StaticDir string `yaml:"staticDir"`
 }
 
 // AdminServer the config of admin service.
 type AdminServer struct {
-	BindIP    string `yaml:"bind_ip"`
+	BindIP    string `yaml:"bindIP"`
 	Port      int    `yaml:"port"`
-	StaticDir string `yaml:"static_dir"`
+	StaticDir string `yaml:"staticDir"`
 }
 
 // APIGateway the config of api-gateway.
@@ -119,7 +127,7 @@ type APIGateway struct {
 
 // CMDB the config of cmdb.
 type CMDB struct {
-	TenantID   string `yaml:"tenant_id" usage:"tenant id of cmdb"`
+	TenantID   string
 	APIGateway `yaml:",inline" usage:"api-gateway config of cmdb"`
 }
 
@@ -140,18 +148,13 @@ type TLSConfig struct {
 
 // Workflow the config of workflow.
 type Workflow struct {
-	WorkerNum int   `yaml:"worker_num" usage:"worker num of workflow"`
-	Redis     Redis `yaml:"redis" usage:"redis config of backend service"`
+	WorkerNum int `yaml:"workerNum" usage:"worker num of workflow"`
 }
 
 // Validate validates the config.
 func (conf Workflow) Validate() error {
 	if conf.WorkerNum <= 0 {
 		return fmt.Errorf("worker num must be greater than 0, worker-num(%d)", conf.WorkerNum)
-	}
-
-	if err := conf.Redis.Validate(); err != nil {
-		return err
 	}
 
 	return nil
@@ -170,24 +173,29 @@ const (
 
 // BackendService the config of backend service.
 type BackendService struct {
-	RunMode    RunMode    `yaml:"run_mode" usage:"run mode of service"`
-	TenantMode string     `yaml:"tenant_mode" usage:"tenant mode of service"`
-	CMDB       CMDB       `yaml:"cmdb" usage:"cmdb config of backend service"`
-	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
-	Redis      Redis      `yaml:"redis" usage:"redis config of backend service"`
-	MongoDB    MongoDB    `yaml:"mongodb" usage:"mongodb config of backend service"`
-	Log        Log        `yaml:"log" usage:"log config of backend service"`
-	Workflow   Workflow   `yaml:"workflow" usage:"workflow config of backend service"`
-	AdminServer AdminServer `yaml:"admin_server" usage:"admin server config of backend service"`
+	RunMode     RunMode     `yaml:"runMode" usage:"run mode of service"`
+	TenantMode  tenant.Mode `yaml:"tenantMode" usage:"tenant mode of service"`
+	CMDB        CMDB        `yaml:"cmdb" usage:"cmdb config of backend service"`
+	Workflow    Workflow    `yaml:"workflow" usage:"workflow config of backend service"`
+	HTTPServer  HTTPServer  `yaml:"httpServer" usage:"http server config of backend service"`
+	AdminServer AdminServer `yaml:"adminServer" usage:"admin server config of backend service"`
+	Redis       Redis       `yaml:"redis" usage:"redis config of backend service"`
+	MongoDB     MongoDB     `yaml:"mongodb" usage:"mongodb config of backend service"`
+	Log         Log         `yaml:"log" usage:"log config of backend service"`
 }
 
 // NewBackendService generates a new BackendService with default values.
 func NewBackendService() *BackendService {
 	return &BackendService{
-		RunMode: defaultBackendRunMode,
+		RunMode:    defaultBackendRunMode,
+		TenantMode: defaultBackendTenantMode,
 		HTTPServer: HTTPServer{
 			BindIP: defaultBackendHTTPBindIP,
 			Port:   defaultBackendHTTPPort,
+		},
+		AdminServer: AdminServer{
+			BindIP: defaultBackendAdminBindIP,
+			Port:   defaultBackendAdminPort,
 		},
 		Log: Log{
 			Dir:       defaultBackendLogDir,
@@ -223,16 +231,19 @@ func (b *BackendService) Validate() error {
 
 // SaasService the config of saas service.
 type SaasService struct {
-	RunMode    RunMode    `yaml:"mode" usage:"run mode of service"`
-	APIGateway APIGateway `yaml:"api_gateway" usage:"auth config of backend service"`
-	HTTPServer HTTPServer `yaml:"http_server" usage:"http server config of backend service"`
-	Log        Log        `yaml:"log" usage:"log config of backend service"`
+	RunMode     RunMode     `yaml:"mode" usage:"run mode of service"`
+	TenantMode  tenant.Mode `yaml:"tenantMode" usage:"tenant mode of service"`
+	APIGateway  APIGateway  `yaml:"apiGateway" usage:"auth config of saas service"`
+	HTTPServer  HTTPServer  `yaml:"httpServer" usage:"http server config of saas service"`
+	AdminServer AdminServer `yaml:"adminServer" usage:"admin server config of saas service"`
+	Log         Log         `yaml:"log" usage:"log config of saas service"`
 }
 
 // NewSaasService generatea a new SaasService with default values.
 func NewSaasService() *SaasService {
 	return &SaasService{
-		RunMode: defaultSaasRunMode,
+		RunMode:    defaultSaasRunMode,
+		TenantMode: defaultSaasTenantMode,
 		APIGateway: APIGateway{
 			User: defaultSaasAPIGwUser,
 		},
@@ -240,6 +251,10 @@ func NewSaasService() *SaasService {
 			BindIP:    defaultSaasHTTPBindIP,
 			Port:      defaultSaasHTTPPort,
 			StaticDir: defaultSaasHTTPStaticDir,
+		},
+		AdminServer: AdminServer{
+			BindIP: defaultSaasAdminBindIP,
+			Port:   defaultSaasAdminPort,
 		},
 		Log: Log{
 			Dir:       defaultSaasLogDir,

@@ -72,14 +72,11 @@ type Service struct {
 }
 
 const (
-	//RouterNameHttpServer defines the name of http server router.
-	RouterNameHttpServer = "http-server"
+	// RouterNameHTTPServer defines the name of http server router.
+	RouterNameHTTPServer = "http-server"
 
-	//RouterNameAdminServer defines the name of admin server router.
+	// RouterNameAdminServer defines the name of admin server router.
 	RouterNameAdminServer = "admin-server"
-
-	// MongoDatabaseName bk node manager mongo database name.
-	MongoDatabaseName = "bk-nodeman"
 )
 
 // NewService creates a new backend service.
@@ -111,22 +108,22 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		return nil, err
 	}
 
-	svc.Cap.TopoStorage, err = topoStorage.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	svc.Cap.TopoStorage, err = topoStorage.NewStorage(mongoClient, conf.MongoDB.Database, svc.Cap.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	svc.Cap.TrigEngineStorage, err = trigengine.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	svc.Cap.TrigEngineStorage, err = trigengine.NewStorage(mongoClient, conf.MongoDB.Database, svc.Cap.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	svc.Cap.OperInstStorage, err = operinstdataStorage.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	svc.Cap.OperInstStorage, err = operinstdataStorage.NewStorage(mongoClient, conf.MongoDB.Database, svc.Cap.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	svc.Cap.OperStorage, err = operation.NewStorage(mongoClient, MongoDatabaseName, svc.Cap.Logger)
+	svc.Cap.OperStorage, err = operation.NewStorage(mongoClient, conf.MongoDB.Database, svc.Cap.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +137,9 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		WorkflowConfig: manager.WorkflowConfig{
 			WorkNodeNum: conf.Workflow.WorkerNum,
 			Redis: manager.RedisConfig{
-				Addr:     fmt.Sprintf("%s:%d", conf.Workflow.Redis.Host, conf.Workflow.Redis.Port),
-				Password: conf.Workflow.Redis.Password,
-				DB:       conf.Workflow.Redis.DB,
+				Addr:     fmt.Sprintf("%s:%d", conf.Redis.Host, conf.Redis.Port),
+				Password: conf.Redis.Password,
+				DB:       conf.Redis.DB,
 			},
 		},
 	}, blog.GlobalLogger{})
@@ -150,7 +147,7 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		return nil, err
 	}
 
-	httpServer := rest.NewServer(svc.ctx, RouterNameHttpServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
+	httpServer := rest.NewServer(svc.ctx, RouterNameHTTPServer, conf.HTTPServer.BindIP, conf.HTTPServer.Port,
 		loggerWriterAdaptor{},
 		rest.WithPing(),
 		withHealthz(svc.Cap),

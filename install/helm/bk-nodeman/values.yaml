@@ -415,7 +415,7 @@ mongodb:
   ## @param replicaCount Number of MongoDB&reg; nodes (only when `architecture=replicaset`)
   ## Ignored when mongodb.architecture=standalone
   ##
-  replicaCount: 1
+  replicaCount: 2
 
   ## Service parameters
   ##
@@ -478,6 +478,8 @@ externalMongodb:
   username: "nodeman"
   password: "defaultpassword"
   database: "nodeman"
+  authSource: "admin"
+  authMechanism: "SCRAM-SHA-256"
 
 ## Nodeman backend.
 ##
@@ -519,43 +521,37 @@ backend:
   ##
   config:
     ## mode: release or debug, default is release.
-    run_mode: release
+    runMode: "release"
 
     ## tenant_mode: multi or single, default is single.
-    tenant_mode: single
+    tenantMode: "single"
 
     ## defines the backend http server related settings.
-    http_server:
-      bind_ip: 0.0.0.0
+    httpServer:
+      bindIP: "0.0.0.0"
       port: 8000
 
     ## defines the backend admin server related settings.
-    admin_server:
-      bind_ip: 0.0.0.0
-      port: 6666
+    adminServer:
+      bindIP: "0.0.0.0"
+      port: 8001
 
     ## defines the workflow related settings.
     workflow:
-      # worker_num is the number of workers.
-      worker_num: 1
-      # redis is the redis config.
-      redis:
-        host: 127.0.0.1
-        port: 6377
-        password: 123456
-        db: 0
+      # workerNum is the number of workers.
+      workerNum: 1
 
     # defines the CMDB (BK API gateway) related settings.
     cmdb:
       # endpoints is a seed list of host:port addresses of esb nodes.
       endpoints:
-        - https://example.com/api/bk-cmdb/prod
+        - "https://example.com/api/bk-cmdb/prod"
       # appCode is the BlueKing app code of NodeMan to request api gateway.
-      appCode: xxxxxx
+      appCode: ""
       # appSecret is the BlueKing app secret of NodeMan to request api gateway.
-      appSecret: xxxxxx
+      appSecret: ""
       # user is the BlueKing user of NodeMan to request api gateway.
-      user: xxxxxx
+      user: ""
       # authMode is the mode to do api auth verification,
       # it support 'oa' and 'ee' and 'at' mode for now.
       # 1. oa use bkTicket auth.
@@ -564,29 +560,29 @@ backend:
       # 4. un use no user authentication required
       authMode: "un"
       # bkTicket is the BlueKing access ticket of costops to request api gateway.
-      bkTicket: xxxxxxxxx
+      bkTicket: ""
       # bkToken is the BlueKing user token of costops to request api gateway.
-      bkToken: xxxxxxxxx
+      bkToken: ""
       # accessToken is the BlueKing access token of costops to request api gateway.
-      accessToken: xxxxxx
+      accessToken: ""
       # defines tls related options.
       tls:
         # server should be accessed without verifying the TLS certificate.
-        insecureSkipVerify:
+        insecureSkipVerify: false
         # server requires TLS client certificate authentication.
-        certFile:
+        certFile: ""
         # server requires TLS client certificate authentication.
-        keyFile:
+        keyFile: ""
         # trusted root certificates for server.
-        caFile:
+        caFile: ""
         # the password to decrypt the certificate.
-        password:
+        password: ""
 
     ## defines the log related settings.
     log:
-      dir: /bk-nodeman/log
-      level: INFO
-      max_num: 10
-      max_size_mb: 200
-      to_stderr: false
-      also_to_stderr: false
+      dir: "/bk-nodeman/log"
+      level: "INFO"
+      maxNum: 10
+      maxSizeMB: 200
+      toStderr: false
+      alsoToStderr: false
