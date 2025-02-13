@@ -125,7 +125,7 @@ func Test_handler_UpsertMany(t *testing.T) {
 				ctx: ctx,
 				hosts: []*types.Host{
 					{
-						TenantID: "test",
+						TenantID: "single",
 						CloudID:  1,
 						BizID:    1,
 						HostID:   1,
@@ -134,7 +134,7 @@ func Test_handler_UpsertMany(t *testing.T) {
 						OSType:   "centos",
 					},
 					{
-						TenantID: "test",
+						TenantID: "single",
 						CloudID:  1,
 						BizID:    2,
 						HostID:   2,
@@ -143,7 +143,7 @@ func Test_handler_UpsertMany(t *testing.T) {
 						OSType:   "centos",
 					},
 					{
-						TenantID: "test",
+						TenantID: "single",
 						CloudID:  1,
 						BizID:    3,
 						HostID:   3,
@@ -155,11 +155,33 @@ func Test_handler_UpsertMany(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "tenantID not match",
+			args: args{
+				ctx: ctx,
+				hosts: []*types.Host{
+					{
+						TenantID: "test",
+						CloudID:  1,
+						BizID:    1,
+						HostID:   1,
+						InnerIP:  "127.0.0.1",
+						Mac:      "123",
+						OSType:   "centos",
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			if err := h.UpsertMany(tt.args.ctx, tt.args.hosts); (err != nil) != tt.wantErr {
+			err := h.UpsertMany(tt.args.ctx, tt.args.hosts)
+			if err != nil {
+				t.Logf("UpsertMany() error = %v", err)
+			}
+			if (err != nil) != tt.wantErr {
 				t.Errorf("UpsertMany() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

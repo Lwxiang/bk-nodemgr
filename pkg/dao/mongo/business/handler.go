@@ -14,6 +14,7 @@ package business
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
@@ -30,18 +31,21 @@ type Handler interface {
 type handler struct {
 	client *mongo.Database
 	logger logger.Logger
-	daoMap map[string]*dao
+	// daoMap stores dao's containing tenant information.
+	// Do not edit the daoMap except with the tenantDao func.
+	daoMap sync.Map
 }
 
-// tenantDao get a tenantDao dao.
 func (h *handler) tenantDao(tenantID string) *dao {
-	d, ok := h.daoMap[tenantID]
-	if !ok {
-		h.daoMap[tenantID] = newDao(tenantID, h.client, h.logger)
-		d = h.daoMap[tenantID]
+	if d, ok := h.daoMap.Load(tenantID); ok {
+		return d.(*dao)
 	}
 
-	return d
+	d, _ := h.daoMap.LoadOrStore(tenantID, newDao(tenantID, h.client, h.logger))
+
+	// note: we can be sure that only the tenantDao func edit the daoMap,
+	// so we can just use the type assertion here.
+	return d.(*dao)
 }
 
 // New create a new business handler.
@@ -49,7 +53,7 @@ func New(client *mongo.Database, logger logger.Logger) Handler {
 	return &handler{
 		client: client,
 		logger: logger,
-		daoMap: make(map[string]*dao),
+		daoMap: sync.Map{},
 	}
 }
 

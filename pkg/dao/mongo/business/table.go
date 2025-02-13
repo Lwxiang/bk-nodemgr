@@ -20,7 +20,7 @@ import (
 
 // TableName business table name.
 func TableName(tenantID string) string {
-	return fmt.Sprintf("business-%s", tenantID)
+	return fmt.Sprintf("business_%s", tenantID)
 }
 
 // Business represents a business under a tenant.

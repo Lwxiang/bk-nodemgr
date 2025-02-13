@@ -20,7 +20,7 @@ import (
 
 // TableName host table name.
 func TableName(tenantID string) string {
-	return fmt.Sprintf("host-%s", tenantID)
+	return fmt.Sprintf("host_%s", tenantID)
 }
 
 // Host represents a host.
