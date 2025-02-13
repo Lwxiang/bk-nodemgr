@@ -21,8 +21,8 @@ import (
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func newDao(client *mongo.Database, logger logger.Logger) *dao {
-	return &dao{client: client.Collection(TableName), logger: logger}
+func newDao(tenantID string, client *mongo.Database, logger logger.Logger) *dao {
+	return &dao{client: client.Collection(TableName(tenantID)), logger: logger}
 }
 
 type dao struct {

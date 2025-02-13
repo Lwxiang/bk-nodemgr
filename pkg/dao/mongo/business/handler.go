@@ -16,6 +16,7 @@ import (
 	"errors"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -27,18 +28,38 @@ type Handler interface {
 }
 
 type handler struct {
-	dao *dao
+	client *mongo.Database
+	logger logger.Logger
+	daoMap map[string]*dao
+}
+
+// tenantDao get a tenantDao dao.
+func (h *handler) tenantDao(tenantID string) *dao {
+	d, ok := h.daoMap[tenantID]
+	if !ok {
+		h.daoMap[tenantID] = newDao(tenantID, h.client, h.logger)
+		d = h.daoMap[tenantID]
+	}
+
+	return d
 }
 
 // New create a new business handler.
 func New(client *mongo.Database, logger logger.Logger) Handler {
 	return &handler{
-		dao: newDao(client, logger),
+		client: client,
+		logger: logger,
+		daoMap: make(map[string]*dao),
 	}
 }
 
 // Upsert updates or inserts a business.
 func (h *handler) Upsert(ctx context.Context, biz *types.Business) error {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return err
+	}
+
 	if biz == nil {
 		return errors.New("biz is nil")
 	}
@@ -48,7 +69,7 @@ func (h *handler) Upsert(ctx context.Context, biz *types.Business) error {
 		BizID:    biz.BizID,
 		BizName:  biz.BizName,
 	}
-	if err := h.dao.upsert(ctx, data); err != nil {
+	if err := h.tenantDao(tenantID).upsert(ctx, data); err != nil {
 		return err
 	}
 
@@ -57,7 +78,12 @@ func (h *handler) Upsert(ctx context.Context, biz *types.Business) error {
 
 // ListAll list all business.
 func (h *handler) ListAll(ctx context.Context) ([]*types.Business, error) {
-	bizs, err := h.dao.listAll(ctx)
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bizs, err := h.tenantDao(tenantID).listAll(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -54,7 +55,10 @@ func testClient(t *testing.T) Handler {
 
 // Test_handler_upsert ...
 func Test_handler_Upsert(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "test")
+
 	type args struct {
+		ctx context.Context
 		biz *types.Business
 	}
 	tests := []struct {
@@ -65,6 +69,7 @@ func Test_handler_Upsert(t *testing.T) {
 		{
 			name: "base",
 			args: args{
+				ctx: ctx,
 				biz: &types.Business{
 					TenantID: "test",
 					BizID:    1,
@@ -76,6 +81,7 @@ func Test_handler_Upsert(t *testing.T) {
 		{
 			name: "upsert nil",
 			args: args{
+				ctx: ctx,
 				biz: nil,
 			},
 			wantErr: true,
@@ -84,7 +90,12 @@ func Test_handler_Upsert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			if err := h.Upsert(context.Background(), tt.args.biz); (err != nil) != tt.wantErr {
+			err := h.Upsert(tt.args.ctx, tt.args.biz)
+			if err != nil {
+				t.Logf("upsert() error = %v", err)
+			}
+
+			if (err != nil) != tt.wantErr {
 				t.Errorf("upsert() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -93,6 +104,8 @@ func Test_handler_Upsert(t *testing.T) {
 
 // Test_handler_ListAll ...
 func Test_handler_ListAll(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "test")
+
 	tests := []struct {
 		name    string
 		wantErr bool
@@ -106,7 +119,7 @@ func Test_handler_ListAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			got, err := h.ListAll(context.Background())
+			got, err := h.ListAll(ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ListAll() error = %v, wantErr %v", err, tt.wantErr)
 				return

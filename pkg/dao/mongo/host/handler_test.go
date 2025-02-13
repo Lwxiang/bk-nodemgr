@@ -55,6 +55,8 @@ func testClient(t *testing.T) Handler {
 
 // Test_handler_ListAll ...
 func Test_handler_ListAll(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "test")
+
 	tests := []struct {
 		name    string
 		wantErr bool
@@ -67,7 +69,7 @@ func Test_handler_ListAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testClient(t)
-			got, err := h.ListAll(context.Background())
+			got, err := h.ListAll(ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ListAll() error = %v, wantErr %v", err, tt.wantErr)
 				return

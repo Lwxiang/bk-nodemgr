@@ -12,13 +12,16 @@
 package business
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 )
 
 // TableName business table name.
-const TableName = "business"
+func TableName(tenantID string) string {
+	return fmt.Sprintf("business-%s", tenantID)
+}
 
 // Business represents a business under a tenant.
 // BizID should be the unique key.
