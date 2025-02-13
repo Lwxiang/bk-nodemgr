@@ -388,7 +388,7 @@ func (mgr *operInstMgr) dispatchOperInst(inst *OperInst) error {
 const EngineMaxRetryLimit = uint(10)
 
 // do will dispatch the action of OperInst to machinery.
-func (mgr *operInstMgr) do(ctx context.Context, actionName string, operInstID string) error {
+func (mgr *operInstMgr) do(ctx context.Context, actionName string, operInstID string) (err error) {
 	actionDef, ok := mgr.registeredActionDefs[actionName]
 	if !ok {
 		return fmt.Errorf("action not registered, name(%s)", actionName)
@@ -437,6 +437,39 @@ func (mgr *operInstMgr) do(ctx context.Context, actionName string, operInstID st
 
 	go mgr.executeAction(doResult, actionInstCtx, actionDef)
 
+	defer func() {
+		// when all action done or error happens, we need to update the state of the operation inst.
+		if actionInstCtx.Data.Index == len(inst.data.ActionNames)-1 || err != nil {
+			switch actionInstCtx.Data.State {
+			case ActionInstStateSuccess:
+				inst.data.State = OperInstStateSuccess
+			case ActionInstStateFailed:
+				inst.data.State = OperInstStateFailed
+			case ActionInstStateTimeout:
+				inst.data.State = OperInstStateTimeout
+			case ActionInstStateTerminated:
+				inst.data.State = OperInstStateTerminated
+			case ActionInstStateRunning:
+				inst.data.State = OperInstStateRunning
+			case ActionInstStatePending:
+				// TODO: implement me
+				inst.data.State = OperInstStateFailed
+			case ActionInstStateSkipped:
+				// last action shouldn't be skipped
+				inst.data.State = OperInstStateFailed
+			case ActionInstStateUnknown:
+				// last action shouldn't be unknown
+				inst.data.State = OperInstStateFailed
+			}
+		}
+
+		if storeErr := mgr.storeOperInst(inst); storeErr != nil {
+			err = fmt.Errorf("failed to store operation inst data. operation-inst-id(%s), action-name(%s), "+
+				"store-err(%v), original-err(%v)",
+				operInstID, actionName, storeErr, err)
+		}
+	}()
+
 	select {
 	case err = <-doResult:
 		data.EndedAt = time.Now()
@@ -447,13 +480,7 @@ func (mgr *operInstMgr) do(ctx context.Context, actionName string, operInstID st
 			data.State = ActionInstStateFailed
 		}
 
-		if storeErr := mgr.storeOperInst(inst); storeErr != nil {
-			return fmt.Errorf("failed to store operation inst param. operation-inst-id(%s), action-name(%s), err: %v",
-				operInstID, actionName, storeErr)
-		}
-
 		return err
-
 	case <-actionCtx.Done():
 		return fmt.Errorf("action timeout, operation-inst-id(%s), action-name(%s)", operInstID, actionName)
 	case <-operInstCtx.Done():

@@ -63,6 +63,7 @@ func (h *handler) Upsert(ctx context.Context, data *operengine.OperInstData) err
 		OperDefName:       data.OperDefName,
 		ParentOperInstID:  data.ParentOperInstID,
 		Timeout:           data.Timeout,
+		State:             string(data.State),
 		CreatedAt:         data.CreatedAt,
 		StartedAt:         data.StartedAt,
 		EndedAt:           data.EndedAt,
@@ -148,6 +149,7 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperI
 		Timeout:           operInstData.Timeout,
 		CreatedAt:         operInstData.CreatedAt,
 		StartedAt:         operInstData.StartedAt,
+		State:             operengine.OperInstState(operInstData.State),
 		EndedAt:           operInstData.EndedAt,
 		StoppedAt:         operInstData.StoppedAt,
 	}

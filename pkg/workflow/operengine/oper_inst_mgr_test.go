@@ -108,7 +108,7 @@ func Test_evaluateActionInstanceState(t *testing.T) {
 			name: "unknown",
 			args: args{
 				data: &ActionInstData{
-					State: ActionInstanceStateUnknown,
+					State: ActionInstStateUnknown,
 				},
 			},
 			want:    false,

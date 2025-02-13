@@ -12,7 +12,6 @@
 package operation
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -42,18 +41,5 @@ func WithOperationID(ids ...string) OptFn {
 
 	return func(f bson.D) bson.D {
 		return append(f, bson.E{Key: "data.operation_id", Value: bson.M{"$in": ids}})
-	}
-}
-
-// WithStatus filters by state
-func WithStatus(states ...operengine.OperationState) OptFn {
-	if len(states) == 1 {
-		return func(f bson.D) bson.D {
-			return append(f, bson.E{Key: "data.state", Value: states[0]})
-		}
-	}
-
-	return func(f bson.D) bson.D {
-		return append(f, bson.E{Key: "data.state", Value: bson.M{"$in": states}})
 	}
 }

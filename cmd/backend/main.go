@@ -41,15 +41,15 @@ func init() {
 type logger struct{}
 
 func (l logger) Print(args ...interface{}) {
-	blog.Info(args...)
+	blog.Debug(args...)
 }
 
 func (l logger) Printf(s string, args ...interface{}) {
-	blog.Infof(s, args...)
+	blog.Debugf(s, args...)
 }
 
 func (l logger) Println(args ...interface{}) {
-	blog.Info(args...)
+	blog.Debug(args...)
 }
 
 func (l logger) Fatal(args ...interface{}) {

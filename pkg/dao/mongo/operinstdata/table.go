@@ -47,15 +47,13 @@ type OperInstData struct {
 	ActionInstDataMap map[string]*ActionInstData `json:"action_data" bson:"action_data"`
 	OperDefName       string                     `json:"oper_def_name" bson:"oper_def_name"`
 	ParentOperInstID  string                     `json:"parent_oper_inst_id" bson:"parent_oper_inst_id"`
-
-	Timeout time.Duration `json:"timeout" bson:"timeout"`
-
-	InitContent string `json:"init_content" bson:"init_content"`
-
-	CreatedAt time.Time `json:"created_at" bson:"created_at"`
-	StartedAt time.Time `json:"started_at" bson:"started_at"`
-	EndedAt   time.Time `json:"ended_at" bson:"ended_at"`
-	StoppedAt time.Time `json:"stopped_at" bson:"stopped_at"`
+	Timeout           time.Duration              `json:"timeout" bson:"timeout"`
+	State             string                     `json:"state" bson:"state"`
+	InitContent       string                     `json:"init_content" bson:"init_content"`
+	CreatedAt         time.Time                  `json:"created_at" bson:"created_at"`
+	StartedAt         time.Time                  `json:"started_at" bson:"started_at"`
+	EndedAt           time.Time                  `json:"ended_at" bson:"ended_at"`
+	StoppedAt         time.Time                  `json:"stopped_at" bson:"stopped_at"`
 }
 
 // UniqueKey unique key of the table.

@@ -25,7 +25,6 @@ type Operation struct {
 	TriggerID   string      `json:"trigger_id" bson:"trigger_id"`
 	OperInstIDs []string    `json:"oper_inst_ids" bson:"oper_inst_ids"`
 	DefSnapshot DefSnapshot `json:"def_snapshot" bson:"def_snapshot"`
-	State       string      `json:"state" bson:"state"`
 }
 
 // DefSnapshot represents the snapshot of the operation definition.

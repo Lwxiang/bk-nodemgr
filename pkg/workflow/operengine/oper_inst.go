@@ -61,6 +61,8 @@ type OperInstData struct {
 	ParentOperInstID  string
 	Timeout           time.Duration
 
+	State OperInstState
+
 	InitContent map[string]map[string]any
 
 	CreatedAt time.Time
@@ -96,7 +98,7 @@ func (o *OperInst) LastActionInstState(actionName string) ActionInstState {
 		if action != actionName {
 			lastActionData, ok := o.data.ActionInstDataMap[action]
 			if !ok {
-				return ActionInstanceStateUnknown
+				return ActionInstStateUnknown
 			}
 
 			lastActionInstState = lastActionData.State

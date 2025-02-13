@@ -22,9 +22,6 @@ import (
 
 // OperationMgr defines the operation operInstMgr.
 type OperationMgr interface {
-	// TerminateOperation an operation.
-	TerminateOperation(operationID string) error
-
 	// RetryOperation an operation.
 	RetryOperation(operationID string, param *OperInstParam) error
 
@@ -104,6 +101,7 @@ func (m *operMgr) buildInst(operation *Operation, param *OperInstParam) (
 	}
 
 	operInst.data.InitContent = param.InitContent
+	operInst.data.ParentOperInstID = param.ParentOperInstID
 
 	for idx, actionName := range operation.DefSnapshot.ActionNames {
 		operInst.data.ActionInstDataMap[actionName] = &ActionInstData{
@@ -118,34 +116,6 @@ func (m *operMgr) buildInst(operation *Operation, param *OperInstParam) (
 	}
 
 	return operInst, nil
-}
-
-// TerminateOperation an operation.
-func (m *operMgr) TerminateOperation(operationID string) (err error) {
-	mutex := m.mutexFactory.NewMutex(operationID)
-	if err = mutex.TryLock(); err != nil {
-		return err
-	}
-
-	defer func() {
-		err = mutex.Unlock()
-	}()
-
-	operation, err := m.storage.GetOperation(m.ctx, operationID)
-	if err != nil {
-		return err
-	}
-
-	if err := m.operInstMgr.TerminateOperInst(operation.getLatestOperInstID()); err != nil {
-		return err
-	}
-
-	operation.State = OperationStateTerminated
-	if err = m.storage.UpsertOperation(m.ctx, operation); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // ExecuteOperation an operation.

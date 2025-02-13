@@ -11,6 +11,8 @@
 // Package operengine ...
 package operengine
 
+import "fmt"
+
 // ActionInstState action instance state.
 type ActionInstState string
 
@@ -36,17 +38,14 @@ const (
 	// ActionInstStateTerminated action instance state terminated.
 	ActionInstStateTerminated ActionInstState = "terminated"
 
-	// ActionInstanceStateUnknown action instance state unknown.
-	ActionInstanceStateUnknown ActionInstState = "unknown"
+	// ActionInstStateUnknown action instance state unknown.
+	ActionInstStateUnknown ActionInstState = "unknown"
 )
 
 // OperInstState OperInst State.
 type OperInstState string
 
 const (
-	// OperInstStatePending OperInst state pending.
-	OperInstStatePending OperInstState = "pending"
-
 	// OperInstStateRunning OperInst state running.
 	OperInstStateRunning OperInstState = "running"
 
@@ -59,29 +58,17 @@ const (
 	// OperInstStateTimeout OperInst state timeout.
 	OperInstStateTimeout OperInstState = "timeout"
 
-	// OperInstStateSkipped OperInst state skipped.
-	OperInstStateSkipped OperInstState = "skipped"
-
 	// OperInstStateTerminated OperInst state terminated.
 	OperInstStateTerminated OperInstState = "terminated"
 )
 
-// OperationState represents the state of an operation.
-type OperationState string
-
-const (
-	// OperationStateInit Operation state init represents the initial state of a operation.
-	OperationStateInit OperationState = "init"
-
-	// OperationStateRunning Operation state running represents a operation that is currently running.
-	OperationStateRunning OperationState = "running"
-
-	// OperationStateSuccess Operation state success represents a operation that has completed successfully.
-	OperationStateSuccess OperationState = "success"
-
-	// OperationStateFailed Operation state failed represents a operation that has failed.
-	OperationStateFailed OperationState = "failed"
-
-	// OperationStateTerminated Operation state terminated represents a operation that has been terminated.
-	OperationStateTerminated OperationState = "terminated"
-)
+// Validate OperInstState.
+func (state OperInstState) Validate() error {
+	switch state {
+	case OperInstStateRunning, OperInstStateSuccess, OperInstStateFailed,
+		OperInstStateTimeout, OperInstStateTerminated:
+		return nil
+	default:
+		return fmt.Errorf("invalid operation state, state(%s)", state)
+	}
+}

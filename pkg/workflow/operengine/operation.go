@@ -30,7 +30,6 @@ func NewOperation(triggerID string, defSnapshot OperDefSnapshot) *Operation {
 		OperationID: uuid.New().String(),
 		DefSnapshot: defSnapshot,
 		OperInstIDs: []string{},
-		State:       OperationStateInit,
 	}
 }
 
@@ -40,7 +39,6 @@ type Operation struct {
 	OperationID string
 	DefSnapshot OperDefSnapshot
 	OperInstIDs []string
-	State       OperationState
 }
 
 // CheckEnforceability check if an operation can be executed.
@@ -48,15 +46,6 @@ func (operation *Operation) CheckEnforceability() error {
 	// check the operation instance length.
 	if len(operation.OperInstIDs) > OperInstMaxNum {
 		return fmt.Errorf("operation can not be executed, operation-inst-length(%d)", len(operation.OperInstIDs))
-	}
-
-	// check the State of operation.
-	switch operation.State {
-	// in this case, operation can be executed.
-	case OperationStateInit, OperationStateRunning, OperationStateFailed:
-	// in default, operation can not be executed.
-	default:
-		return fmt.Errorf("operation can not be executed, State(%s)", operation.State)
 	}
 
 	return nil
@@ -84,4 +73,7 @@ type OperInstParam struct {
 
 	// InitContent define the init content of operation instance.
 	InitContent map[string]map[string]any
+
+	// ParentOperInstID define the parent operation instance id.
+	ParentOperInstID string
 }

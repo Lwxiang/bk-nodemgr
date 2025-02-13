@@ -71,7 +71,6 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.Opera
 			ActionNames: operation.DefSnapshot.ActionNames,
 		},
 		OperInstIDs: operation.OperInstIDs,
-		State:       operengine.OperationState(operation.State),
 	}
 
 	return data, nil
@@ -96,7 +95,6 @@ func (h *handler) Upsert(ctx context.Context, operation *operengine.Operation) e
 			OperDefName: operation.DefSnapshot.OperDefName,
 			ActionNames: operation.DefSnapshot.ActionNames,
 		},
-		State: string(operation.State),
 	}
 
 	if err := h.dao.upsert(ctx, data); err != nil {
