@@ -33,18 +33,20 @@ func NewLogConfig() LogConfig {
 		ToStdErr:        true,
 		AlsoToStdErr:    true,
 		Level:           "info",
-		StdErrThreshold: "3",
+		StdErrThreshold: "4",
 		VModule:         "",
 		TraceLocation:   "",
 	}
 }
+
+const writerLoggerDepth = 2
 
 // WriterInfo serves as a bridge between the standard log package and the glog package.
 type WriterInfo struct{}
 
 // Write implements the io.Writer interface.
 func (writer WriterInfo) Write(data []byte) (n int, err error) {
-	glog.Info(string(data))
+	glog.InfoDepth(writerLoggerDepth, string(data))
 	return len(data), nil
 }
 
@@ -53,7 +55,7 @@ type WriterDebug struct{}
 
 // Write implements the io.Writer interface.
 func (writer WriterDebug) Write(data []byte) (n int, err error) {
-	glog.Debug(string(data))
+	glog.DebugDepth(writerLoggerDepth, string(data))
 	return len(data), nil
 }
 
@@ -62,7 +64,7 @@ type WriterError struct{}
 
 // Write implements the io.Writer interface.
 func (writer WriterError) Write(data []byte) (n int, err error) {
-	glog.Error(string(data))
+	glog.ErrorDepth(writerLoggerDepth, string(data))
 	return len(data), nil
 }
 
@@ -131,62 +133,64 @@ func SetLevel(level string) {
 // GlobalLogger serves as a bridge between the standard log package and the glog package.
 type GlobalLogger struct{}
 
+const globalLoggerDepth = 1
+
 // Debug ...
 func (l GlobalLogger) Debug(args ...interface{}) {
-	glog.Debug(args...)
+	glog.DebugDepth(globalLoggerDepth, args...)
 }
 
 // Debugf ...
 func (l GlobalLogger) Debugf(format string, args ...interface{}) {
-	glog.Debugf(format, args...)
+	glog.DebugDepthf(globalLoggerDepth, format, args...)
 }
 
 // Debugw ...
 func (l GlobalLogger) Debugw(args ...interface{}) {
-	glog.Debugw(args...)
+	glog.DebugDepthw(globalLoggerDepth, args...)
 }
 
 // Info ...
 func (l GlobalLogger) Info(args ...interface{}) {
-	glog.Info(args...)
+	glog.InfoDepth(globalLoggerDepth, args...)
 }
 
 // Infof ...
 func (l GlobalLogger) Infof(format string, args ...interface{}) {
-	glog.Infof(format, args...)
+	glog.InfoDepthf(globalLoggerDepth, format, args...)
 }
 
 // Infow ...
 func (l GlobalLogger) Infow(args ...interface{}) {
-	glog.Infow(args...)
+	glog.InfoDepthw(globalLoggerDepth, args...)
 }
 
 // Warn ...
 func (l GlobalLogger) Warn(args ...interface{}) {
-	glog.Warning(args...)
+	glog.WarningDepth(globalLoggerDepth, args...)
 }
 
 // Warnf ...
 func (l GlobalLogger) Warnf(format string, args ...interface{}) {
-	glog.Warningf(format, args...)
+	glog.WarningDepthf(globalLoggerDepth, format, args...)
 }
 
 // Warnw ...
 func (l GlobalLogger) Warnw(args ...interface{}) {
-	glog.Warningw(args...)
+	glog.WarningDepthw(globalLoggerDepth, args...)
 }
 
 // Error ...
 func (l GlobalLogger) Error(args ...interface{}) {
-	glog.Error(args...)
+	glog.ErrorDepth(globalLoggerDepth, args...)
 }
 
 // Errorf ...
 func (l GlobalLogger) Errorf(format string, args ...interface{}) {
-	glog.Errorf(format, args...)
+	glog.ErrorDepthf(globalLoggerDepth, format, args...)
 }
 
 // Errorw ...
 func (l GlobalLogger) Errorw(args ...interface{}) {
-	glog.Errorw(args...)
+	glog.ErrorDepthw(globalLoggerDepth, args...)
 }

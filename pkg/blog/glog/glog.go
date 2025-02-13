@@ -422,7 +422,7 @@ type flushSyncWriter interface {
 
 func init() {
 	// Default stderrThreshold is ERROR.
-	logging.stderrThreshold = errorLog
+	logging.stderrThreshold = fatalLog
 	logging.toStderr = false
 	logging.alsoToStderr = false
 	_ = logging.vmodule.Set("")       // nolint
@@ -664,6 +664,15 @@ func (l *loggingT) print(s severity, args ...interface{}) {
 func (l *loggingT) printDepth(s severity, depth int, args ...interface{}) {
 	buf, file, line := l.header(s, depth)
 	fmt.Fprint(buf, args...)
+	if buf.Bytes()[buf.Len()-1] != '\n' {
+		buf.WriteByte('\n')
+	}
+	l.output(s, buf, file, line, false)
+}
+
+func (l *loggingT) printDepthf(s severity, depth int, format string, args ...interface{}) {
+	buf, file, line := l.header(s, depth)
+	fmt.Fprintf(buf, format, args...)
 	if buf.Bytes()[buf.Len()-1] != '\n' {
 		buf.WriteByte('\n')
 	}
@@ -1105,6 +1114,16 @@ func DebugDepth(depth int, args ...interface{}) {
 	logging.printDepth(debugLog, depth, args...)
 }
 
+// DebugDepthf acts as Debugf but uses depth to determine which call frame to log.
+// DebugDepth(0, "msg") is the same as Debug("msg").
+func DebugDepthf(depth int, format string, args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logging.printDepthf(debugLog, depth, format, args...)
+}
+
 // Debugln logs to the DEBUG log.
 // Arguments are handled in the manner of fmt.Println; a newline is appended if missing.
 func Debugln(args ...interface{}) {
@@ -1135,6 +1154,16 @@ func Debugw(args ...interface{}) {
 	logFormatw(debugLog, args...)
 }
 
+// DebugDepthw logs to the DEBUG log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func DebugDepthw(depth int, args ...interface{}) {
+	if !debugLog.AbleToLog() {
+		return
+	}
+
+	logFormatDepthw(debugLog, depth, args...)
+}
+
 // Info logs to the INFO log.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Info(args ...interface{}) {
@@ -1153,6 +1182,16 @@ func InfoDepth(depth int, args ...interface{}) {
 	}
 
 	logging.printDepth(infoLog, depth, args...)
+}
+
+// InfoDepthf acts as Infof but uses depth to determine which call frame to log.
+// InfoDepth(0, "msg") is the same as Info("msg").
+func InfoDepthf(depth int, format string, args ...interface{}) {
+	if !infoLog.AbleToLog() {
+		return
+	}
+
+	logging.printDepthf(infoLog, depth, format, args...)
 }
 
 // Infoln logs to the INFO log.
@@ -1181,6 +1220,16 @@ func Infow(args ...interface{}) {
 	logFormatw(infoLog, args...)
 }
 
+// InfoDepthw logs to the INFO log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func InfoDepthw(depth int, args ...interface{}) {
+	if !infoLog.AbleToLog() {
+		return
+	}
+
+	logFormatDepthw(infoLog, depth, args...)
+}
+
 // Warning logs to the WARNING and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Warning(args ...interface{}) {
@@ -1199,6 +1248,16 @@ func WarningDepth(depth int, args ...interface{}) {
 	}
 
 	logging.printDepth(warningLog, depth, args...)
+}
+
+// WarningDepthf acts as Warningf but uses depth to determine which call frame to log.
+// WarningDepth(0, "msg") is the same as Warning("msg").
+func WarningDepthf(depth int, format string, args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
+	logging.printDepthf(warningLog, depth, format, args...)
 }
 
 // Warningln logs to the WARNING and INFO logs.
@@ -1231,6 +1290,16 @@ func Warningw(args ...interface{}) {
 	logFormatw(warningLog, args...)
 }
 
+// WarningDepthw logs to the WARNING log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func WarningDepthw(depth int, args ...interface{}) {
+	if !warningLog.AbleToLog() {
+		return
+	}
+
+	logFormatDepthw(warningLog, depth, args...)
+}
+
 // Error logs to the ERROR, WARNING, and INFO logs.
 // Arguments are handled in the manner of fmt.Print; a newline is appended if missing.
 func Error(args ...interface{}) {
@@ -1249,6 +1318,16 @@ func ErrorDepth(depth int, args ...interface{}) {
 	}
 
 	logging.printDepth(errorLog, depth, args...)
+}
+
+// ErrorDepthf acts as Errorf but uses depth to determine which call frame to log.
+// ErrorDepth(0, "msg") is the same as Error("msg").
+func ErrorDepthf(depth int, format string, args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
+	logging.printDepthf(errorLog, depth, format, args...)
 }
 
 // Errorln logs to the ERROR, WARNING, and INFO logs.
@@ -1279,6 +1358,16 @@ func Errorw(args ...interface{}) {
 	}
 
 	logFormatw(errorLog, args...)
+}
+
+// ErrorDepthw logs to the ERROR log.
+// Arguments 0 are regarded as message, the rest of args are regared as key-value pairs.
+func ErrorDepthw(depth int, args ...interface{}) {
+	if !errorLog.AbleToLog() {
+		return
+	}
+
+	logFormatDepthw(errorLog, depth, args...)
 }
 
 // Fatal logs to the FATAL, ERROR, WARNING, and INFO logs,
@@ -1371,8 +1460,13 @@ var MissingValuePrompt = "(MISSING)"
 // IgnoredValuePrompt is the ignore prompt
 var IgnoredValuePrompt = "\"Ignored key without a value.\""
 
-// LogFormatw print data with format key(value).
+// LogFormatw print data with format key(value) in default depth.
 func logFormatw(s severity, args ...interface{}) {
+	logFormatDepthw(s, 2, args...)
+}
+
+// LogFormatw print data with format key(value).
+func logFormatDepthw(s severity, depth int, args ...interface{}) {
 	if len(args) == 0 {
 		return
 	}
@@ -1401,5 +1495,5 @@ func logFormatw(s severity, args ...interface{}) {
 		}
 	}
 
-	logging.print(s, args...)
+	logging.printDepth(s, depth+1, args...)
 }

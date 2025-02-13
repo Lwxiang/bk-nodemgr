@@ -72,7 +72,9 @@ func NewServer(ctx context.Context, name, ip string, port int, logWriter LogWrit
 	// Set log middleware
 	svr.engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Output:    logWriter.InfoWriter(),
-		Formatter: customLogFormatter}))
+		Formatter: customLogFormatter,
+		SkipPaths: []string{"/ping", "/healthz", "/metrics"},
+	}))
 
 	// Set metrics monitor.
 	svr.metrics = metrics.GetMonitor()
