@@ -20,22 +20,22 @@ import (
 
 // MiddlewareContext ...
 func MiddlewareContext() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		restContext := InitRestContext(c)
+	return func(gCtx *gin.Context) {
+		rCtx := InitRestContext(gCtx)
 
-		if c.Request.Method == http.MethodOptions {
-			c.Next()
+		if gCtx.Request.Method == http.MethodOptions {
+			gCtx.Next()
 			return
 		}
 
 		switch {
-		case initContextWithJWT(restContext):
+		case initContextWithJWT(rCtx):
 		default:
-			AbortWithUnauthorizedError(restContext, errf.ErrorUnauthorized)
+			rCtx.AbortWithUnauthorizedError(errf.ErrorUnauthorized)
 			return
 		}
 
-		c.Next()
+		gCtx.Next()
 	}
 }
 

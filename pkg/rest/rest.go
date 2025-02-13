@@ -36,52 +36,53 @@ type HandlerFunc func(*Context) (interface{}, error)
 type StreamHandlerFunc func(*Context)
 
 // AbortWithBadRequestError provides handler process failing response.
-func AbortWithBadRequestError(c *Context, err error) {
+func (c *Context) AbortWithBadRequestError(err error) {
 	result := Response{Code: errf.InvalidParameter, Message: err.Error(), RequestID: c.RequestID}
-	c.AbortWithStatusJSON(http.StatusBadRequest, result)
+	c.gCtx.AbortWithStatusJSON(http.StatusBadRequest, result)
 }
 
 // AbortWithUnauthorizedError provides auth check failing response.
-func AbortWithUnauthorizedError(c *Context, err error) {
+func (c *Context) AbortWithUnauthorizedError(err error) {
 	result := Response{Code: errf.DoAuthorizeFailed, Message: err.Error(), RequestID: c.RequestID}
-	c.AbortWithStatusJSON(http.StatusUnauthorized, result)
+	c.gCtx.AbortWithStatusJSON(http.StatusUnauthorized, result)
 }
 
 // AbortWithWithForbiddenError provides permission denied response.
-func AbortWithWithForbiddenError(c *Context, err error) {
+func (c *Context) AbortWithWithForbiddenError(err error) {
 	result := Response{Code: errf.PermissionDenied, Message: err.Error(), RequestID: c.RequestID}
-	c.AbortWithStatusJSON(http.StatusForbidden, result)
+	c.gCtx.AbortWithStatusJSON(http.StatusForbidden, result)
 }
 
 // AbortWithJSONError provides handler process failing response.
-func AbortWithJSONError(ctx *Context, err error) {
+func (c *Context) AbortWithJSONError(err error) {
 	// TODO: support error code
-	result := Response{Code: errf.Aborted, Result: false, Message: err.Error(), RequestID: ctx.RequestID}
-	ctx.AbortWithStatusJSON(http.StatusOK, result)
+	result := Response{Code: errf.Aborted, Result: false, Message: err.Error(), RequestID: c.RequestID}
+	c.gCtx.AbortWithStatusJSON(http.StatusOK, result)
 }
 
 // APIResponse provides handler process successfully and make a normal response.
-func APIResponse(ctx *Context, data interface{}) {
-	result := Response{Code: 0, Result: true, Message: "OK", RequestID: ctx.RequestID, Data: data}
-	ctx.JSON(http.StatusOK, result)
+func (c *Context) APIResponse(data interface{}) {
+	result := Response{Code: 0, Result: true, Message: "OK", RequestID: c.RequestID, Data: data}
+	c.gCtx.JSON(http.StatusOK, result)
 }
 
 // restContextKey was used to store the restContext in gin.Context.
 const restContextKey = "rest_context"
 
 // InitRestContext initializes a new rest context.
-func InitRestContext(pCtx *gin.Context) *Context {
+func InitRestContext(gCtx *gin.Context) *Context {
 	restContext := &Context{
-		Context:   pCtx,
-		RequestID: header.RIDGetter(pCtx.Request, true),
-		Username:  pCtx.GetHeader(header.UserKey),
+		gCtx:      gCtx,
+		RequestID: header.RIDGetter(gCtx.Request, true),
+		Username:  gCtx.GetHeader(header.UserKey),
+		TenantID:  gCtx.GetHeader(header.TenantIDKey),
 	}
 
-	pCtx.Set(restContextKey, restContext)
+	gCtx.Set(restContextKey, restContext)
 
 	// note: for thread safety you need to reset it here.
-	ctx := context.WithValue(pCtx.Request.Context(), header.RIDKey, restContext.RequestID)
-	restContext.Request = restContext.Request.WithContext(ctx)
+	ctx := context.WithValue(gCtx.Request.Context(), header.RIDKey, restContext.RequestID)
+	restContext.gCtx.Request = restContext.gCtx.Request.WithContext(ctx)
 
 	return restContext
 }
@@ -103,48 +104,51 @@ func GetRestContext(c *gin.Context) (*Context, error) {
 
 // RestHandlerFunc rest handler.
 func RestHandlerFunc(handler HandlerFunc) gin.HandlerFunc { // nolint
-	return func(c *gin.Context) {
-		restContext, err := GetRestContext(c)
+	return func(gCtx *gin.Context) {
+		rCtx, err := GetRestContext(gCtx)
 		if err != nil {
-			AbortWithUnauthorizedError(InitRestContext(c), err)
+			InitRestContext(gCtx).AbortWithUnauthorizedError(err)
+
 			return
 		}
-		result, err := handler(restContext)
+		result, err := handler(rCtx)
 		if err != nil {
-			AbortWithJSONError(restContext, err)
+			rCtx.AbortWithJSONError(err)
+
 			return
 		}
 
-		APIResponse(restContext, result)
+		rCtx.APIResponse(result)
 	}
 }
 
 // STDRestHandlerFunc std rest handler.
 func STDRestHandlerFunc(handler HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		restContext, err := GetRestContext(c)
+	return func(gCtx *gin.Context) {
+		rCtx, err := GetRestContext(gCtx)
 		if err != nil {
-			AbortWithUnauthorizedError(InitRestContext(c), err)
+			InitRestContext(gCtx).AbortWithUnauthorizedError(err)
 			return
 		}
-		result, err := handler(restContext)
+		result, err := handler(rCtx)
 		if err != nil {
-			AbortWithBadRequestError(restContext, err)
+			rCtx.AbortWithBadRequestError(err)
 			return
 		}
 
-		APIResponse(restContext, result)
+		rCtx.APIResponse(result)
 	}
 }
 
 // StreamHandler stream handler.
 func StreamHandler(handler StreamHandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		restContext, err := GetRestContext(c)
+	return func(gCtx *gin.Context) {
+		rCtx, err := GetRestContext(gCtx)
 		if err != nil {
-			AbortWithUnauthorizedError(InitRestContext(c), err)
+			InitRestContext(gCtx).AbortWithUnauthorizedError(err)
+
 			return
 		}
-		handler(restContext)
+		handler(rCtx)
 	}
 }

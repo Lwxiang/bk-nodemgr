@@ -17,7 +17,13 @@ import (
 
 // Context rest context.
 type Context struct {
-	*gin.Context
+	gCtx      *gin.Context
 	RequestID string `json:"request_id"`
 	Username  string `json:"username"`
+	TenantID  string `json:"tenant_id"`
+}
+
+// BindJSON bind json
+func (c *Context) BindJSON(obj any) error {
+	return c.gCtx.BindJSON(obj)
 }
