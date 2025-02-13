@@ -13,8 +13,8 @@ package tenant
 
 import (
 	"context"
-	"time"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,28 +56,11 @@ func (d *dao) upsert(ctx context.Context, tenant *Tenant) error {
 
 // buildUpsertParams build update params.
 func buildUpsertParams(tenant *Tenant) (bson.D, bson.D, *mongoOptions.UpdateOptions) {
-	nowTime := time.Now()
-
 	// update tenant by tenant_id.
 	filter := bson.D{{Key: "data.tenant_id", Value: tenant.ID}}
 
 	// insert as creation or update data only.
-	update := bson.D{
-		{
-			Key: "$set",
-			Value: bson.M{
-				"basic.is_deleted": false,
-				"basic.updated_at": nowTime,
-				"data":             tenant,
-			},
-		},
-		{
-			Key: "$setOnInsert",
-			Value: bson.M{
-				"basic.created_at": nowTime,
-			},
-		},
-	}
+	update := base.BuildUpsertParam(tenant)
 
 	// do upsert.
 	opts := mongoOptions.Update().SetUpsert(true)

@@ -13,8 +13,8 @@ package operinstdata
 
 import (
 	"context"
-	"time"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,28 +56,11 @@ func (d *dao) upsert(ctx context.Context, data *OperInstData) error {
 
 // buildUpsertParams build update params.
 func buildUpsertParams(data *OperInstData) (bson.D, bson.D, *mongoOptions.UpdateOptions) {
-	nowTime := time.Now()
-
 	// update data by operation_inst_data_id.
 	filter := bson.D{{Key: "data.oper_inst_id", Value: data.OperInstID}}
 
 	// insert as creation or update data only.
-	update := bson.D{
-		{
-			Key: "$set",
-			Value: bson.M{
-				"basic.is_deleted": false,
-				"basic.updated_at": nowTime,
-				"data":             data,
-			},
-		},
-		{
-			Key: "$setOnInsert",
-			Value: bson.M{
-				"basic.created_at": nowTime,
-			},
-		},
-	}
+	update := base.BuildUpsertParam(data)
 
 	// do upsert.
 	opts := mongoOptions.Update().SetUpsert(true)
@@ -108,24 +91,13 @@ func (d *dao) find(ctx context.Context, filter bson.D) ([]*OperInstData, error) 
 
 // updateField update field.
 func (d *dao) updateField(ctx context.Context, filter bson.D, field string, value any) error {
-	nowTime := time.Now()
-
-	update := bson.D{
-		{
-			Key: "$set",
-			Value: bson.M{
-				"basic.updated_at": nowTime,
-				field:              value,
-			},
-		},
-	}
-
+	update := base.BuildUpdateField(field, value)
 	result, err := d.client.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
 
-	d.logger.Infof("successfully updated, field(%v), updated-count(%d)", field, result.UpsertedCount)
+	d.logger.Infof("successfully updated, field(%v), updated-count(%d)", field, result.MatchedCount)
 
 	return nil
 }

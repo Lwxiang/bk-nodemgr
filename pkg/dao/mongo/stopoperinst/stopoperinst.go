@@ -15,6 +15,7 @@ import (
 	"context"
 	"time"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -71,28 +72,11 @@ func (d *dao) upsert(ctx context.Context, inst *StopOperInst) error {
 
 // buildUpsertParams build update params.
 func buildUpsertParams(inst *StopOperInst) (bson.D, bson.D, *mongoOptions.UpdateOptions) {
-	nowTime := time.Now()
-
 	// update data by operation_inst_data_id.
 	filter := bson.D{{Key: "data.oper_inst_id", Value: inst.OperInstID}}
 
 	// upsert as creation or update data only.
-	update := bson.D{
-		{
-			Key: "$set",
-			Value: bson.M{
-				"basic.is_deleted": false,
-				"basic.updated_at": nowTime,
-				"data":             inst,
-			},
-		},
-		{
-			Key: "$setOnInsert",
-			Value: bson.M{
-				"basic.created_at": nowTime,
-			},
-		},
-	}
+	update := base.BuildUpsertParam(inst)
 
 	// do upsert.
 	opts := mongoOptions.Update().SetUpsert(true)

@@ -13,8 +13,8 @@ package host
 
 import (
 	"context"
-	"time"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -50,28 +50,11 @@ func (d *dao) ensureIndexes(ctx context.Context) error {
 
 // buildUpsertParams build update params.
 func buildUpsertParams(host *Host) (bson.D, bson.D, *mongoOptions.UpdateOptions) {
-	nowTime := time.Now()
-
 	// update host by host_id.
 	filter := bson.D{{Key: "data.host_id", Value: host.HostID}}
 
 	// insert as creation or update data only.
-	update := bson.D{
-		{
-			Key: "$set",
-			Value: bson.M{
-				"basic.is_deleted": false,
-				"basic.updated_at": nowTime,
-				"data":             host,
-			},
-		},
-		{
-			Key: "$setOnInsert",
-			Value: bson.M{
-				"basic.created_at": nowTime,
-			},
-		},
-	}
+	update := base.BuildUpsertParam(host)
 
 	// do upsert.
 	opts := mongoOptions.Update().SetUpsert(true)
@@ -122,28 +105,11 @@ func (d *dao) upsertMany(ctx context.Context, hosts []*Host) error {
 
 // buildUpsertManyParams build upsert many params.
 func buildUpsertManyParams(hosts []*Host) []mongo.WriteModel {
-	var models []mongo.WriteModel
-	nowTime := time.Now()
-
+	models := make([]mongo.WriteModel, 0)
 	for _, host := range hosts {
 		filter := bson.D{{Key: "data.host_id", Value: host.HostID}}
 
-		update := bson.D{
-			{
-				Key: "$set",
-				Value: bson.M{
-					"basic.is_deleted": false,
-					"basic.updated_at": nowTime,
-					"data":             host,
-				},
-			},
-			{
-				Key: "$setOnInsert",
-				Value: bson.M{
-					"basic.created_at": nowTime,
-				},
-			},
-		}
+		update := base.BuildUpsertParam(host)
 
 		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update).SetUpsert(true))
 	}

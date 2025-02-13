@@ -13,8 +13,8 @@ package business
 
 import (
 	"context"
-	"time"
 
+	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -56,28 +56,11 @@ func (d *dao) upsert(ctx context.Context, biz *Business) error {
 
 // buildUpsertParams build update params.
 func buildUpsertParams(biz *Business) (bson.D, bson.D, *mongoOptions.UpdateOptions) {
-	nowTime := time.Now()
-
 	// update business by biz_id.
 	filter := bson.D{{Key: "data.biz_id", Value: biz.BizID}}
 
 	// insert as creation or update data only.
-	update := bson.D{
-		{
-			Key: "$set",
-			Value: bson.M{
-				"basic.is_deleted": false,
-				"basic.updated_at": nowTime,
-				"data":             biz,
-			},
-		},
-		{
-			Key: "$setOnInsert",
-			Value: bson.M{
-				"basic.created_at": nowTime,
-			},
-		},
-	}
+	update := base.BuildUpsertParam(biz)
 
 	// do upsert.
 	opts := mongoOptions.Update().SetUpsert(true)
@@ -129,27 +112,11 @@ func (d *dao) upsertMany(ctx context.Context, bizs []*Business) error {
 // buildUpsertManyParams build upsert many params.
 func buildUpsertManyParams(bizs []*Business) []mongo.WriteModel {
 	models := make([]mongo.WriteModel, 0, len(bizs))
-	nowTime := time.Now()
 
 	for _, biz := range bizs {
 		filter := bson.D{{Key: "data.biz_id", Value: biz.BizID}}
 
-		update := bson.D{
-			{
-				Key: "$set",
-				Value: bson.M{
-					"basic.is_deleted": false,
-					"basic.updated_at": nowTime,
-					"data":             biz,
-				},
-			},
-			{
-				Key: "$setOnInsert",
-				Value: bson.M{
-					"basic.created_at": nowTime,
-				},
-			},
-		}
+		update := base.BuildUpsertParam(biz)
 
 		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update).SetUpsert(true))
 	}
