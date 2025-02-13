@@ -76,7 +76,7 @@ func (s *storage) check() error {
 }
 
 // UpsertBusiness updates or inserts a business.
-func (s *storage) UpsertBusiness(ctx context.Context, biz *types.Business) error {
+func (s *storage) UpsertBusiness(ctx context.Context, biz ...*types.Business) error {
 	if ctx == nil {
 		return base.ErrNilContent()
 	}
@@ -85,7 +85,7 @@ func (s *storage) UpsertBusiness(ctx context.Context, biz *types.Business) error
 		return base.ErrUpsertNilData()
 	}
 
-	if err := s.daoBusiness.Upsert(ctx, biz); err != nil {
+	if err := s.daoBusiness.UpsertMany(ctx, biz...); err != nil {
 		return fmt.Errorf("failed to upsert business: %v", err)
 	}
 

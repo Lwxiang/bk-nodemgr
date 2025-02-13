@@ -17,6 +17,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
+// OperDefName operation definition name.
 type OperDefName string
 
 const (

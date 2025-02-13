@@ -53,55 +53,6 @@ func testClient(t *testing.T) Handler {
 	return New(mongoClient.Database(os.Getenv("MONGO_DATABASE")), logger.LoggerDefault{})
 }
 
-// Test_handler_upsert ...
-func Test_handler_Upsert(t *testing.T) {
-	ctx, _ := tenant.SetID(context.Background(), "test")
-
-	type args struct {
-		ctx context.Context
-		biz *types.Business
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "base",
-			args: args{
-				ctx: ctx,
-				biz: &types.Business{
-					TenantID: "test",
-					BizID:    1,
-					BizName:  "test1",
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "upsert nil",
-			args: args{
-				ctx: ctx,
-				biz: nil,
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := testClient(t)
-			err := h.Upsert(tt.args.ctx, tt.args.biz)
-			if err != nil {
-				t.Logf("upsert() error = %v", err)
-			}
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("upsert() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 // Test_handler_ListAll ...
 func Test_handler_ListAll(t *testing.T) {
 	ctx, _ := tenant.SetID(context.Background(), "test")
@@ -127,6 +78,67 @@ func Test_handler_ListAll(t *testing.T) {
 
 			for _, v := range got {
 				t.Logf("ListAll() got = %v", v)
+			}
+		})
+	}
+}
+
+// Test_handler_UpsertMany ...
+func Test_handler_UpsertMany(t *testing.T) {
+	ctx, _ := tenant.SetID(context.Background(), "test")
+
+	type args struct {
+		ctx  context.Context
+		bizs []*types.Business
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				ctx: ctx,
+				bizs: []*types.Business{
+					{
+						TenantID: "single",
+						BizID:    1,
+						BizName:  "test",
+					},
+					{
+						TenantID: "single",
+						BizID:    2,
+						BizName:  "test2",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "tenant no match",
+			args: args{
+				ctx: ctx,
+				bizs: []*types.Business{
+					{
+						TenantID: "test",
+						BizID:    1,
+						BizName:  "test",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			err := h.UpsertMany(tt.args.ctx, tt.args.bizs...)
+			if err != nil {
+				t.Logf("UpsertMany() error = %v", err)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpsertMany() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

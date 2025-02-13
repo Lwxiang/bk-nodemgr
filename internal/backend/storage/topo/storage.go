@@ -23,7 +23,7 @@ type Storage interface {
 	base.Interface
 
 	// UpsertBusiness updates or inserts a business.
-	UpsertBusiness(ctx context.Context, biz *types.Business) error
+	UpsertBusiness(ctx context.Context, biz ...*types.Business) error
 
 	// ListBusinesses ...
 	ListBusinesses(ctx context.Context) ([]*types.Business, error)

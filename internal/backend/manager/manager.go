@@ -165,7 +165,7 @@ func (mgr *manager) startOperEngineManager(ctx context.Context) error {
 // registerActionDefs init action defs
 func (mgr *manager) registerActionDefs() error {
 	return mgr.operInstMgr.RegisterActions(
-		workflowdef.NewActionSyncBusinessFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage),
+		workflowdef.NewActionSyncBusinessFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage, mgr.logger),
 		workflowdef.NewActionSyncHostFromCMDB(mgr.conf.CmdbHandler, mgr.conf.TopoStorage),
 		workflowdef.NewActionGenAllBizHostSyncOper(mgr.conf.TopoStorage, mgr.operMgr),
 	)

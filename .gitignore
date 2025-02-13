@@ -6,3 +6,4 @@ build/
 /tmp
 /logs
 .env
+/.run

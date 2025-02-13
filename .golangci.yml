@@ -284,11 +284,12 @@ output:
   #     - format: colored-line-number
   #       path: stdout
   formats:
-    - format: json
-      path: stderr
-    - format: checkstyle
-      path: report.xml
+    #    - format: json
+    #      path: stderr
+    #    - format: checkstyle
+    #      path: report.xml
     - format: colored-line-number
+      path: stdout
   # Print lines of code with issue.
   # Default: true
   print-issued-lines: true

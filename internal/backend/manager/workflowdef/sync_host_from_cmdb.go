@@ -32,8 +32,8 @@ func NewActionSyncHostFromCMDB(cmdbHandler cmdb.Handler, topoStorage topo.Storag
 	}
 }
 
-// syncHostFromCMDBParam ...
-type syncHostFromCMDBParam struct {
+// SyncHostFromCMDBParam ...
+type SyncHostFromCMDBParam struct {
 	BizID    int64  `json:"biz_id"`
 	TenantID string `json:"tenant_id"`
 }
@@ -83,18 +83,19 @@ func (s *syncHostFromCMDB) DelayFn() func() {
 
 // Do ...
 func (s *syncHostFromCMDB) Do(ctx *operengine.ActionInstContext) error {
-	param := new(syncHostFromCMDBParam)
+	param := new(SyncHostFromCMDBParam)
 	err := conv.MapToStruct(ctx.Data.Content, param)
+	if err != nil {
+		return err
+	}
+
+	tenantCtx, err := tenant.SetID(ctx.Ctx, param.TenantID)
 	if err != nil {
 		return err
 	}
 
 	executor := runtime.NewPageExecutor[*types.Host](500, 1*time.Hour)
 	fn := func(ctx context.Context, p types.Page) ([]*types.Host, error) {
-		ctx, err = tenant.SetID(ctx, param.TenantID)
-		if err != nil {
-			return nil, err
-		}
 
 		hosts, err := s.cmdbHandler.ListBizHosts(ctx, param.BizID, p)
 		if err != nil {
@@ -104,12 +105,12 @@ func (s *syncHostFromCMDB) Do(ctx *operengine.ActionInstContext) error {
 		return hosts, nil
 	}
 
-	result, err := executor.Execute(ctx.Ctx, types.UnlimitedPage(), fn)
+	result, err := executor.Execute(tenantCtx, types.UnlimitedPage(), fn)
 	if err != nil {
 		return err
 	}
 
-	if err = s.topoStorage.UpsertHosts(ctx.Ctx, result.Items...); err != nil {
+	if err = s.topoStorage.UpsertHosts(tenantCtx, result.Items...); err != nil {
 		return err
 	}
 

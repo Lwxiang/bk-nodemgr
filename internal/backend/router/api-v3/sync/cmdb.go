@@ -17,7 +17,9 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/workflowdef"
 	types "git.woa.com/bk-gse/bk-nodeman/internal/backend/types/router/api-v3"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/conv"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/google/uuid"
 )
 
 // SyncCmdbHost ...
@@ -31,18 +33,28 @@ func (h *handler) SyncCmdbHost(ctx *rest.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	err := h.manager.ExecuteOperation(workflowdef.OperDefNameSyncBizAndHost, "trigger-1", &operengine.OperInstParam{
-		Timeout:     1 * time.Minute,
-		InitContent: map[string]map[string]any{},
+	triggerID := uuid.New().String()
+	tenantID := ctx.TenantID
+
+	err := h.manager.ExecuteOperation(workflowdef.OperDefNameSyncBizAndHost, triggerID, &operengine.OperInstParam{
+		Timeout: 1 * time.Minute,
+		InitContent: map[string]map[string]any{
+			workflowdef.SyncBizFromCMDB: conv.StructToMapIgnoreError(workflowdef.SyncBizFromCMDBParam{
+				TenantID: tenantID,
+			}),
+			workflowdef.GenAllBizHostSyncOper: conv.StructToMapIgnoreError(workflowdef.GenAllBizHostSyncOperParam{
+				TenantID: tenantID,
+			}),
+		},
 	})
 	if err != nil {
 		h.logger.Errorf("failed to start sync cmdb host operation, err: %v", err)
 		return nil, err
 	}
 
-	h.logger.Infof("successfully started sync cmdb host operation.")
-
-	resp := new(types.SyncCmdbHostResp)
+	resp := &types.SyncCmdbHostResp{
+		TriggerID: triggerID,
+	}
 
 	return resp, nil
 }

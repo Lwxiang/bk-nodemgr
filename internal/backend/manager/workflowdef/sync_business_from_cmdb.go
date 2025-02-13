@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package actiondef ...
+// Package workflowdef ...
 package workflowdef
 
 import (
@@ -16,106 +16,105 @@ import (
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/conv"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
 // NewActionSyncBusinessFromCMDB creates a new syncBusinessFromCMDB.
-func NewActionSyncBusinessFromCMDB(cmdbHandler cmdb.Handler, topoStorage topo.Storage) operengine.ActionDef {
+func NewActionSyncBusinessFromCMDB(cmdbHandler cmdb.Handler, topoStorage topo.Storage,
+	logger logger.Logger) operengine.ActionDef {
+
 	return &syncBusinessFromCMDB{
 		cmdbHandler: cmdbHandler,
 		topoStorage: topoStorage,
+		logger:      logger,
 	}
+}
+
+// SyncBizFromCMDBParam the action's param.
+type SyncBizFromCMDBParam struct {
+	TenantID string `json:"tenant_id"`
 }
 
 // syncBusinessFromCMDB sync business info from cmdb.
 type syncBusinessFromCMDB struct {
 	cmdbHandler cmdb.Handler
 	topoStorage topo.Storage
+	logger      logger.Logger
 }
 
 // Name returns the name of the action.
-func (a *syncBusinessFromCMDB) Name() string {
+func (act *syncBusinessFromCMDB) Name() string {
 	return SyncBizFromCMDB
 }
 
 // Version returns the version of the action.
-func (a *syncBusinessFromCMDB) Version() string {
+func (act *syncBusinessFromCMDB) Version() string {
 	return "v1"
 }
 
 // Description returns the description of the action.
-func (a *syncBusinessFromCMDB) Description() string {
+func (act *syncBusinessFromCMDB) Description() string {
 	return "sync business info from cmdb and update to storage"
 }
 
 // Timeout returns the timeout of this action.
-func (a *syncBusinessFromCMDB) Timeout() time.Duration {
+func (act *syncBusinessFromCMDB) Timeout() time.Duration {
 	return 1 * time.Minute
 }
 
 // MaxRetryCount returns the max retry count of this action.
-func (a *syncBusinessFromCMDB) MaxRetryCount() uint {
+func (act *syncBusinessFromCMDB) MaxRetryCount() uint {
 	return 2
 }
 
 // DelayFn returns the delay of this action.
-func (a *syncBusinessFromCMDB) DelayFn() func() {
+func (act *syncBusinessFromCMDB) DelayFn() func() {
 	return func() {
 		time.Sleep(1 * time.Second)
 	}
 }
 
 // Tags returns the tags of this action.
-func (a *syncBusinessFromCMDB) Tags() []operengine.ActionTag {
+func (act *syncBusinessFromCMDB) Tags() []operengine.ActionTag {
 	return []operengine.ActionTag{}
 }
 
 // Do the action.
-func (a *syncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error {
-	ctx.Data.Log("start syncing business info from cmdb")
+func (act *syncBusinessFromCMDB) Do(ctx *operengine.ActionInstContext) error {
+	param := new(SyncBizFromCMDBParam)
+	err := conv.MapToStruct(ctx.Data.Content, param)
+	if err != nil {
+		return err
+	}
 
 	gp := gopool.NewPool()
 	gp.SetLimit(10)
 
-	page := types.Page{
-		Offset: 0,
-		Limit:  500,
-	}
-	for {
-		businesses, err := a.cmdbHandler.SearchBusiness(context.Background(), page)
+	pageSize := 500
+	executor := runtime.NewPageExecutor[*types.Business](pageSize, 1*time.Hour)
+	fn := func(ctx context.Context, p types.Page) ([]*types.Business, error) {
+		bizs, err := act.cmdbHandler.SearchBusiness(ctx, p)
 		if err != nil {
-			blog.Errorf("failed to get business info from cmdb, err: %v", err)
-			ctx.Data.Log("failed to get business info from cmdb. err: " + err.Error())
-
-			return err
+			return nil, err
 		}
 
-		if len(businesses) == 0 {
-			break
-		}
-
-		for idx := range businesses {
-			business := businesses[idx]
-			fn := func() error {
-				if err := a.topoStorage.UpsertBusiness(ctx.Ctx, &business); err != nil {
-					return err
-				}
-
-				return nil
-			}
-
-			gp.Go(fn)
-		}
-
-		page.Offset += page.Limit
+		return bizs, nil
 	}
 
-	if err := gp.Wait(); err != nil {
-		blog.Errorf("failed to sync business info from cmdb. info: %s, err: %v", ctx.Data.Info(), err)
+	tenantCtx, _ := tenant.SetID(ctx.Ctx, param.TenantID)
+	result, err := executor.Execute(tenantCtx, types.UnlimitedPage(), fn)
+	if err != nil {
+		return err
+	}
+
+	if err = act.topoStorage.UpsertBusiness(tenantCtx, result.Items...); err != nil {
 		return err
 	}
 

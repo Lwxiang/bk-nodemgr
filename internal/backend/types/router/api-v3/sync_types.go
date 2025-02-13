@@ -13,7 +13,6 @@ package apiv3
 
 // SyncCmdbHostReq this is a request for sync cmdb host.
 type SyncCmdbHostReq struct {
-	// TODO implement me
 }
 
 // Validate ...
@@ -24,5 +23,5 @@ func (req *SyncCmdbHostReq) Validate() error {
 
 // SyncCmdbHostResp this is a response for sync cmdb host.
 type SyncCmdbHostResp struct {
-	// TODO implement me
+	TriggerID string `json:"trigger_id"`
 }

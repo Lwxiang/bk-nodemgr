@@ -105,3 +105,54 @@ func (d *dao) listAll(ctx context.Context) ([]*Business, error) {
 
 	return bizs, nil
 }
+
+// upsertMany upsert many business.
+func (d *dao) upsertMany(ctx context.Context, bizs []*Business) error {
+	models := buildUpsertManyParams(bizs)
+
+	result, err := d.client.BulkWrite(ctx, models)
+	if err != nil {
+		return err
+	}
+
+	if result.UpsertedCount > 0 {
+		d.logger.Infof("successfully inserted bizs, inserted-count(%v)", result.UpsertedCount)
+	}
+
+	if result.MatchedCount > 0 {
+		d.logger.Infof("successfully updated bizs, update-count(%v)", result.MatchedCount)
+	}
+
+	return nil
+}
+
+// buildUpsertManyParams build upsert many params.
+func buildUpsertManyParams(bizs []*Business) []mongo.WriteModel {
+	models := make([]mongo.WriteModel, 0, len(bizs))
+	nowTime := time.Now()
+
+	for _, biz := range bizs {
+		filter := bson.D{{Key: "data.biz_id", Value: biz.BizID}}
+
+		update := bson.D{
+			{
+				Key: "$set",
+				Value: bson.M{
+					"basic.is_deleted": false,
+					"basic.updated_at": nowTime,
+					"data":             biz,
+				},
+			},
+			{
+				Key: "$setOnInsert",
+				Value: bson.M{
+					"basic.created_at": nowTime,
+				},
+			},
+		}
+
+		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update).SetUpsert(true))
+	}
+
+	return models
+}

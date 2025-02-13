@@ -17,10 +17,10 @@ type Handler interface {
 	ListBizHosts(ctx context.Context, BizID int64, page types.Page) ([]*types.Host, error)
 
 	// SearchBusiness search business
-	SearchBusiness(ctx context.Context, page types.Page) ([]types.Business, error)
+	SearchBusiness(ctx context.Context, page types.Page) ([]*types.Business, error)
 
 	// SearchNetArea search net area
-	SearchNetArea(ctx context.Context, page types.Page) ([]types.NetArea, error)
+	SearchNetArea(ctx context.Context, page types.Page) ([]*types.NetArea, error)
 }
 
 type handler struct {
@@ -76,7 +76,7 @@ func (h *handler) ListBizHosts(ctx context.Context, BizID int64, page types.Page
 }
 
 // SearchBusiness search business
-func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.Business, error) {
+func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]*types.Business, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
 		return nil, err
@@ -98,9 +98,9 @@ func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.
 		return nil, err
 	}
 
-	bizs := make([]types.Business, len(resp.Info))
+	bizs := make([]*types.Business, len(resp.Info))
 	for idx, business := range resp.Info {
-		bizs[idx] = types.Business{
+		bizs[idx] = &types.Business{
 			TenantID: tenantID,
 			BizID:    business.BKBizID,
 			BizName:  business.BKBizName,
@@ -111,7 +111,7 @@ func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]types.
 }
 
 // SearchNetArea search net area
-func (h *handler) SearchNetArea(ctx context.Context, page types.Page) ([]types.NetArea, error) {
+func (h *handler) SearchNetArea(ctx context.Context, page types.Page) ([]*types.NetArea, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
 		return nil, err
@@ -131,9 +131,9 @@ func (h *handler) SearchNetArea(ctx context.Context, page types.Page) ([]types.N
 		return nil, err
 	}
 
-	netAreas := make([]types.NetArea, len(resp.Info))
+	netAreas := make([]*types.NetArea, len(resp.Info))
 	for idx, netArea := range resp.Info {
-		netAreas[idx] = types.NetArea{
+		netAreas[idx] = &types.NetArea{
 			TenantID:  tenantID,
 			CloudID:   netArea.BkCloudID,
 			CloudName: netArea.BkCloudName,

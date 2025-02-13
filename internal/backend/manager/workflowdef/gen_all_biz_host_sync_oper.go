@@ -30,8 +30,8 @@ func NewActionGenAllBizHostSyncOper(topoStorage topo.Storage, operMgr operengine
 	}
 }
 
-// genAllBizHostSyncOperParam ...
-type genAllBizHostSyncOperParam struct {
+// GenAllBizHostSyncOperParam ...
+type GenAllBizHostSyncOperParam struct {
 	TenantID string `json:"tenant_id"`
 }
 
@@ -41,28 +41,28 @@ type genAllBizHostSyncOper struct {
 	operMgr     operengine.OperationMgr
 }
 
-// Name ...
+// Name returns the name of the action.
 func (c *genAllBizHostSyncOper) Name() string {
 	return GenAllBizHostSyncOper
 }
 
-// Version ...
+// Version returns the version of the action.
 func (c *genAllBizHostSyncOper) Version() string {
 	return "v1.0.0"
 }
 
-// Description ...
+// Description returns the description of the action.
 func (c *genAllBizHostSyncOper) Description() string {
 	return "reads all business information from the database," +
 		"and creates host synchronization tasks on a business-by-business basis."
 }
 
-// Timeout ...
+// Timeout returns the timeout of the action.
 func (c *genAllBizHostSyncOper) Timeout() time.Duration {
 	return time.Second * 10
 }
 
-// Tags ...
+// Tags returns the tags of the action.
 func (c *genAllBizHostSyncOper) Tags() []operengine.ActionTag {
 	return []operengine.ActionTag{}
 }
@@ -80,7 +80,7 @@ func (c *genAllBizHostSyncOper) DelayFn() func() {
 
 // Do this func define what the action will do.
 func (c *genAllBizHostSyncOper) Do(ctx *operengine.ActionInstContext) error {
-	param := new(genAllBizHostSyncOperParam)
+	param := new(GenAllBizHostSyncOperParam)
 	err := conv.MapToStruct(ctx.Data.Content, param)
 	if err != nil {
 		return err
@@ -115,7 +115,7 @@ func (c *genAllBizHostSyncOper) executeOper(data *operengine.ActionInstData, biz
 	err := c.operMgr.ExecuteOperation(operation, &operengine.OperInstParam{
 		Timeout: time.Second * 10,
 		InitContent: map[string]map[string]any{
-			SyncHostFromCMDB: conv.StructToMapIgnoreError(syncHostFromCMDBParam{
+			SyncHostFromCMDB: conv.StructToMapIgnoreError(SyncHostFromCMDBParam{
 				BizID:    biz.BizID,
 				TenantID: biz.TenantID,
 			}),

@@ -13,7 +13,7 @@ package business
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"sync"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
@@ -24,8 +24,11 @@ import (
 
 // Handler business handler interface.
 type Handler interface {
-	Upsert(ctx context.Context, biz *types.Business) error
+	// ListAll list all business.
 	ListAll(ctx context.Context) ([]*types.Business, error)
+
+	// UpsertMany updates or inserts business.
+	UpsertMany(ctx context.Context, bizs ...*types.Business) error
 }
 
 type handler struct {
@@ -57,29 +60,6 @@ func New(client *mongo.Database, logger logger.Logger) Handler {
 	}
 }
 
-// Upsert updates or inserts a business.
-func (h *handler) Upsert(ctx context.Context, biz *types.Business) error {
-	tenantID, err := tenant.GetID(ctx)
-	if err != nil {
-		return err
-	}
-
-	if biz == nil {
-		return errors.New("biz is nil")
-	}
-
-	data := &Business{
-		TenantID: biz.TenantID,
-		BizID:    biz.BizID,
-		BizName:  biz.BizName,
-	}
-	if err := h.tenantDao(tenantID).upsert(ctx, data); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // ListAll list all business.
 func (h *handler) ListAll(ctx context.Context) ([]*types.Business, error) {
 	tenantID, err := tenant.GetID(ctx)
@@ -102,4 +82,31 @@ func (h *handler) ListAll(ctx context.Context) ([]*types.Business, error) {
 	}
 
 	return data, nil
+}
+
+// UpsertMany updates or inserts business.
+func (h *handler) UpsertMany(ctx context.Context, bizs ...*types.Business) error {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return err
+	}
+
+	data := make([]*Business, len(bizs))
+	for idx, biz := range bizs {
+		data[idx] = &Business{
+			TenantID: biz.TenantID,
+			BizID:    biz.BizID,
+			BizName:  biz.BizName,
+		}
+
+		if data[idx].TenantID != tenantID {
+			return fmt.Errorf("tenantID not match, ctx-tenantID(%s), biz-tenantID(%s)", tenantID, biz.TenantID)
+		}
+	}
+
+	if err := h.tenantDao(tenantID).upsertMany(ctx, data); err != nil {
+		return err
+	}
+
+	return nil
 }

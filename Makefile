@@ -44,3 +44,6 @@ all: backend saas
 
 clean:
 	$(RM) -rf build
+
+doc:
+	godoc -http=localhost:6060
