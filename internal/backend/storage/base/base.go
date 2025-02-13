@@ -205,7 +205,7 @@ func (s *Storage) CheckHealthz() error {
 		return err
 	}
 
-	s.Logger.Infof("successfully checked healthz of storage, name(%s)", s.Name)
+	s.Logger.Debugf("successfully checked healthz of storage, name(%s)", s.Name)
 
 	return nil
 }
