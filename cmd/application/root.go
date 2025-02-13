@@ -8,35 +8,38 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package web is the web router.
-package web
+// Package main of application.
+package main
 
 import (
-	"net/http"
+	"fmt"
+	"os"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/options"
-	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
 )
 
-type handler struct {
-	rg *gin.RouterGroup
-}
-
-func newHandler(rg *gin.RouterGroup, _ *options.Capability) *handler {
-	return &handler{
-		// this is a sub router, so we can use some special middleware in it and not affect the father router.
-		rg: rg.Group("/web"),
+// application service entrypoint.
+func main() {
+	var rootCMD = &cobra.Command{
+		Use:   "bk_nodeman_application",
+		Short: "bk-nodeman application server",
+		Run: func(_ *cobra.Command, _ []string) {
+			fmt.Println("welcome to use bk-nodeman-application, use `bk-nodeman-application -h` for help")
+		},
 	}
-}
 
-// Load enables web router into gin.Engine.
-func Load(rg *gin.RouterGroup, capability *options.Capability) {
-	h := newHandler(rg, capability)
+	// add sub commands.
+	rootCMD.AddCommand(
+		NewInitDataCMD(),
+		NewMakeMigrationCMD(),
+		NewMigrateCMD(),
+		NewSchedulerCMD(),
+		NewVersionCMD(),
+		NewWebServerCMD(),
+	)
 
-	h.rg.GET("/index", h.Index)
-}
-
-// Index return the index page.
-func (h *handler) Index(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "welcome to bk-nodeman")
+	if err := rootCMD.Execute(); err != nil {
+		fmt.Printf("failed to execute cmd, err: %v\n", err)
+		os.Exit(1)
+	}
 }

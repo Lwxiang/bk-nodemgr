@@ -586,3 +586,103 @@ backend:
       maxSizeMB: 200
       toStderr: false
       alsoToStderr: false
+
+## Nodeman application.
+##
+application:
+  ## @param application, enabled Enable application
+  ##
+  enabled: true
+
+  ## @param imageTag module image tag, it's empty as default.
+  ## NOTE: would use root image configs when it's empty.
+  imageTag: ""
+
+  ## @param podAnnotations module pod annotations,
+  ## NOTE: would use root annotations configs when it's not set.
+  podAnnotations: {}
+
+  ## @param hostNetwork module host network mode config.
+  hostNetwork: false
+
+  ## @param nodeSelector specify node labels for task pod assignment.
+  ## NOTE: will be combined with the top nodeSelector in values.
+  nodeSelector: {}
+
+  ## @param terminationGracePeriodSeconds module pod termination grace period
+  ## NOTE: would use root terminationGracePeriodSeconds if it's not set.
+  terminationGracePeriodSeconds: 30
+
+  ## application containers' resource requests and limits
+  ##
+  resources:
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+    requests:
+      memory: 2048Mi
+      cpu: 1000m
+
+  ## @param configs module configs
+  ##
+  config:
+    ## mode: release or debug, default is release.
+    runMode: "release"
+
+    ## tenant_mode: multi or single, default is single.
+    tenantMode: "single"
+
+    apiGateway:
+      # endpoints is a seed list of host:port addresses of esb nodes.
+      endpoints:
+        - "https://example.com/api/bk-nodeman/prod"
+      # appCode is the BlueKing app code of NodeMan to request api gateway.
+      appCode: ""
+      # appSecret is the BlueKing app secret of NodeMan to request api gateway.
+      appSecret: ""
+      # user is the BlueKing user of NodeMan to request api gateway.
+      user: ""
+      # authMode is the mode to do api auth verification,
+      # it support 'oa' and 'ee' and 'at' mode for now.
+      # 1. oa use bkTicket auth.
+      # 2. ee use bkToken auth.
+      # 3. at use accessToken auth.
+      # 4. un use no user authentication required
+      authMode: "un"
+      # bkTicket is the BlueKing access ticket of costops to request api gateway.
+      bkTicket: ""
+      # bkToken is the BlueKing user token of costops to request api gateway.
+      bkToken: ""
+      # accessToken is the BlueKing access token of costops to request api gateway.
+      accessToken: ""
+      # defines tls related options.
+      tls:
+        # server should be accessed without verifying the TLS certificate.
+        insecureSkipVerify: false
+        # server requires TLS client certificate authentication.
+        certFile: ""
+        # server requires TLS client certificate authentication.
+        keyFile: ""
+        # trusted root certificates for server.
+        caFile: ""
+        # the password to decrypt the certificate.
+        password: ""
+
+    ## defines the application http server related settings.
+    httpServer:
+      bindIP: "0.0.0.0"
+      port: 5000
+
+    ## defines the application admin server related settings.
+    adminServer:
+      bindIP: "0.0.0.0"
+      port: 5001
+
+    ## defines the log related settings.
+    log:
+      dir: "/bk-nodeman/log"
+      level: "INFO"
+      maxNum: 10
+      maxSizeMB: 200
+      toStderr: false
+      alsoToStderr: false

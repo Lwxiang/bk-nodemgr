@@ -8,41 +8,35 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package healthz defines the healthz router.
-package healthz
+// Package web is the web router.
+package web
 
 import (
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/options"
-	types "git.woa.com/bk-gse/bk-nodeman/internal/saas/types/router/healthz"
+	"git.woa.com/bk-gse/bk-nodeman/internal/application/options"
 	"github.com/gin-gonic/gin"
 )
 
-// handler ...
 type handler struct {
 	rg *gin.RouterGroup
 }
 
-// newHandler ...
 func newHandler(rg *gin.RouterGroup, _ *options.Capability) *handler {
 	return &handler{
 		// this is a sub router, so we can use some special middleware in it and not affect the father router.
-		rg: rg.Group("/healthz"),
+		rg: rg.Group("/web"),
 	}
 }
 
-// Load ...
+// Load enables web router into gin.Engine.
 func Load(rg *gin.RouterGroup, capability *options.Capability) {
 	h := newHandler(rg, capability)
 
-	h.rg.GET("", h.Healthz)
+	h.rg.GET("/index", h.Index)
 }
 
-// Healthz check service health.
-func (h *handler) Healthz(ctx *gin.Context) {
-	resp := new(types.Response)
-	resp.OK = true
-	resp.Manager = "ok"
-	ctx.JSON(http.StatusOK, resp)
+// Index return the index page.
+func (h *handler) Index(ctx *gin.Context) {
+	ctx.String(http.StatusOK, "welcome to bk-nodeman")
 }

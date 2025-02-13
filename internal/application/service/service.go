@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package service provides saas service.
+// Package service provides application service.
 package service
 
 import (
@@ -16,9 +16,9 @@ import (
 	"io"
 	"runtime"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/router/healthz"
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/router/web"
+	"git.woa.com/bk-gse/bk-nodeman/internal/application/options"
+	"git.woa.com/bk-gse/bk-nodeman/internal/application/router/healthz"
+	"git.woa.com/bk-gse/bk-nodeman/internal/application/router/web"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
@@ -27,11 +27,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Service defines a server that provides saas services.
+// Service defines a server that provides application services.
 // It provides a website for user to operate with nodeman.
 type Service struct {
 	// conf holds the configuration for the service.
-	conf *config.SaasService
+	conf *config.ApplicationService
 
 	// ctx is used to control the service lifecycle (cancellation and timeouts).
 	ctx context.Context
@@ -51,8 +51,8 @@ const (
 	RouterNameHTTPServer = "http-server"
 )
 
-// NewService creates a new saas service.
-func NewService(conf *config.SaasService) *Service {
+// NewService creates a new application service.
+func NewService(conf *config.ApplicationService) *Service {
 	svc := &Service{
 		conf: conf,
 	}
@@ -102,7 +102,7 @@ func withWeb(capability *options.Capability) rest.OptionFunc {
 	}
 }
 
-// Start starts the saas service.
+// Start starts the application service.
 func (svc *Service) Start(ctx context.Context) error {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 

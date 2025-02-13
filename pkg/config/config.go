@@ -33,19 +33,19 @@ const (
 	defaultBackendLogMaxSizeMB = 200
 	defaultBackendLogLevel     = "INFO"
 
-	// saas service config default values.
-	defaultSaasRunMode       = RunModeRelease
-	defaultSaasTenantMode    = tenant.ModeSingle
-	defaultSaasAPIGwUser     = "admin"
-	defaultSaasHTTPBindIP    = "127.0.0.1"
-	defaultSaasHTTPPort      = 5000
-	defaultSaasAdminBindIP   = "127.0.0.1"
-	defaultSaasAdminPort     = 5001
-	defaultSaasHTTPStaticDir = "/bk-nodeman/static/"
-	defaultSaasLogDir        = "/bk-nodeman/log/"
-	defaultSaasLogMaxNum     = 10
-	defaultSaasLogMaxSizeMB  = 200
-	defaultSaasLogLevel      = "INFO"
+	// application service config default values.
+	defaultApplicationRunMode       = RunModeRelease
+	defaultApplicationTenantMode    = tenant.ModeSingle
+	defaultApplicationAPIGwUser     = "admin"
+	defaultApplicationHTTPBindIP    = "127.0.0.1"
+	defaultApplicationHTTPPort      = 5000
+	defaultApplicationAdminBindIP   = "127.0.0.1"
+	defaultApplicationAdminPort     = 5001
+	defaultApplicationHTTPStaticDir = "/bk-nodeman/static/"
+	defaultApplicationLogDir        = "/bk-nodeman/log/"
+	defaultApplicationLogMaxNum     = 10
+	defaultApplicationLogMaxSizeMB  = 200
+	defaultApplicationLogLevel      = "INFO"
 )
 
 // Etcd the config of etcd.
@@ -229,44 +229,44 @@ func (b *BackendService) Validate() error {
 	return nil
 }
 
-// SaasService the config of saas service.
-type SaasService struct {
+// ApplicationService the config of application service.
+type ApplicationService struct {
 	RunMode     RunMode     `yaml:"mode" usage:"run mode of service"`
 	TenantMode  tenant.Mode `yaml:"tenantMode" usage:"tenant mode of service"`
-	APIGateway  APIGateway  `yaml:"apiGateway" usage:"auth config of saas service"`
-	HTTPServer  HTTPServer  `yaml:"httpServer" usage:"http server config of saas service"`
-	AdminServer AdminServer `yaml:"adminServer" usage:"admin server config of saas service"`
-	Log         Log         `yaml:"log" usage:"log config of saas service"`
+	APIGateway  APIGateway  `yaml:"apiGateway" usage:"auth config of application service"`
+	HTTPServer  HTTPServer  `yaml:"httpServer" usage:"http server config of application service"`
+	AdminServer AdminServer `yaml:"adminServer" usage:"admin server config of application service"`
+	Log         Log         `yaml:"log" usage:"log config of application service"`
 }
 
-// NewSaasService generatea a new SaasService with default values.
-func NewSaasService() *SaasService {
-	return &SaasService{
-		RunMode:    defaultSaasRunMode,
-		TenantMode: defaultSaasTenantMode,
+// NewApplicationService generatea a new ApplicationService with default values.
+func NewApplicationService() *ApplicationService {
+	return &ApplicationService{
+		RunMode:    defaultApplicationRunMode,
+		TenantMode: defaultApplicationTenantMode,
 		APIGateway: APIGateway{
-			User: defaultSaasAPIGwUser,
+			User: defaultApplicationAPIGwUser,
 		},
 		HTTPServer: HTTPServer{
-			BindIP:    defaultSaasHTTPBindIP,
-			Port:      defaultSaasHTTPPort,
-			StaticDir: defaultSaasHTTPStaticDir,
+			BindIP:    defaultApplicationHTTPBindIP,
+			Port:      defaultApplicationHTTPPort,
+			StaticDir: defaultApplicationHTTPStaticDir,
 		},
 		AdminServer: AdminServer{
-			BindIP: defaultSaasAdminBindIP,
-			Port:   defaultSaasAdminPort,
+			BindIP: defaultApplicationAdminBindIP,
+			Port:   defaultApplicationAdminPort,
 		},
 		Log: Log{
-			Dir:       defaultSaasLogDir,
-			MaxSizeMB: defaultSaasLogMaxSizeMB,
-			MaxNum:    defaultSaasLogMaxNum,
-			Level:     defaultSaasLogLevel,
+			Dir:       defaultApplicationLogDir,
+			MaxSizeMB: defaultApplicationLogMaxSizeMB,
+			MaxNum:    defaultApplicationLogMaxNum,
+			Level:     defaultApplicationLogLevel,
 		},
 	}
 }
 
 // Load loads config from file or environment variables.
-func (svc *SaasService) Load(filePath string) error {
+func (svc *ApplicationService) Load(filePath string) error {
 	// default options.
 	svc.RunMode = RunModeRelease
 
@@ -278,7 +278,7 @@ func (svc *SaasService) Load(filePath string) error {
 }
 
 // LoadFromEnv loads config from environment variables.
-func (svc *SaasService) LoadFromEnv() error {
+func (svc *ApplicationService) LoadFromEnv() error {
 	// run mode.
 	var runMode string
 	if envx.LoadString("NODEMAN_MODE", &runMode) {
@@ -325,7 +325,7 @@ func (svc *SaasService) LoadFromEnv() error {
 }
 
 // LoadFromFile loads config from file.
-func (svc *SaasService) LoadFromFile(path string) error {
+func (svc *ApplicationService) LoadFromFile(path string) error {
 	configContent, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -339,7 +339,7 @@ func (svc *SaasService) LoadFromFile(path string) error {
 }
 
 // Validate validates the config.
-func (svc *SaasService) Validate() error {
+func (svc *ApplicationService) Validate() error {
 	// TODO: validate the config
 	return nil
 }

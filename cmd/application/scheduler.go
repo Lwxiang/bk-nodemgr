@@ -11,54 +11,31 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/saas/service"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
 
-// NewWebServerCMD generates a new webserver command.
-func NewWebServerCMD() *cobra.Command {
-	// configPath of saas service.
+// NewSchedulerCMD generates a new scheduler command.
+func NewSchedulerCMD() *cobra.Command {
 	var configPath string
 
-	wsCMD := &cobra.Command{
-		Use:   "webserver",
-		Short: "Start the HTTP server.",
+	schedulerCMD := &cobra.Command{
+		Use:   "scheduler",
+		Short: "Execute tasks based on cron expressions, please ensure only one running scheduler.",
 		Run: func(_ *cobra.Command, _ []string) {
-			conf := config.NewSaasService()
-			if err := conf.Load(configPath); err != nil {
-				fmt.Printf("failed to load config(%s): %v\n", configPath, err)
+			config := &config.ApplicationService{}
+			if err := config.LoadFromFile(configPath); err != nil {
+				fmt.Printf("failed to load config file(%s): %v\n", configPath, err)
 				os.Exit(1)
 			}
 
-			if err := conf.Validate(); err != nil {
+			if err := config.Validate(); err != nil {
 				fmt.Printf("failed to validate config: %v\n", err)
-				os.Exit(1)
-			}
-
-			switch conf.RunMode {
-			case config.RunModeDebug:
-				gin.SetMode(gin.DebugMode)
-			case config.RunModeRelease:
-				gin.SetMode(gin.ReleaseMode)
-				gin.DebugPrintFunc = func(format string, args ...interface{}) {
-					_, _ = fmt.Fprintf(blog.WriterDebug{}, format, args...)
-				}
-			default:
-				fmt.Printf("invalid mode: %s\n", conf.RunMode)
-				os.Exit(1)
-			}
-
-			if err := service.NewService(conf).Start(context.Background()); err != nil {
-				fmt.Printf("failed to start service: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -71,5 +48,7 @@ func NewWebServerCMD() *cobra.Command {
 		},
 	}
 
-	return wsCMD
+	schedulerCMD.Flags().StringVar(&configPath, "config", "", "config file")
+
+	return schedulerCMD
 }

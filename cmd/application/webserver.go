@@ -11,31 +11,54 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"git.woa.com/bk-gse/bk-nodeman/internal/application/service"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
 
-// NewSchedulerCMD generates a new scheduler command.
-func NewSchedulerCMD() *cobra.Command {
+// NewWebServerCMD generates a new webserver command.
+func NewWebServerCMD() *cobra.Command {
+	// configPath of application service.
 	var configPath string
 
-	schedulerCMD := &cobra.Command{
-		Use:   "scheduler",
-		Short: "Execute tasks based on cron expressions, please ensure only one running scheduler.",
+	wsCMD := &cobra.Command{
+		Use:   "webserver",
+		Short: "Start the HTTP server.",
 		Run: func(_ *cobra.Command, _ []string) {
-			config := &config.SaasService{}
-			if err := config.LoadFromFile(configPath); err != nil {
-				fmt.Printf("failed to load config file(%s): %v\n", configPath, err)
+			conf := config.NewApplicationService()
+			if err := conf.Load(configPath); err != nil {
+				fmt.Printf("failed to load config(%s): %v\n", configPath, err)
 				os.Exit(1)
 			}
 
-			if err := config.Validate(); err != nil {
+			if err := conf.Validate(); err != nil {
 				fmt.Printf("failed to validate config: %v\n", err)
+				os.Exit(1)
+			}
+
+			switch conf.RunMode {
+			case config.RunModeDebug:
+				gin.SetMode(gin.DebugMode)
+			case config.RunModeRelease:
+				gin.SetMode(gin.ReleaseMode)
+				gin.DebugPrintFunc = func(format string, args ...interface{}) {
+					_, _ = fmt.Fprintf(blog.WriterDebug{}, format, args...)
+				}
+			default:
+				fmt.Printf("invalid mode: %s\n", conf.RunMode)
+				os.Exit(1)
+			}
+
+			if err := service.NewService(conf).Start(context.Background()); err != nil {
+				fmt.Printf("failed to start service: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -48,7 +71,9 @@ func NewSchedulerCMD() *cobra.Command {
 		},
 	}
 
-	schedulerCMD.Flags().StringVar(&configPath, "config", "", "config file")
+	wsCMD.PersistentFlags().StringVarP(
+		&configPath, "file", "f", "", "path of service config file",
+	)
 
-	return schedulerCMD
+	return wsCMD
 }

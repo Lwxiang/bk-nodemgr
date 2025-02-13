@@ -12,4 +12,4 @@ RUN mkdir -p /bk-nodeman/bin /bk-nodeman/etc /bk-nodeman/cert /bk-nodeman/log
 
 WORKDIR /bk-nodeman/bin
 COPY bk-nodeman-backend .
-COPY bk-nodeman-saas .
+COPY bk-nodeman-application .
