@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operdef ...
+// Package workflowdef ...
 package workflowdef
 
 import (
@@ -18,6 +18,7 @@ import (
 	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/conv"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
 )
 
@@ -27,6 +28,11 @@ func NewActionGenAllBizHostSyncOper(topoStorage topo.Storage, operMgr operengine
 		topoStorage: topoStorage,
 		operMgr:     operMgr,
 	}
+}
+
+// genAllBizHostSyncOperParam ...
+type genAllBizHostSyncOperParam struct {
+	TenantID string `json:"tenant_id"`
 }
 
 // genAllBizHostSyncOper ...
@@ -67,17 +73,20 @@ func (c *genAllBizHostSyncOper) MaxRetryCount() uint {
 	return 0
 }
 
-// DelayFn ...
+// DelayFn this func define when this action fails, how long to wait before retrying.
 func (c *genAllBizHostSyncOper) DelayFn() func() {
 	return func() {}
 }
 
-// Do ...
+// Do this func define what the action will do.
 func (c *genAllBizHostSyncOper) Do(ctx *operengine.ActionInstContext) error {
-	ctx.Data.Log("successfully start create all biz host sync operation")
-	// TODO: 支持多租户版本
-	tenantID := "0"
-	tenantCtx, err := tenant.SetID(ctx.Ctx, tenantID)
+	param := new(genAllBizHostSyncOperParam)
+	err := conv.MapToStruct(ctx.Data.Content, param)
+	if err != nil {
+		return err
+	}
+
+	tenantCtx, err := tenant.SetID(ctx.Ctx, param.TenantID)
 	if err != nil {
 		return err
 	}
@@ -92,27 +101,37 @@ func (c *genAllBizHostSyncOper) Do(ctx *operengine.ActionInstContext) error {
 	for idx, _ := range bizs {
 		biz := bizs[idx]
 
-		ctx.Data.Log(fmt.Sprintf("start create sync host operation for business, biz-name(%s), biz-id(%d)",
-			biz.BizName, biz.BizID))
-
-		operation := NewOperSyncHostFromCMDB(ctx.Data.TriggerID)
-		err := c.operMgr.ExecuteOperation(operation, &operengine.OperInstParam{
-			Timeout: time.Second * 10,
-			InitContent: map[string]map[string]any{
-				SyncHostFromCMDB: conv.StructToMapIgnoreError(syncHostFromCMDBParam{
-					BizID:    biz.BizID,
-					TenantID: tenantID,
-				}),
-			},
-		})
-		if err != nil {
-			ctx.Data.Log(fmt.Sprintf("failed to create sync host operation for business, biz-name(%s), biz-id(%d)",
-				biz.BizName, biz.BizID))
+		if err = c.executeOper(ctx.Data, biz); err != nil {
 			return err
 		}
 	}
 
-	ctx.Data.Log(fmt.Sprintf("successfully create all biz host sync operation"))
+	return nil
+}
+
+// executeOper create an operation to sync all host from cmdb and then execute it.
+func (c *genAllBizHostSyncOper) executeOper(data *operengine.ActionInstData, biz *types.Business) error {
+	operation := newOperSyncHostFromCMDB(data.TriggerID)
+	err := c.operMgr.ExecuteOperation(operation, &operengine.OperInstParam{
+		Timeout: time.Second * 10,
+		InitContent: map[string]map[string]any{
+			SyncHostFromCMDB: conv.StructToMapIgnoreError(syncHostFromCMDBParam{
+				BizID:    biz.BizID,
+				TenantID: biz.TenantID,
+			}),
+		},
+	})
+	if err != nil {
+		msg := fmt.Sprintf("failed to create sync host operation for business, tenant-id(%s), biz-name(%s), biz-id(%d)",
+			biz.TenantID, biz.BizName, biz.BizID)
+		data.Log(msg)
+
+		return err
+	}
+
+	msg := fmt.Sprintf("succefully create sync host operation for business, tenant-id(%s), biz-name(%s), biz-id(%d)",
+		biz.TenantID, biz.BizName, biz.BizID)
+	data.Log(msg)
 
 	return nil
 }

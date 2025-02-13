@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operdef ...
+// Package workflowdef ...
 package workflowdef
 
 import (

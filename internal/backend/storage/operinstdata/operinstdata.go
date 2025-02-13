@@ -121,7 +121,7 @@ type StopEventSubscription struct {
 // GetOperInstData get task data.
 func (s *storage) GetOperInstData(ctx context.Context, operInstID string) (*operengine.OperInstData, error) {
 	if ctx == nil {
-		return nil, errors.New("context is nil")
+		return nil, base.ErrNilContent()
 	}
 
 	if operInstID == "" {
@@ -138,6 +138,14 @@ func (s *storage) GetOperInstData(ctx context.Context, operInstID string) (*oper
 
 // UpsertOperInstData update task data.
 func (s *storage) UpsertOperInstData(ctx context.Context, data *operengine.OperInstData) error {
+	if ctx == nil {
+		return base.ErrNilContent()
+	}
+
+	if data == nil {
+		return base.ErrUpsertNilData()
+	}
+
 	if err := s.operinstdataDao.Upsert(ctx, data); err != nil {
 		return fmt.Errorf("failed to update operation inst data, operation-inst(%v), err: %v", data, err)
 	}
@@ -147,6 +155,10 @@ func (s *storage) UpsertOperInstData(ctx context.Context, data *operengine.OperI
 
 // MarkOperInstStopping mark task stopping.
 func (s *storage) MarkOperInstStopping(ctx context.Context, operationInstID string) error {
+	if ctx == nil {
+		return base.ErrNilContent()
+	}
+
 	err := s.stopoperinstDao.Upsert(ctx, operationInstID)
 	if err != nil {
 		return fmt.Errorf("failed to mark operation inst stopping failed, operation-inst-id(%v), err: %v",
@@ -283,4 +295,21 @@ func (s *storage) removeSubscription(key string) {
 	defer s.stopEventSubsMapMutex.Unlock()
 
 	delete(s.stopEventSubsMap, key)
+}
+
+// RefreshActInstDataMsg ...
+func (s *storage) RefreshActInstDataMsg(ctx context.Context, data *operengine.ActionInstData) error {
+	if ctx == nil {
+		return base.ErrNilContent()
+	}
+
+	if data == nil {
+		return errors.New("data is nil")
+	}
+
+	if err := s.operinstdataDao.RefreshActInstDataMsg(ctx, data); err != nil {
+		return err
+	}
+
+	return nil
 }

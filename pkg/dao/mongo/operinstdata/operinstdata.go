@@ -105,3 +105,27 @@ func (d *dao) find(ctx context.Context, filter bson.D) ([]*OperInstData, error) 
 
 	return datas, nil
 }
+
+// updateField update field.
+func (d *dao) updateField(ctx context.Context, filter bson.D, field string, value any) error {
+	nowTime := time.Now()
+
+	update := bson.D{
+		{
+			Key: "$set",
+			Value: bson.M{
+				"basic.updated_at": nowTime,
+				field:              value,
+			},
+		},
+	}
+
+	result, err := d.client.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	d.logger.Infof("successfully updated, field(%v), updated-count(%d)", field, result.UpsertedCount)
+
+	return nil
+}

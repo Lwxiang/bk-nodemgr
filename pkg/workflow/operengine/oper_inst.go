@@ -27,8 +27,14 @@ type ActionInstData struct {
 	StartedAt  time.Time
 	EndedAt    time.Time
 	StoppedAt  time.Time
-	Messages   []string
+	Messages   []Message
 	Content    map[string]any
+}
+
+// Message ...
+type Message struct {
+	Time time.Time
+	Text string
 }
 
 // Info ...
@@ -38,13 +44,18 @@ func (data *ActionInstData) Info() string {
 
 // Log log messages.
 func (data *ActionInstData) Log(messages ...string) {
-	data.Messages = append(data.Messages, messages...)
+	for _, message := range messages {
+		data.Messages = append(data.Messages, Message{
+			Time: time.Now(),
+			Text: message,
+		})
+	}
 }
 
 // OperInstData OperInst data.
 type OperInstData struct {
 	OperInstID        string
-	OperationDefName  string
+	OperDefName       string
 	ActionNames       []string
 	ActionInstDataMap map[string]*ActionInstData
 	ParentOperInstID  string

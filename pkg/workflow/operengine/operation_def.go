@@ -64,7 +64,7 @@ func (def *operationDef) NewInstance(timeout time.Duration) (*OperInst, error) {
 	inst := &OperInst{
 		data: &OperInstData{
 			OperInstID:        fmt.Sprintf("%s-%s", OperInstIDPrefix, uuid.NewString()),
-			OperationDefName:  def.name,
+			OperDefName:       def.name,
 			ActionNames:       make([]string, len(def.actionDefs)),
 			ActionInstDataMap: make(map[string]*ActionInstData),
 			Timeout:           timeout,
@@ -81,7 +81,7 @@ func (def *operationDef) NewInstance(timeout time.Duration) (*OperInst, error) {
 			Name:       action.Name(),
 			Index:      index,
 			State:      ActionInstStatePending,
-			Messages:   make([]string, 0),
+			Messages:   make([]Message, 0),
 			Content:    make(map[string]any),
 		}
 	}

@@ -112,7 +112,7 @@ func (m *operMgr) buildInst(operation *Operation, param *OperInstParam) (
 			Name:       actionName,
 			Index:      idx,
 			State:      ActionInstStatePending,
-			Messages:   []string{},
+			Messages:   make([]Message, 0),
 			Content:    operInst.data.InitContent[actionName],
 		}
 	}
@@ -178,8 +178,6 @@ func (m *operMgr) ExecuteOperation(operation *Operation, param *OperInstParam) (
 	if err = m.storage.UpsertOperation(m.ctx, operation); err != nil {
 		return err
 	}
-
-	m.logger.Debugf("dispatch operation instance, operation(%#v) oper-inst-data(%#v)", operation, operInst.data)
 
 	if err = m.operInstMgr.DispatchOperInst(operInst); err != nil {
 		return err

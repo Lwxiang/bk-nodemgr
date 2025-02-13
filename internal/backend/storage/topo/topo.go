@@ -60,15 +60,15 @@ type storage struct {
 	daoHost host.Handler
 }
 
-func (ds *storage) initDao() error {
-	ds.daoBusiness = business.New(ds.Database, ds.Logger)
-	ds.daoHost = host.New(ds.Database, ds.Logger)
+func (s *storage) initDao() error {
+	s.daoBusiness = business.New(s.Database, s.Logger)
+	s.daoHost = host.New(s.Database, s.Logger)
 
 	return nil
 }
 
-func (ds *storage) check() error {
-	if ds.daoBusiness == nil {
+func (s *storage) check() error {
+	if s.daoBusiness == nil {
 		return errors.New("dao business is nil")
 	}
 
@@ -76,8 +76,16 @@ func (ds *storage) check() error {
 }
 
 // UpsertBusiness updates or inserts a business.
-func (ds *storage) UpsertBusiness(ctx context.Context, biz *types.Business) error {
-	if err := ds.daoBusiness.Upsert(ctx, biz); err != nil {
+func (s *storage) UpsertBusiness(ctx context.Context, biz *types.Business) error {
+	if ctx == nil {
+		return base.ErrNilContent()
+	}
+
+	if biz == nil {
+		return base.ErrUpsertNilData()
+	}
+
+	if err := s.daoBusiness.Upsert(ctx, biz); err != nil {
 		return fmt.Errorf("failed to upsert business: %v", err)
 	}
 
@@ -85,8 +93,8 @@ func (ds *storage) UpsertBusiness(ctx context.Context, biz *types.Business) erro
 }
 
 // ListBusinesses lists all businesses.
-func (ds *storage) ListBusinesses(ctx context.Context) ([]*types.Business, error) {
-	bizs, err := ds.daoBusiness.ListAll(ctx)
+func (s *storage) ListBusinesses(ctx context.Context) ([]*types.Business, error) {
+	bizs, err := s.daoBusiness.ListAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +103,16 @@ func (ds *storage) ListBusinesses(ctx context.Context) ([]*types.Business, error
 }
 
 // UpsertHosts ...
-func (ds *storage) UpsertHosts(ctx context.Context, hosts ...*types.Host) error {
+func (s *storage) UpsertHosts(ctx context.Context, hosts ...*types.Host) error {
 	if ctx == nil {
 		return errors.New("ctx is nil")
 	}
 
-	if err := ds.daoHost.UpsertMany(ctx, hosts); err != nil {
+	if len(hosts) == 0 {
+		return nil
+	}
+
+	if err := s.daoHost.UpsertMany(ctx, hosts); err != nil {
 		return fmt.Errorf("failed to upsert hosts: %v", err)
 	}
 

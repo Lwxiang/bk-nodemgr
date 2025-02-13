@@ -36,27 +36,27 @@ type ActionInstContext struct {
 
 // ActionDef represents an operation inst operInstMgr action, which is a single basic step of work.
 type ActionDef interface {
-	// Name returns the name of the action
+	// Name returns the name of the action.
 	Name() string
 
-	// Version returns the version of the action
+	// Version returns the version of the action.
 	Version() string
 
-	// Description returns the description of the action
+	// Description returns the description of the action.
 	Description() string
 
-	// Timeout returns the timeout of the action
+	// Timeout returns the timeout of the action.
 	Timeout() time.Duration
 
-	// Tags returns the tags of the action
+	// Tags returns the tags of the action.
 	Tags() []ActionTag
 
-	// MaxRetryCount returns the max retry count of the action
+	// MaxRetryCount returns the max retry count of the action.
 	MaxRetryCount() uint
 
-	// DelayFn returns the delay function of the action
+	// DelayFn returns the delay function of the action.
 	DelayFn() func()
 
-	// Do executes the action, with specified context
+	// Do executes the action, with specified context.
 	Do(*ActionInstContext) error
 }

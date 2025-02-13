@@ -56,7 +56,7 @@ type OperInstMgr interface {
 	// RegisterActions registers a list of actions.
 	RegisterActions(actionDefs ...ActionDef) error
 
-	// Terminate an operation inst.
+	// TerminateOperInst an operation inst.
 	TerminateOperInst(operationInstID string) error
 }
 
@@ -435,7 +435,7 @@ func (mgr *operInstMgr) do(ctx context.Context, actionName string, operInstID st
 		Data: data,
 	}
 
-	go mgr.callActionDef(doResult, actionInstCtx, actionDef)
+	go mgr.executeAction(doResult, actionInstCtx, actionDef)
 
 	select {
 	case err = <-doResult:
@@ -508,35 +508,78 @@ func checkActionInstState(data *ActionInstData) (skip bool, err error) {
 	}
 }
 
-// callActionDef call action def.
-func (mgr *operInstMgr) callActionDef(doResult chan error, actionInstCtx *ActionInstContext, actionDef ActionDef) {
+// executeAction execute action.
+func (mgr *operInstMgr) executeAction(doResult chan error, actionInstCtx *ActionInstContext, actionDef ActionDef) {
 	defer func() {
 		if r := recover(); r != nil {
+			mgr.logger.Errorf("action panic, info(%v), revoer(%v), stack(%s)",
+				actionInstCtx.Data.Info(), r, debug.Stack())
 			doResult <- fmt.Errorf("action panic, info(%v), revoer(%v), stack(%s)",
 				actionInstCtx.Data.Info(), r, debug.Stack())
 		}
+
 	}()
 
-	mgr.logger.Infof("action start, info(%s), description(%s)", actionInstCtx.Data.Info(), actionDef.Description())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// TODO: 起一个并行任务来同步刷新, ActionInstData.
+	go mgr.autoRefreshActionDataMsg(ctx, actionInstCtx)
 
-	maxRetryNum := actionDef.MaxRetryCount()
+	doResult <- mgr.callActionDefWithRetry(actionInstCtx, actionDef)
+}
+
+const messageRefreshInterval = 1 * time.Second
+
+func (mgr *operInstMgr) autoRefreshActionDataMsg(ctx context.Context, actionInstCtx *ActionInstContext) {
+	ticker := time.NewTicker(messageRefreshInterval)
+	defer ticker.Stop()
+
+	// refresh action inst data messages to storage
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := mgr.storage.RefreshActInstDataMsg(ctx, actionInstCtx.Data); err != nil {
+				mgr.logger.Errorf("failed to refresh action inst data messages, action-name(%s), err: %v",
+					actionInstCtx.Data.Name, err)
+			}
+			continue
+		}
+	}
+}
+
+// callActionDefWithRetry do action with retry.
+func (mgr *operInstMgr) callActionDefWithRetry(actionInstCtx *ActionInstContext, actionDef ActionDef) error {
 	var doErr error
-	for retryNum := uint(0); retryNum <= maxRetryNum && retryNum < EngineMaxRetryLimit; retryNum++ {
+
+	for retryNum := uint(0); retryNum <= actionDef.MaxRetryCount() && retryNum < EngineMaxRetryLimit; retryNum++ {
+		mgr.logger.Infof("successfully started action, action-name(%s), retry-num(%d)",
+			actionInstCtx.Data.Name, retryNum)
+		actionInstCtx.Data.Log(fmt.Sprintf("successfully started action, action-name(%s), retry-num(%d)",
+			actionInstCtx.Data.Name, retryNum))
+
 		doErr = actionDef.Do(actionInstCtx)
+
 		if doErr != nil {
+			mgr.logger.Errorf("failed to do action, action-name(%s), retry-num(%d), err: %v",
+				actionInstCtx.Data.Name, retryNum, doErr)
+			actionInstCtx.Data.Log(fmt.Sprintf("failed to do action, action-name(%s), retry-num(%d), err: %v",
+				actionInstCtx.Data.Name, retryNum, doErr))
+
 			actionDef.DelayFn()
 			continue
 		}
 
+		mgr.logger.Infof("successfully done action, action-name(%s), retry-num(%d)",
+			actionInstCtx.Data.Name, retryNum)
+		actionInstCtx.Data.Log(fmt.Sprintf("successfully done action, action-name(%s), retry-num(%d)",
+			actionInstCtx.Data.Name, retryNum))
+
 		break
 	}
 
-	mgr.logger.Infof("action done, info(%s), description(%s), err: %v",
-		actionInstCtx.Data.Info(), actionDef.Description(), doErr)
-
-	doResult <- doErr
+	return doErr
 }
 
 // storeOperInst store OperInst param to storage.
@@ -562,7 +605,7 @@ func (mgr *operInstMgr) getOperInst(ctx context.Context, operInstID string) (*Op
 		return nil, err
 	}
 
-	operDef := &operationDef{name: data.OperationDefName}
+	operDef := &operationDef{name: data.OperDefName}
 	for _, actionName := range data.ActionNames {
 		actionDef, ok := mgr.registeredActionDefs[actionName]
 		if !ok {

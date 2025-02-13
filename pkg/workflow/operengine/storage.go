@@ -29,6 +29,9 @@ type OperInstStorage interface {
 
 	// WatchOperInstStopping will return a chan, when the OperInst is stopping, it will close the chan.
 	WatchOperInstStopping(ctx context.Context, operationInstID string) <-chan struct{}
+
+	// RefreshActInstDataMsg will refresh the action_inst_data's msg.
+	RefreshActInstDataMsg(ctx context.Context, data *ActionInstData) error
 }
 
 // OperationStorage represents a Operation operInstMgr storage handler.

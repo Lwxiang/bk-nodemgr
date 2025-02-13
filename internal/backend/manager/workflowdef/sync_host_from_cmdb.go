@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operdef ...
+// Package workflowdef ...
 package workflowdef
 
 import (
@@ -83,8 +83,6 @@ func (s *syncHostFromCMDB) DelayFn() func() {
 
 // Do ...
 func (s *syncHostFromCMDB) Do(ctx *operengine.ActionInstContext) error {
-	ctx.Data.Log("successfully start sync host from cmdb")
-
 	param := new(syncHostFromCMDBParam)
 	err := conv.MapToStruct(ctx.Data.Content, param)
 	if err != nil {
@@ -114,8 +112,6 @@ func (s *syncHostFromCMDB) Do(ctx *operengine.ActionInstContext) error {
 	if err = s.topoStorage.UpsertHosts(ctx.Ctx, result.Items...); err != nil {
 		return err
 	}
-
-	ctx.Data.Log("successfully do sync host from cmdb")
 
 	return nil
 }

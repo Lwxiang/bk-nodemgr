@@ -78,7 +78,7 @@ func Test_storage_UpsertOperInstData(t *testing.T) {
 				ctx: context.Background(),
 				data: &operengine.OperInstData{
 					OperInstID:        "",
-					OperationDefName:  "",
+					OperDefName:       "",
 					ActionNames:       nil,
 					ActionInstDataMap: nil,
 					ParentOperInstID:  "",

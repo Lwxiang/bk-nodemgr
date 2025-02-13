@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
@@ -27,8 +28,11 @@ type Handler interface {
 	// Upsert updates or inserts an OperInstData.
 	Upsert(ctx context.Context, data *operengine.OperInstData) error
 
-	// FindOne ...
+	// FindOne find one OperInstData.
 	FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperInstData, error)
+
+	// RefreshActInstDataMsg refreshes the message of an ActionInstData.
+	RefreshActInstDataMsg(ctx context.Context, data *operengine.ActionInstData) error
 }
 
 type handler struct {
@@ -56,7 +60,7 @@ func (h *handler) Upsert(ctx context.Context, data *operengine.OperInstData) err
 		OperInstID:        data.OperInstID,
 		ActionNames:       data.ActionNames,
 		ActionInstDataMap: make(map[string]*ActionInstData, len(data.ActionInstDataMap)),
-		OperationDefName:  data.OperationDefName,
+		OperDefName:       data.OperDefName,
 		ParentOperInstID:  data.ParentOperInstID,
 		Timeout:           data.Timeout,
 		CreatedAt:         data.CreatedAt,
@@ -86,7 +90,13 @@ func (h *handler) Upsert(ctx context.Context, data *operengine.OperInstData) err
 			StartedAt:  v.StartedAt,
 			EndedAt:    v.EndedAt,
 			StoppedAt:  v.StoppedAt,
-			Messages:   v.Messages,
+		}
+
+		for _, message := range v.Messages {
+			actionInstData.Messages = append(actionInstData.Messages, Message{
+				Time: message.Time,
+				Text: message.Text,
+			})
 		}
 
 		bytes, err := json.Marshal(v.Content)
@@ -131,7 +141,7 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperI
 
 	data := &operengine.OperInstData{
 		OperInstID:        operInstData.OperInstID,
-		OperationDefName:  operInstData.OperationDefName,
+		OperDefName:       operInstData.OperDefName,
 		ActionNames:       operInstData.ActionNames,
 		ActionInstDataMap: make(map[string]*operengine.ActionInstData, len(operInstData.ActionInstDataMap)),
 		ParentOperInstID:  operInstData.ParentOperInstID,
@@ -161,7 +171,13 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperI
 			StartedAt:  v.StartedAt,
 			EndedAt:    v.EndedAt,
 			StoppedAt:  v.StoppedAt,
-			Messages:   v.Messages,
+		}
+
+		for _, msg := range v.Messages {
+			actionInstData.Messages = append(actionInstData.Messages, operengine.Message{
+				Time: msg.Time,
+				Text: msg.Text,
+			})
 		}
 
 		err = json.Unmarshal([]byte(v.Content), &actionInstData.Content)
@@ -173,4 +189,32 @@ func (h *handler) FindOne(ctx context.Context, opts ...OptFn) (*operengine.OperI
 	}
 
 	return data, nil
+}
+
+// RefreshActInstDataMsg ...
+func (h *handler) RefreshActInstDataMsg(ctx context.Context, data *operengine.ActionInstData) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
+
+	if data == nil {
+		return errors.New("data is nil")
+	}
+
+	filter := bson.D{{Key: "basic.is_deleted", Value: false}}
+	opts := []OptFn{
+		WithTriggerID(data.TriggerID),
+		WithOperInstID(data.OperInstID),
+	}
+	for _, opt := range opts {
+		filter = opt(filter)
+	}
+
+	filed := fmt.Sprintf("data.action_inst_data_map.%s.messages", data.Name)
+	err := h.dao.updateField(ctx, filter, filed, data.Messages)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -18,7 +18,7 @@ import (
 )
 
 // TableName operation instance data table name.
-const TableName = "operation_inst_data"
+const TableName = "oper_inst_data"
 
 // ActionInstData represents a action data.
 type ActionInstData struct {
@@ -30,8 +30,14 @@ type ActionInstData struct {
 	StartedAt  time.Time `json:"started_at" bson:"started_at"`
 	EndedAt    time.Time `json:"ended_at" bson:"ended_at"`
 	StoppedAt  time.Time `json:"stopped_at" bson:"stopped_at"`
-	Messages   []string  `json:"messages" bson:"messages"`
+	Messages   []Message `json:"messages" bson:"messages"`
 	Content    string    `json:"content" bson:"content"`
+}
+
+// Message represents a message.
+type Message struct {
+	Time time.Time `json:"time" bson:"time"`
+	Text string    `json:"text" bson:"text"`
 }
 
 // OperInstData represents a operation instance data.
@@ -39,7 +45,7 @@ type OperInstData struct {
 	OperInstID        string                     `json:"oper_inst_id" bson:"oper_inst_id"`
 	ActionNames       []string                   `json:"actions" bson:"actions"`
 	ActionInstDataMap map[string]*ActionInstData `json:"action_data" bson:"action_data"`
-	OperationDefName  string                     `json:"pipeline" bson:"pipeline"`
+	OperDefName       string                     `json:"oper_def_name" bson:"oper_def_name"`
 	ParentOperInstID  string                     `json:"parent_oper_inst_id" bson:"parent_oper_inst_id"`
 
 	Timeout time.Duration `json:"timeout" bson:"timeout"`

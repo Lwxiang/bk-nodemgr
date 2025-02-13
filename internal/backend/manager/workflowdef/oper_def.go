@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package operdef ...
+// Package workflowdef ...
 package workflowdef
 
 import (
@@ -48,16 +48,16 @@ var instance = struct {
 func OperBuilderRegistry() map[OperDefName]OperBuilder {
 	instance.once.Do(func() {
 		instance.registry = map[OperDefName]OperBuilder{
-			OperDefNameSyncHost:       NewOperSyncHostFromCMDB,
-			OperDefNameSyncBiz:        NewOperSyncBizFromCMDB,
-			OperDefNameSyncBizAndHost: NewOperSyncBizAndHostFromCMDB,
+			OperDefNameSyncHost:       newOperSyncHostFromCMDB,
+			OperDefNameSyncBiz:        newOperSyncBizFromCMDB,
+			OperDefNameSyncBizAndHost: newOperSyncBizAndHostFromCMDB,
 		}
 	})
 	return instance.registry
 }
 
-// NewOperSyncBizFromCMDB new an operation to sync all biz's host from cmdb.
-func NewOperSyncBizFromCMDB(triggerID string) *operengine.Operation {
+// newOperSyncBizFromCMDB new an operation to sync all biz's host from cmdb.
+func newOperSyncBizFromCMDB(triggerID string) *operengine.Operation {
 	defSnapshot := operengine.OperDefSnapshot{
 		OperDefName: OperDefNameSyncBiz,
 		ActionNames: []string{SyncBizFromCMDB},
@@ -68,8 +68,8 @@ func NewOperSyncBizFromCMDB(triggerID string) *operengine.Operation {
 	return operation
 }
 
-// NewOperSyncHostFromCMDB new an operation to sync all biz's host from cmdb.
-func NewOperSyncHostFromCMDB(triggerID string) *operengine.Operation {
+// newOperSyncHostFromCMDB new an operation to sync all biz's host from cmdb.
+func newOperSyncHostFromCMDB(triggerID string) *operengine.Operation {
 	defSnapshot := operengine.OperDefSnapshot{
 		OperDefName: OperDefNameSyncHost,
 		ActionNames: []string{SyncHostFromCMDB},
@@ -80,8 +80,8 @@ func NewOperSyncHostFromCMDB(triggerID string) *operengine.Operation {
 	return operation
 }
 
-// NewOperSyncBizAndHostFromCMDB new an operation to sync all bizs and their host from cmdb.
-func NewOperSyncBizAndHostFromCMDB(triggerID string) *operengine.Operation {
+// newOperSyncBizAndHostFromCMDB new an operation to sync all bizs and their host from cmdb.
+func newOperSyncBizAndHostFromCMDB(triggerID string) *operengine.Operation {
 	defSnapshot := operengine.OperDefSnapshot{
 		OperDefName: OperDefNameSyncHost,
 		ActionNames: []string{SyncBizFromCMDB, GenAllBizHostSyncOper},

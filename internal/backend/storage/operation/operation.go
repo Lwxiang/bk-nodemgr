@@ -73,7 +73,7 @@ func (s *storage) check() error {
 // GetOperation ...
 func (s *storage) GetOperation(ctx context.Context, operationID string) (*operengine.Operation, error) {
 	if ctx == nil {
-		return nil, errors.New("context is nil")
+		return nil, base.ErrNilContent()
 	}
 
 	oper, err := s.daoOperation.FindOne(ctx, operation.WithOperationID(operationID))
@@ -87,11 +87,11 @@ func (s *storage) GetOperation(ctx context.Context, operationID string) (*operen
 // UpsertOperation ...
 func (s *storage) UpsertOperation(ctx context.Context, operation *operengine.Operation) error {
 	if ctx == nil {
-		return errors.New("context is nil")
+		return base.ErrNilContent()
 	}
 
 	if operation == nil {
-		return errors.New("operation is nil")
+		return base.ErrUpsertNilData()
 	}
 
 	return s.daoOperation.Upsert(ctx, operation)

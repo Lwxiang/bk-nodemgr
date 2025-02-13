@@ -109,9 +109,9 @@ func Test_handler_Upsert(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				data: &operengine.OperInstData{
-					OperInstID:       "operation-inst-7bd49883-bcc9-4776-80ff-d3d37ca4143f",
-					OperationDefName: "",
-					ActionNames:      []string{"action-1"},
+					OperInstID:  "operation-inst-7bd49883-bcc9-4776-80ff-d3d37ca4143f",
+					OperDefName: "",
+					ActionNames: []string{"action-1"},
 					ActionInstDataMap: map[string]*operengine.ActionInstData{
 						"action-1": {
 							TriggerID:  "trigger-1",
@@ -149,6 +149,79 @@ func Test_handler_Upsert(t *testing.T) {
 			h := testClient(t)
 			if err := h.Upsert(tt.args.ctx, tt.args.data); (err != nil) != tt.wantErr {
 				t.Errorf("Upsert() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Test_handler_RefreshActInstDataMsg ...
+func Test_handler_RefreshActInstDataMsg(t *testing.T) {
+	type args struct {
+		ctx  context.Context
+		data *operengine.ActionInstData
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				ctx: context.Background(),
+				data: &operengine.ActionInstData{
+					TriggerID:  "trigger-1",
+					OperInstID: "a19daad7-aaa5-4a1b-a74c-29e33eeae928",
+					Name:       "sync_biz_from_cmdb",
+					Index:      0,
+					Messages: []operengine.Message{
+						{
+							Time: time.Time{},
+							Text: "success",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "nil content",
+			args: args{
+				ctx: nil,
+				data: &operengine.ActionInstData{
+					TriggerID:  "",
+					OperInstID: "",
+					Name:       "",
+					Index:      0,
+					State:      "",
+					StartedAt:  time.Time{},
+					EndedAt:    time.Time{},
+					StoppedAt:  time.Time{},
+					Messages:   nil,
+					Content:    nil,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil data",
+			args: args{
+				ctx:  context.Background(),
+				data: nil,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := testClient(t)
+			err := h.RefreshActInstDataMsg(tt.args.ctx, tt.args.data)
+			if err != nil {
+				t.Logf("RefreshActInstDataMsg() error = %v", err)
+			}
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RefreshActInstDataMsg() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

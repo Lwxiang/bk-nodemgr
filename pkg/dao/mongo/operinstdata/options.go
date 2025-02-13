@@ -28,3 +28,16 @@ func WithOperInstID(id ...string) OptFn {
 		return append(f, bson.E{Key: "data.oper_inst_id", Value: bson.M{"$in": id}})
 	}
 }
+
+// WithTriggerID filter by trigger id
+func WithTriggerID(triggerID ...string) OptFn {
+	if len(triggerID) == 1 {
+		return func(f bson.D) bson.D {
+			return append(f, bson.E{Key: "data.trigger_id", Value: triggerID[0]})
+		}
+	}
+
+	return func(f bson.D) bson.D {
+		return append(f, bson.E{Key: "data.trigger_id", Value: bson.M{"$in": triggerID}})
+	}
+}
