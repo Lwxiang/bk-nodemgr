@@ -77,11 +77,11 @@ func NewServer(ctx context.Context, name, ip string, port int, logWriter LogWrit
 	}))
 
 	// Set metrics monitor.
-	svr.metrics = metrics.GetMonitor()
-	svr.metrics.SetSlowTime(1)
-	svr.metrics.SetDuration([]float64{0.01, 0.05, 0.1, 0.5, 1, 2, 5})
-	svr.metrics.SetExcludePaths([]string{"/ping", "/healthz", "/metrics"})
-	svr.metrics.UseWithoutExposingEndpoint(svr.engine)
+	svr.metrics = metrics.NewMonitor(name).
+		WithSlowTime(1 * time.Second).
+		WithExcludePaths([]string{"/ping", "/healthz", "/metrics"}).
+		RegisterMiddleware(svr.engine).
+		Enable()
 
 	svr.rg = svr.engine.Group("/")
 

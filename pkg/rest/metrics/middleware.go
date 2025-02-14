@@ -12,39 +12,31 @@ package metrics
 
 import (
 	"fmt"
+	"net/http"
 	"slices"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Use set gin metrics middleware.
-func (monitor *Monitor) Use(r gin.IRoutes) {
-	monitor.initGinMetrics()
+// Enable enable metrics into prometheus handler.
+func (monitor *Monitor) Enable() *Monitor {
+	monitor.initMetrics()
 
+	return monitor
+}
+
+// RegisterMiddleware is used to add monitor interceptor to gin router
+// It can be called multiple times to intercept from multiple gin.IRoutes.
+func (monitor *Monitor) RegisterMiddleware(r gin.IRoutes) *Monitor {
 	r.Use(monitor.middleware)
-	r.GET(monitor.metricPath, gin.WrapH(promhttp.Handler()))
+
+	return monitor
 }
 
-// UseWithoutExposingEndpoint is used to add monitor interceptor to gin router
-// It can be called multiple times to intercept from multiple gin.IRoutes
-// http path is not set, to do that use Expose function.
-func (monitor *Monitor) UseWithoutExposingEndpoint(r gin.IRoutes) {
-	monitor.initGinMetrics()
-	r.Use(monitor.middleware)
-}
-
-// Expose adds metric path to a given router.
-// The router can be different with the one passed to UseWithoutExposingEndpoint.
-// This allows to expose metrics on different port.
-func (monitor *Monitor) Expose(r gin.IRoutes) {
-	r.GET(monitor.metricPath, gin.WrapH(promhttp.Handler()))
-}
-
-// initGinMetrics used to init gin metrics.
-func (monitor *Monitor) initGinMetrics() {
+// initMetrics used to init metrics.
+func (monitor *Monitor) initMetrics() {
 	monitor.bloomFilter = newBloomFilter()
 
 	_ = monitor.AddMetric(&metric{
@@ -82,12 +74,12 @@ func (monitor *Monitor) initGinMetrics() {
 		Name:        monitor.metricKey.requestDuration,
 		Description: "the time server took to handle the request.",
 		Labels:      []string{"uri"},
-		Buckets:     monitor.reqDuration,
+		Buckets:     monitor.durationMSBuckets,
 	})
 	_ = monitor.AddMetric(&metric{
 		Type:        counter,
 		Name:        monitor.metricKey.slowRequest,
-		Description: fmt.Sprintf("the server handled slow requests counter, t=%d.", monitor.slowTime),
+		Description: fmt.Sprintf("the server handled slow requests counter, t=%dms.", monitor.slowTime.Milliseconds()),
 		Labels:      []string{"uri", "method", "code"},
 	})
 }
@@ -95,9 +87,7 @@ func (monitor *Monitor) initGinMetrics() {
 // monitorMiddleware as gin monitor middleware.
 func (monitor *Monitor) middleware(ctx *gin.Context) {
 	// some paths should not be reported
-	if ctx.Request.URL.Path == monitor.metricPath ||
-		slices.Contains(monitor.excludePaths, ctx.Request.URL.Path) {
-
+	if slices.Contains(monitor.excludePaths, ctx.Request.URL.Path) {
 		ctx.Next()
 
 		return
@@ -108,13 +98,49 @@ func (monitor *Monitor) middleware(ctx *gin.Context) {
 	ctx.Next()
 
 	// after request
-	monitor.ginMetricHandle(ctx, startTime)
+	monitor.metricHandle(&metricParam{
+		request:               ctx.Request,
+		requestPath:           ctx.FullPath(),
+		responseStatusCode:    ctx.Writer.Status(),
+		responseContentLength: int64(ctx.Writer.Size()),
+		processDuration:       time.Since(startTime),
+		clientIP:              ctx.ClientIP(),
+	})
 }
 
-func (monitor *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
-	request := ctx.Request
-	writer := ctx.Writer
+// HandleClientMetrics as a client side metrics handler.
+func (monitor *Monitor) HandleClientMetrics(req *http.Request, resp *http.Response, subPath string, start time.Time) {
+	if req == nil || resp == nil {
+		return
+	}
 
+	monitor.metricHandle(&metricParam{
+		request:               req,
+		requestPath:           subPath,
+		responseStatusCode:    resp.StatusCode,
+		responseContentLength: resp.ContentLength,
+		processDuration:       time.Since(start),
+	})
+}
+
+type metricParam struct {
+	request *http.Request
+
+	// fullpath when handling server metrics.
+	// subpath when handling client metrics.
+	requestPath string
+
+	responseStatusCode    int
+	responseContentLength int64
+
+	processDuration time.Duration
+
+	// client side ip, empty when handling client metrics.
+	clientIP string
+}
+
+// nolint:cyclop
+func (monitor *Monitor) metricHandle(param *metricParam) {
 	// set request total
 	metric, err := monitor.getMetric(monitor.metricKey.requestTotal)
 	if err == nil {
@@ -122,8 +148,8 @@ func (monitor *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 	}
 
 	// set uv
-	if clientIP := ctx.ClientIP(); !monitor.bloomFilter.contains(clientIP) {
-		monitor.bloomFilter.add(clientIP)
+	if !monitor.bloomFilter.contains(param.clientIP) {
+		monitor.bloomFilter.add(param.clientIP)
 		if metric, err = monitor.getMetric(monitor.metricKey.requestUVTotal); err == nil {
 			_ = metric.Inc(nil)
 		}
@@ -131,34 +157,33 @@ func (monitor *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 
 	// set uri request total
 	if metric, err = monitor.getMetric(monitor.metricKey.uriRequestTotal); err == nil {
-		_ = metric.Inc([]string{ctx.FullPath(), request.Method, strconv.Itoa(writer.Status())})
+		_ = metric.Inc([]string{param.requestPath, param.request.Method, strconv.Itoa(param.responseStatusCode)})
 	}
 
 	// set request body size
 	// since r.ContentLength can be negative (in some occasions) guard the operation
-	if request.ContentLength >= 0 {
+	if param.request.ContentLength >= 0 {
 		if metric, err = monitor.getMetric(monitor.metricKey.requestBody); err == nil {
-			_ = metric.Add(nil, float64(request.ContentLength))
+			_ = metric.Add(nil, float64(param.request.ContentLength))
 		}
 	}
 
 	// set slow request
-	latency := time.Since(start)
-	if int32(latency.Seconds()) > monitor.slowTime {
+	if param.processDuration >= monitor.slowTime {
 		if metric, err = monitor.getMetric(monitor.metricKey.slowRequest); err == nil {
-			_ = metric.Inc([]string{ctx.FullPath(), request.Method, strconv.Itoa(writer.Status())})
+			_ = metric.Inc([]string{param.requestPath, param.request.Method, strconv.Itoa(param.responseStatusCode)})
 		}
 	}
 
 	// set request duration
 	if metric, err = monitor.getMetric(monitor.metricKey.requestDuration); err == nil {
-		_ = metric.Observe([]string{ctx.FullPath()}, latency.Seconds())
+		_ = metric.Observe([]string{param.requestPath}, float64(param.processDuration.Milliseconds()))
 	}
 
 	// set response size
-	if writer.Size() > 0 {
+	if param.responseContentLength > 0 {
 		if metric, err = monitor.getMetric(monitor.metricKey.responseBody); err == nil {
-			_ = metric.Add(nil, float64(writer.Size()))
+			_ = metric.Add(nil, float64(param.responseContentLength))
 		}
 	}
 }

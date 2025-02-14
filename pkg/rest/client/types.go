@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -13,6 +12,9 @@ const (
 
 // Capability http request limit.
 type Capability struct {
+	// Client name for logging and metrics.
+	Name string
+
 	// Client http client.
 	Client HTTPClient
 
@@ -32,10 +34,9 @@ type Capability struct {
 
 // MetricOption metrics options.
 type MetricOption struct {
-	// prometheus metric register
-	Register prometheus.Registerer
-	// if not set, use default buckets value
-	DurationBuckets []float64
+	// if not set, use default buckets value.
+	// in milliseconds.
+	DurationMSBuckets []float64
 }
 
 // Logger is the logger interface.

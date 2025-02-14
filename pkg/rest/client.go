@@ -11,12 +11,11 @@
 package rest
 
 import (
-	"errors"
 	"strings"
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
-	"github.com/prometheus/client_golang/prometheus"
+	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/metrics"
 )
 
 const (
@@ -26,11 +25,6 @@ const (
 	// toleranceLatencyTimeDefault tolerance latency time.
 	toleranceLatencyTimeDefault = 2 * time.Second
 )
-
-// prometheusBucketsDefault prometheus buckets default.
-func prometheusBucketsDefault() []float64 {
-	return []float64{10, 30, 50, 70, 100, 200, 300, 400, 500, 1000, 2000, 5000}
-}
 
 // ClientInterface http client interface.
 type ClientInterface interface {
@@ -59,37 +53,10 @@ func NewClient(capability *client.Capability, baseURL string) (ClientInterface, 
 		baseURL:       baseURL,
 		capability:    capability,
 		maxRetryCycle: maxRetryCycleDefault,
-	}
-
-	if capability.MetricOpts.Register == nil {
-		return client, nil
-	}
-
-	var buckets []float64
-	if len(capability.MetricOpts.DurationBuckets) == 0 {
-		// set default buckets
-		buckets = prometheusBucketsDefault()
-	} else {
-		// use user defined buckets
-		buckets = capability.MetricOpts.DurationBuckets
-	}
-
-	// TODO: register prometheus metrics.
-	client.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "",
-		Help:    "",
-		Buckets: buckets,
-	}, []string{"handler", "status_code", "dimension"})
-
-	if err := capability.MetricOpts.Register.Register(client.requestDuration); err != nil {
-		var are prometheus.AlreadyRegisteredError
-		if errors.As(err, &are) {
-			var ok bool
-			client.requestDuration, ok = are.ExistingCollector.(*prometheus.HistogramVec)
-			if !ok {
-				return nil, errors.New("assert *prometheus.HistogramVec failed")
-			}
-		}
+		metrics: metrics.NewMonitor(capability.Name).
+			WithDurationMSBuckets(capability.MetricOpts.DurationMSBuckets).
+			WithSlowTime(capability.ToleranceLatencyTime).
+			Enable(),
 	}
 
 	return client, nil
@@ -103,8 +70,8 @@ type Client struct {
 	// client capability.
 	capability *client.Capability
 
-	// client detection.
-	requestDuration *prometheus.HistogramVec
+	// client metrics monitor.
+	metrics *metrics.Monitor
 
 	// exclusionURL
 	exclusionURL []string

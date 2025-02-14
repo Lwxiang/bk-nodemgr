@@ -389,6 +389,11 @@ severity:
         - dupl
       severity: info
 linters-settings:
+  exhaustive:
+    # Presence of "default" case in switch statements satisfies exhaustiveness,
+    # even if all enum members are not listed.
+    # Default: false
+    default-signifies-exhaustive: true
   funlen:
     # Checks the number of lines in a function.
     # If lower than 0, disable the check.

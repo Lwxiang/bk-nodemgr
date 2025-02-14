@@ -22,14 +22,12 @@ import (
 	"net/url"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
 	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/header"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // VerbType http request verb type.
@@ -72,9 +70,6 @@ type Request struct {
 	// sub path format args
 	subPathArgs []interface{}
 
-	// metric additional labels
-	metricDimension string
-
 	// request timeout value
 	timeout time.Duration
 
@@ -82,14 +77,6 @@ type Request struct {
 	contentType header.ContentType
 
 	err error
-}
-
-// WithMetricDimension add this request a addition dimension value, which helps us to separate
-// request metrics with a dimension label.
-func (r *Request) WithMetricDimension(value string) *Request {
-	r.metricDimension = value
-
-	return r
 }
 
 // WithParams add params to request.
@@ -440,16 +427,8 @@ func (r *Request) doWithHost(client client.HTTPClient, host string, retries int,
 		return nil, false
 	}
 
-	// collect request metrics
-	if r.client.requestDuration != nil {
-		labels := prometheus.Labels{
-			"handler":     r.subPath,
-			"status_code": strconv.Itoa(resp.StatusCode),
-			"dimension":   r.metricDimension,
-		}
-
-		r.client.requestDuration.With(labels).Observe(float64(time.Since(start) / time.Millisecond))
-	}
+	// collect request metrics.
+	r.client.metrics.HandleClientMetrics(req, resp, r.subPath, start)
 
 	// record latency if needed
 	r.checkToleranceLatency(&start, url, rid)

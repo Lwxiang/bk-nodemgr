@@ -13,7 +13,8 @@ package metrics
 import (
 	"errors"
 	"fmt"
-	"sync"
+	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -28,15 +29,15 @@ const (
 	summary
 
 	defaultMetricPath = "/metrics"
-	defaultSlowTime   = int32(5)
+	defaultSlowTime   = 1 * time.Second
 )
 
 func defaultExcludePaths() []string {
 	return []string{}
 }
 
-func defaultRequestDuration() []float64 {
-	return []float64{0.1, 0.3, 1.2, 5, 10}
+func defaultDurationMSBuckets() []float64 {
+	return []float64{5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000}
 }
 
 type metricKey struct {
@@ -51,50 +52,42 @@ type metricKey struct {
 
 // Monitor is an object that uses to set gin server monitor.
 type Monitor struct {
-	slowTime     int32
-	metricPath   string
-	excludePaths []string
-	reqDuration  []float64
-	metrics      map[string]*metric
-	bloomFilter  *bloomFilter
-	typeHandler  map[metricType]func(metric *metric) error
-	metricKey    *metricKey
+	slowTime          time.Duration
+	metricPath        string
+	excludePaths      []string
+	durationMSBuckets []float64
+	metrics           map[string]*metric
+	bloomFilter       *bloomFilter
+	typeHandler       map[metricType]func(metric *metric) error
+	metricKey         *metricKey
 }
 
-// nolint:gochecknoglobals
-var (
-	once    sync.Once
-	monitor *Monitor
-)
-
-// GetMonitor used to get global Monitor object,
-// this function returns a singleton object.
-func GetMonitor() *Monitor {
-	once.Do(func() {
-		monitor = &Monitor{
-			metricPath:   defaultMetricPath,
-			slowTime:     defaultSlowTime,
-			excludePaths: defaultExcludePaths(),
-			reqDuration:  defaultRequestDuration(),
-			metrics:      make(map[string]*metric),
-			bloomFilter:  newBloomFilter(),
-			typeHandler: map[metricType]func(metric *metric) error{
-				counter:   counterHandler,
-				gauge:     gaugeHandler,
-				histogram: histogramHandler,
-				summary:   summaryHandler,
-			},
-			metricKey: &metricKey{
-				requestTotal:    "metric_request_total",
-				requestUVTotal:  "metric_request_uv_total",
-				uriRequestTotal: "metric_uri_request_total",
-				requestBody:     "metric_request_body",
-				responseBody:    "metric_response_body",
-				requestDuration: "metric_request_duration",
-				slowRequest:     "metric_slow_request",
-			},
-		}
-	})
+// NewMonitor return a new monitor.
+func NewMonitor(name string) *Monitor {
+	monitor := &Monitor{
+		metricPath:        defaultMetricPath,
+		slowTime:          defaultSlowTime,
+		excludePaths:      defaultExcludePaths(),
+		durationMSBuckets: defaultDurationMSBuckets(),
+		metrics:           make(map[string]*metric),
+		bloomFilter:       newBloomFilter(),
+		typeHandler: map[metricType]func(metric *metric) error{
+			counter:   counterHandler,
+			gauge:     gaugeHandler,
+			histogram: histogramHandler,
+			summary:   summaryHandler,
+		},
+		metricKey: &metricKey{
+			requestTotal:    "request_total",
+			requestUVTotal:  "request_uv_total",
+			uriRequestTotal: "uri_request_total",
+			requestBody:     "request_body",
+			responseBody:    "response_body",
+			requestDuration: "request_duration",
+			slowRequest:     "slow_request",
+		},
+	}
+	monitor.setMetricPrefix(strings.ReplaceAll(name, "-", "_") + "_")
 
 	return monitor
 }
@@ -108,31 +101,40 @@ func (monitor *Monitor) getMetric(name string) (*metric, error) {
 	return nil, fmt.Errorf("metric not found. name(%s)", name)
 }
 
-// SetMetricPath set metricPath property. metricPath is used for Prometheus
+// WithMetricPath set metricPath property. metricPath is used for Prometheus
 // to get gin server monitoring data.
-func (monitor *Monitor) SetMetricPath(path string) {
+func (monitor *Monitor) WithMetricPath(path string) *Monitor {
 	monitor.metricPath = path
+
+	return monitor
 }
 
-// SetExcludePaths set exclude paths which should not be reported (e.g. /ping /healthz...)
-func (monitor *Monitor) SetExcludePaths(paths []string) {
+// WithExcludePaths set exclude paths which should not be reported (e.g. /ping /healthz...)
+func (monitor *Monitor) WithExcludePaths(paths []string) *Monitor {
 	monitor.excludePaths = paths
+
+	return monitor
 }
 
-// SetSlowTime set slowTime property. slowTime is used to determine whether
+// WithSlowTime set slowTime property. slowTime is used to determine whether
 // the request is slow. For "gin_slow_request_total" metric.
-func (monitor *Monitor) SetSlowTime(slowTime int32) {
+func (monitor *Monitor) WithSlowTime(slowTime time.Duration) *Monitor {
 	monitor.slowTime = slowTime
+
+	return monitor
 }
 
-// SetDuration set reqDuration property. reqDuration is used to ginRequestDuration
-// metric buckets.
-func (monitor *Monitor) SetDuration(duration []float64) {
-	monitor.reqDuration = duration
+// WithDurationMSBuckets set duration metric buckets in milliseconds. if not set then use default value.
+func (monitor *Monitor) WithDurationMSBuckets(durationMSBuckets []float64) *Monitor {
+	if len(durationMSBuckets) > 0 {
+		monitor.durationMSBuckets = durationMSBuckets
+	}
+
+	return monitor
 }
 
 // SetMetricPrefix set metric prefix.
-func (monitor *Monitor) SetMetricPrefix(prefix string) {
+func (monitor *Monitor) setMetricPrefix(prefix string) {
 	monitor.metricKey.requestTotal = prefix + monitor.metricKey.requestTotal
 	monitor.metricKey.requestUVTotal = prefix + monitor.metricKey.requestUVTotal
 	monitor.metricKey.uriRequestTotal = prefix + monitor.metricKey.uriRequestTotal
@@ -140,17 +142,6 @@ func (monitor *Monitor) SetMetricPrefix(prefix string) {
 	monitor.metricKey.responseBody = prefix + monitor.metricKey.responseBody
 	monitor.metricKey.requestDuration = prefix + monitor.metricKey.requestDuration
 	monitor.metricKey.slowRequest = prefix + monitor.metricKey.slowRequest
-}
-
-// SetMetricSuffix set metric suffix.
-func (monitor *Monitor) SetMetricSuffix(suffix string) {
-	monitor.metricKey.requestTotal += suffix
-	monitor.metricKey.requestUVTotal += suffix
-	monitor.metricKey.uriRequestTotal += suffix
-	monitor.metricKey.requestBody += suffix
-	monitor.metricKey.responseBody += suffix
-	monitor.metricKey.requestDuration += suffix
-	monitor.metricKey.slowRequest += suffix
 }
 
 // AddMetric add custom monitor metric.
@@ -174,6 +165,8 @@ func (monitor *Monitor) AddMetric(metric *metric) error {
 	return generateErrorTypeNotSupport(metric.Type, metric.Name)
 }
 
+// nolint:unparam
+// for matching with func(metric *metric) error.
 func counterHandler(metric *metric) error {
 	metric.vec = prometheus.NewCounterVec(
 		prometheus.CounterOpts{Name: metric.Name, Help: metric.Description},
@@ -183,6 +176,8 @@ func counterHandler(metric *metric) error {
 	return nil
 }
 
+// nolint:unparam
+// for matching with func(metric *metric) error.
 func gaugeHandler(metric *metric) error {
 	metric.vec = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{Name: metric.Name, Help: metric.Description},
