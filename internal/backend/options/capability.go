@@ -14,14 +14,14 @@ package options
 import (
 	"context"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operation"
-	operinstdataStorage "git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/operinstdata"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/trigengine"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/locker"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/operation"
+	operinstdataStorage "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/operinstdata"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/trigengine"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/locker"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/cmdb"
 )
 
 // Capability encapsulates the various capabilities the service supports.

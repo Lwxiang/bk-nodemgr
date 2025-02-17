@@ -14,7 +14,7 @@ package workflowdef
 import (
 	"sync"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 )
 
 // OperDefName operation definition name.

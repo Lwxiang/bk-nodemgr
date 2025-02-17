@@ -26,8 +26,8 @@ import (
 	"syscall"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/header"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/header"
 )
 
 // VerbType http request verb type.

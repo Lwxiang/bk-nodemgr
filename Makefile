@@ -12,9 +12,9 @@ VERSION  ?= ${GITTAG}-$(shell date +%y.%m.%d)
 
 # ldflags
 # output directory for release package and version for command line
-LDVersionFLAG = "-X git.woa.com/bk-gse/bk-nodeman/internal/version.VERSION=${VERSION} \
-    	-X git.woa.com/bk-gse/bk-nodeman/internal/version.BUILDTIME=${BUILDTIME} \
-    	-X git.woa.com/bk-gse/bk-nodeman/internal/version.GITHASH=${GITHASH}"
+LDVersionFLAG = "-X github.com/TencentBlueKing/bk-nodemgr/internal/version.VERSION=${VERSION} \
+    	-X github.com/TencentBlueKing/bk-nodemgr/internal/version.BUILDTIME=${BUILDTIME} \
+    	-X github.com/TencentBlueKing/bk-nodemgr/internal/version.GITHASH=${GITHASH}"
 
 
 # cmd

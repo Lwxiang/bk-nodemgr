@@ -14,8 +14,8 @@ package healthz
 import (
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/application/options"
-	types "git.woa.com/bk-gse/bk-nodeman/internal/application/types/router/healthz"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/options"
+	types "github.com/TencentBlueKing/bk-nodemgr/internal/application/types/router/healthz"
 	"github.com/gin-gonic/gin"
 )
 

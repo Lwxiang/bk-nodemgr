@@ -14,7 +14,7 @@ package rest
 import (
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 	"github.com/gin-gonic/gin"
 )
 

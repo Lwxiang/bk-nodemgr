@@ -12,7 +12,7 @@
 package operation
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 )
 
 // TableName operation table name.

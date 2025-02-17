@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog/glog"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/blog/glog"
 )
 
 // LogConfig is the configuration for initializing logs.

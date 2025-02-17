@@ -12,8 +12,8 @@
 package trigengine
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/trigengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/trigengine"
 )
 
 // Storage defines the storage interface.

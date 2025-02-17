@@ -12,10 +12,10 @@
 package workflow
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"github.com/gin-gonic/gin"
 )
 

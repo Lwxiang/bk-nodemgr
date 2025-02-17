@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
 // TestExecutor_Execute ...

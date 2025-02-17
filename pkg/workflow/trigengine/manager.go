@@ -17,11 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/locker"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/scheduler"
 	"github.com/RichardKnop/machinery/v2"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/gopool"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/locker"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/scheduler"
 )
 
 // Manager ...

@@ -3,7 +3,7 @@ package client
 import (
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/discovery"
 )
 
 const (

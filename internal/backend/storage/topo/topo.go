@@ -16,11 +16,11 @@ import (
 	"errors"
 	"fmt"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/business"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/host"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/business"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/host"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

@@ -17,11 +17,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/service"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
 	machinerylog "github.com/RichardKnop/machinery/v2/log"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/service"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/blog"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/config"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/tenant"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )

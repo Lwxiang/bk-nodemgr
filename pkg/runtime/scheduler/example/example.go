@@ -15,7 +15,7 @@ import (
 	"context"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/scheduler"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/scheduler"
 )
 
 func main() {

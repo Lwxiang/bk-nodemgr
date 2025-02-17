@@ -12,8 +12,8 @@
 package apiv3
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/api-v3/sync"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/router/api-v3/sync"
 	"github.com/gin-gonic/gin"
 )
 

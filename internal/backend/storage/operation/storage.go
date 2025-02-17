@@ -12,8 +12,8 @@
 package operation
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 )
 
 // Storage defines the storage interface.

@@ -14,8 +14,8 @@ package workflow
 import (
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 )
 
 // RetryOperation ...

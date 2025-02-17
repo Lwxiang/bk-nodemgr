@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"os"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/envx"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/envx"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/tenant"
 	"gopkg.in/yaml.v2"
 )
 

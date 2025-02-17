@@ -15,8 +15,8 @@ import (
 	"context"
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/header"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/header"
 	"github.com/gin-gonic/gin"
 )
 

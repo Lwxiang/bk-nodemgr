@@ -16,9 +16,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
-	restheader "git.woa.com/bk-gse/bk-nodeman/pkg/rest/header"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	restheader "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/header"
 )
 
 // This file only supports requesting and getting responses.

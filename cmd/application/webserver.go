@@ -17,9 +17,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/application/service"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/blog"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/config"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/service"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/blog"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/config"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )

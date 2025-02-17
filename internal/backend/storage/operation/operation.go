@@ -15,10 +15,10 @@ import (
 	"context"
 	"errors"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/operation"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/operation"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

@@ -13,7 +13,7 @@ package gse
 import (
 	"fmt"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 )
 
 // AgentInfo describes the agent information from gse.

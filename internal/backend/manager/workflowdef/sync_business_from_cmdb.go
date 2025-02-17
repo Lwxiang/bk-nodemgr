@@ -15,15 +15,15 @@ import (
 	"context"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/conv"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/gopool"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/gopool"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/tenant"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/cmdb"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 )
 
 // NewActionSyncBusinessFromCMDB creates a new syncBusinessFromCMDB.

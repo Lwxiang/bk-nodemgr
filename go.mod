@@ -1,4 +1,4 @@
-module git.woa.com/bk-gse/bk-nodeman
+module github.com/TencentBlueKing/bk-nodemgr
 
 go 1.21.13
 

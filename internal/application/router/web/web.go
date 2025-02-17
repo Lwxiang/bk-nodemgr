@@ -14,7 +14,7 @@ package web
 import (
 	"net/http"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/application/options"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/options"
 	"github.com/gin-gonic/gin"
 )
 

@@ -15,7 +15,7 @@ import (
 	"context"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
 // PageResult ...

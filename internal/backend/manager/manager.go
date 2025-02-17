@@ -16,9 +16,9 @@ import (
 	"errors"
 	"fmt"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/workflowdef"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 )
 
 // Manager defines the manager interface.

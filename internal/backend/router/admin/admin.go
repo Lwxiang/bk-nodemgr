@@ -12,9 +12,9 @@
 package admin
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/options"
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/router/admin/workflow"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/router/admin/workflow"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"github.com/gin-gonic/gin"
 )
 

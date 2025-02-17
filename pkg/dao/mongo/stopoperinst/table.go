@@ -14,7 +14,7 @@ package stopoperinst
 import (
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 )
 
 // TableName host table name.

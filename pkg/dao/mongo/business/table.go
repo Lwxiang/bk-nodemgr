@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 )
 
 // TableName business table name.

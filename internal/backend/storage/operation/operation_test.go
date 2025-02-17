@@ -16,7 +16,7 @@ import (
 	"os"
 	"testing"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

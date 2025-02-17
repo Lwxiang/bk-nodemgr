@@ -14,8 +14,8 @@ package topo
 import (
 	"context"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/base"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
 // Storage defines the storage interface.

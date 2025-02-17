@@ -12,7 +12,7 @@
 package trigger
 
 import (
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/trigengine"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/trigengine"
 	"go.mongodb.org/mongo-driver/bson"
 )
 

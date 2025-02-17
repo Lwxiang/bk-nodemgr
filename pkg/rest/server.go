@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/metrics"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/metrics"
 	"github.com/gin-gonic/gin"
 )
 

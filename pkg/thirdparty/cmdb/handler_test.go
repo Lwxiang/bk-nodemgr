@@ -16,12 +16,12 @@ import (
 	"os"
 	"testing"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/discovery"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/ssl"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/discovery"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/ssl"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/tenant"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/joho/godotenv"
 )
 

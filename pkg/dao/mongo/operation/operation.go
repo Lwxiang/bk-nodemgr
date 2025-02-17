@@ -14,8 +14,8 @@ package operation
 import (
 	"context"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"

@@ -18,7 +18,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
 	"github.com/RichardKnop/machinery/v2"
 	backendIface "github.com/RichardKnop/machinery/v2/backends/iface"
 	redisBackend "github.com/RichardKnop/machinery/v2/backends/redis"
@@ -26,6 +25,7 @@ import (
 	redisBroker "github.com/RichardKnop/machinery/v2/brokers/redis"
 	machineryConfig "github.com/RichardKnop/machinery/v2/config"
 	"github.com/RichardKnop/machinery/v2/tasks"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 )
 
 const (

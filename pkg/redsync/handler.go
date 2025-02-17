@@ -15,7 +15,7 @@ import (
 	"context"
 	"fmt"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/locker"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/locker"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	goredislib "github.com/redis/go-redis/v9"

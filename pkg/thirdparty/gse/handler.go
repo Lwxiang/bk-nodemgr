@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/google/uuid"
 )
 

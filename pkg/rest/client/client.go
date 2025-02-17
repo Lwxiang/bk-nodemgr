@@ -17,7 +17,7 @@ import (
 	"net/http"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/ssl"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/ssl"
 )
 
 const (

@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"

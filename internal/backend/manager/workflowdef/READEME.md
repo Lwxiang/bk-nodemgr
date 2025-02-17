@@ -1,10 +1,10 @@
 ## 文件定位
 
-| 文件名                | 功能描述                | 备注               |
-|--------------------|---------------------|------------------|
+| 文件名             | 功能描述                   | 备注                     |
+| ------------------ | -------------------------- | ------------------------ |
 | action_def.go      | 存储所有 action_def 的名称 | 需要找 action 从此处开始 |
-| oper_def.go        |                     |                  |
-| {{action_name}}.go |                     |                  |
+| oper_def.go        |                            |                          |
+| {{action_name}}.go |                            |                          |
 
 ## action 模板
 
@@ -26,13 +26,13 @@ import (
 	"context"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/storage/topo"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/conv"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/tenant"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/thirdparty/cmdb"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/types"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/tenant"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/cmdb"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 )
 
 // NewActionActionName ...

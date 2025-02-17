@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/errf"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 )
 
 // Page describe the page data in request.

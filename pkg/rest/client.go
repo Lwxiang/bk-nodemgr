@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/client"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest/metrics"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/metrics"
 )
 
 const (

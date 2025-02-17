@@ -14,11 +14,11 @@ package sync
 import (
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/internal/backend/manager/workflowdef"
-	types "git.woa.com/bk-gse/bk-nodeman/internal/backend/types/router/api-v3"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/rest"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/runtime/conv"
-	"git.woa.com/bk-gse/bk-nodeman/pkg/workflow/operengine"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef"
+	types "github.com/TencentBlueKing/bk-nodemgr/internal/backend/types/router/api-v3"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operengine"
 	"github.com/google/uuid"
 )
 

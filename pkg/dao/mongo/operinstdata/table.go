@@ -14,7 +14,7 @@ package operinstdata
 import (
 	"time"
 
-	"git.woa.com/bk-gse/bk-nodeman/pkg/dao/mongo/base"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 )
 
 // TableName operation instance data table name.
