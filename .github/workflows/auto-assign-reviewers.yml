@@ -26,6 +26,7 @@ jobs:
       - name: Assign reviewers
         uses: actions/github-script@v6
         with:
+          repo-token: "${{ secrets.PAT_TOKEN }}"
           script: |
             const reviewers = ["zouxingyuks", "Lwxiang"];
             const prAuthor = context.payload.pull_request.user.login; // 获取 PR 作者
@@ -49,6 +50,7 @@ jobs:
       - name: Assign PR author as Assignee
         uses: actions/github-script@v6
         with:
+          repo-token: "${{ secrets.PAT_TOKEN }}"
           script: |
             const prAuthor = context.payload.pull_request.user.login; // 获取 PR 作者
             const prNumber = context.payload.pull_request.number;
