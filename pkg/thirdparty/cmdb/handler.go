@@ -61,7 +61,7 @@ func New(c *client.Capability, conf *Config) (Handler, error) {
 	return &handler{cli: cli}, nil
 }
 
-// ListBizHosts list biz hosts
+// ListBizHosts list biz hosts.
 func (h *handler) ListBizHosts(ctx context.Context, bizID int64, page types.Page) ([]*types.Host, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -108,7 +108,7 @@ func (h *handler) ListBizHosts(ctx context.Context, bizID int64, page types.Page
 	return hosts, nil
 }
 
-// SearchBusiness search business
+// SearchBusiness search business.
 func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]*types.Business, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -142,7 +142,7 @@ func (h *handler) SearchBusiness(ctx context.Context, page types.Page) ([]*types
 	return bizs, nil
 }
 
-// SearchNetworkArea search network area
+// SearchNetworkArea search network area.
 func (h *handler) SearchNetworkArea(ctx context.Context, page types.Page) ([]*types.NetworkArea, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -175,7 +175,7 @@ func (h *handler) SearchNetworkArea(ctx context.Context, page types.Page) ([]*ty
 	return netAreas, nil
 }
 
-// CreateNetworkArea create network area
+// CreateNetworkArea create network area.
 func (h *handler) CreateNetworkArea(ctx context.Context, networkAreaName string) (*types.NetworkArea, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -201,7 +201,7 @@ func (h *handler) CreateNetworkArea(ctx context.Context, networkAreaName string)
 	return netArea, nil
 }
 
-// UpdateNetworkArea update network area
+// UpdateNetworkArea update network area.
 func (h *handler) UpdateNetworkArea(ctx context.Context, id int64, networkAreaName string) error {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -222,7 +222,7 @@ func (h *handler) UpdateNetworkArea(ctx context.Context, id int64, networkAreaNa
 	return nil
 }
 
-// DeleteNetworkArea delete network area
+// DeleteNetworkArea delete network area.
 func (h *handler) DeleteNetworkArea(ctx context.Context, id int64) error {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -242,8 +242,10 @@ func (h *handler) DeleteNetworkArea(ctx context.Context, id int64) error {
 	return nil
 }
 
-// UpdateHostNetworkAreaField update host network area field
-func (h *handler) UpdateHostNetworkAreaField(ctx context.Context, hostIDs []int64, bizID int64, networkAreaID int64) error {
+// UpdateHostNetworkAreaField update host network area field.
+func (h *handler) UpdateHostNetworkAreaField(
+	ctx context.Context, hostIDs []int64, bizID int64, networkAreaID int64) error {
+
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
 		return err
@@ -264,7 +266,7 @@ func (h *handler) UpdateHostNetworkAreaField(ctx context.Context, hostIDs []int6
 	return nil
 }
 
-// SearchBizInstTopo search business instance topo
+// SearchBizInstTopo search business instance topo.
 func (h *handler) SearchBizInstTopo(ctx context.Context, bizID int64) ([]*types.BusinessInstanceTopo, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -312,7 +314,7 @@ func (h *handler) SearchBizInstTopo(ctx context.Context, bizID int64) ([]*types.
 	return result, nil
 }
 
-// GetBizInternalModule get biz internal module
+// GetBizInternalModule get biz internal module.
 func (h *handler) GetBizInternalModule(ctx context.Context, bizID int64) (*types.BusinessInternalModule, error) {
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
@@ -360,8 +362,10 @@ func (h *handler) GetBizInternalModule(ctx context.Context, bizID int64) (*types
 	return result, nil
 }
 
-// FindTopoNodePaths find topo node paths
-func (h *handler) FindTopoNodePaths(ctx context.Context, bizID int64, topoNodes []*types.TopoNode) ([]*types.TopoNodePath, error) {
+// FindTopoNodePaths find topo node paths.
+func (h *handler) FindTopoNodePaths(ctx context.Context, bizID int64, topoNodes []*types.TopoNode) (
+	[]*types.TopoNodePath, error) {
+
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
 		return nil, err
@@ -411,8 +415,10 @@ func (h *handler) FindTopoNodePaths(ctx context.Context, bizID int64, topoNodes 
 	return result, nil
 }
 
-// FindModuleBatch find module batch
-func (h *handler) FindModuleBatch(ctx context.Context, bizID int64, ids []int64, fields []string) ([]*types.Module, error) {
+// FindModuleBatch find module batch.
+func (h *handler) FindModuleBatch(ctx context.Context, bizID int64, ids []int64, fields []string) (
+	[]*types.Module, error) {
+
 	tenantID, err := tenant.GetID(ctx)
 	if err != nil {
 		return nil, err
@@ -452,5 +458,6 @@ func (h *handler) FindModuleBatch(ctx context.Context, bizID int64, ids []int64,
 			UpdatedAt:         module.BKUpdatedAt,
 		}
 	}
+
 	return result, nil
 }
