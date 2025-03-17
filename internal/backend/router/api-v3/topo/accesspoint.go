@@ -17,36 +17,52 @@ import (
 )
 
 const (
-	// not max limit in business.
+	// not max limit in accesspoint.
 	// return all data in one request.
-	maxBusinessLimit = 0
+	maxAccessPointLimit = 0
 )
 
-// ListBusiness list business with specified conditions.
-func (h *handler) ListBusiness(ctx *rest.Context) (interface{}, error) {
-	req := new(proto.TopoBusinessListReq)
+// ListAccessPoint lists accesspoints with page and conditions.
+func (h *handler) ListAccessPoint(ctx *rest.Context) (interface{}, error) {
+	req := new(proto.TopoAccessPointListReq)
 	if err := ctx.BindJSON(req); err != nil {
-		h.logger.Errorf("failed to list business, failed to decode request body. err: %v", err)
+		h.logger.Errorf("failed to list accesspoint, failed to decode request body. err: %v", err)
 		return nil, errf.ErrWrap(errf.InvalidParameter, err)
 	}
 
 	sCtx, err := ctx.GetContext()
 	if err != nil {
-		h.logger.Errorf("failed to list business, failed to get request context. err: %v", err)
+		h.logger.Errorf("failed to list accesspoint, failed to get request context. err: %v", err)
 		return nil, errf.ErrWrap(errf.InvalidParameter, err)
 	}
 
-	bizs, num, err := h.storage.ListBusinesses(
+	// only count.
+	if req.GetOnlyCount() {
+		num, err := h.storage.CountAccessPoint(
+			sCtx,
+			req.ConvertConditionsToTypes())
+		if err != nil {
+			h.logger.Errorf("failed to list accesspoint. failed to count accesspoint. err: %v", err)
+			return nil, errf.ErrWrap(errf.DBExecCmdFailed, err)
+		}
+
+		resp := new(proto.TopoAccessPointListResp)
+		resp.ConvertAccessPointsFromTypes(num, nil)
+
+		return resp.GetData(), nil
+	}
+
+	accesspoints, num, err := h.storage.ListAccessPoint(
 		sCtx,
-		req.ConvertPageToTypes(maxBusinessLimit),
+		req.ConvertPageToTypes(maxAccessPointLimit),
 		req.ConvertConditionsToTypes())
 	if err != nil {
-		h.logger.Errorf("failed to list business, err: %v", err)
+		h.logger.Errorf("failed to list accesspoint. err: %v", err)
 		return nil, errf.ErrWrap(errf.DBExecCmdFailed, err)
 	}
 
-	resp := new(proto.TopoBusinessListResp)
-	resp.ConvertBusinessFromTypes(num, bizs)
+	resp := new(proto.TopoAccessPointListResp)
+	resp.ConvertAccessPointsFromTypes(num, accesspoints)
 
 	return resp.GetData(), nil
 }
