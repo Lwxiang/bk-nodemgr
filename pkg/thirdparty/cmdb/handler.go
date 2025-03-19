@@ -52,6 +52,22 @@ type Handler interface {
 
 	// SearchOsType search os type
 	SearchOsType(ctx context.Context) ([]*types.OsType, error)
+
+	// BindHostAgent bind host agent
+	BindHostAgent(ctx context.Context, hostAgentID []*types.Host) error
+
+	// UnbindHostAgent bind host agent
+	UnbindHostAgent(ctx context.Context, hostAgentID []*types.Host) error
+
+	// AddHostToBusinessIdle add host to business idle
+	AddHostToBusinessIdle(ctx context.Context, bizID int64, hosts []*types.Host) ([]int64, error)
+
+	// PushHostIdentifier push host identifier
+	PushHostIdentifier(ctx context.Context, hostIDs []int64) (taskID *string, err error)
+
+	// FindHostIdentifierPushResult find host identifier push result
+	FindHostIdentifierPushResult(ctx context.Context, taskID string) (successList []int64, failedList []int64,
+		pendingList []int64, err error)
 }
 
 type handler struct {
@@ -573,4 +589,121 @@ func (h *handler) SearchOsType(ctx context.Context) ([]*types.OsType, error) {
 	}
 
 	return osTypes, nil
+}
+
+// BindHostAgent bind host agent.
+func (h *handler) BindHostAgent(ctx context.Context, hostAgentID []*types.Host) error {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return err
+	}
+
+	req := &BindHostAgentReq{TenantID: tenantID}
+	for _, hostAgent := range hostAgentID {
+		req.List = append(req.List, &HostAgentIDInfo{
+			BKHostID:  hostAgent.HostID,
+			BKAgentID: hostAgent.Dynamic.AgentID,
+		})
+	}
+	err = h.cli.bindHostAgent(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UnbindHostAgent bind host agent.
+func (h *handler) UnbindHostAgent(ctx context.Context, hostAgentID []*types.Host) error {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return err
+	}
+
+	req := &UnbindHostAgentReq{TenantID: tenantID}
+	for _, hostAgent := range hostAgentID {
+		req.List = append(req.List, &HostAgentIDInfo{
+			BKHostID:  hostAgent.HostID,
+			BKAgentID: hostAgent.Dynamic.AgentID,
+		})
+	}
+	err = h.cli.unbindHostAgent(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddHostToBusinessIdle add host to business idle.
+func (h *handler) AddHostToBusinessIdle(ctx context.Context, bizID int64, hosts []*types.Host) (
+	[]int64, error) {
+
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &AddHostToBusinessIdleReq{TenantID: tenantID, BKBizID: bizID}
+	for _, host := range hosts {
+		req.BKHostList = append(req.BKHostList, &CreateHostInfo{
+			BKCloudID:         host.Static.NetworkAreaID,
+			BKHostInnerIP:     host.Static.InnerIP,
+			BKHostInnerIPV6:   host.Static.InnerIPV6,
+			BKHostOuterIP:     host.Static.OuterIP,
+			BKHostOuterIPV6:   host.Static.OuterIPV6,
+			BKOSType:          host.Static.OSType,
+			BKCpuArchitecture: host.Static.Arch,
+			BKAddressing:      string(host.Static.Addressing),
+		})
+	}
+	resp, err := h.cli.addHostToBusinessIdle(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.BKHostIDs, nil
+}
+
+// PushHostIdentifier push host identifier.
+func (h *handler) PushHostIdentifier(ctx context.Context, hostIDs []int64) (
+	taskID *string, err error) {
+
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &PushHostIdentifierReq{
+		TenantID:  tenantID,
+		BKHostIDs: hostIDs,
+	}
+	resp, err := h.cli.pushHostIdentifier(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.TaskID, nil
+}
+
+// FindHostIdentifierPushResult find host identifier push result.
+func (h *handler) FindHostIdentifierPushResult(ctx context.Context, taskID string) (successList []int64,
+	failedList []int64, pendingList []int64, err error) {
+
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	req := &FindHostIdentifierPushResultReq{
+		TenantID: tenantID,
+
+		TaskID: taskID,
+	}
+	resp, err := h.cli.findHostIdentifierPushResult(ctx, req)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return resp.SuccessList, resp.FailedList, resp.PendingList, nil
 }
