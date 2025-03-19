@@ -12,6 +12,7 @@ package gse
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -21,76 +22,77 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler is the interface for gse handler.
-type Handler interface {
+// IHandler is the interface for gse Handler.
+type IHandler interface {
 	// ListAgentInfo list agent detail information.
 	// @param agentIDList given agent id list.
 	// @return agentInfoList agent detail information list.
-	ListAgentInfo(ctx context.Context, agentIDList []string) ([]*types.AgentInfo, error)
+	ListAgentInfo(ctx context.Context, agentIDList ...string) ([]*types.AgentInfo, error)
 
 	// ListAgentState list agent state information. AgentState is a subset of AgentInfo.
 	// This method is more efficient than ListAgentInfo.
 	// @param agentIDList given agent id list.
 	// @return agentStateList agent state information list.
-	ListAgentState(ctx context.Context, agentIDList []string) ([]*types.AgentState, error)
+	ListAgentState(ctx context.Context, agentIDList ...string) ([]*types.AgentState, error)
 
 	// ExecuteScript execute script on host.
 	// @param endpoints given endpoint list with auth.
 	// @param scriptContent given script content.
 	// @param timeout given timeout.
 	// @return gse-task-id for this execution for further querying.
-	ExecuteScript(ctx context.Context, endpoints []*types.EndpointWithAuth, scriptContent string,
-		timeout time.Duration) (string,
-		error)
+	ExecuteScript(ctx context.Context, scriptContent string, timeout time.Duration,
+		endpoints ...*types.EndpointWithAuth) (string, error)
 
 	// QueryScriptExecutionResult query script execution result.
 	// @param taskID given task id.
 	// @param endpoints given endpoint list.
 	// @return script result list.
-	QueryScriptExecutionResult(ctx context.Context, taskID string, endpoints []*types.EndpointWithRestrict) (
+	QueryScriptExecutionResult(ctx context.Context, taskID string, endpoints ...*types.EndpointWithRestrict) (
 		[]*types.ScriptResult, error)
 
 	// TerminateScriptExecution terminate script execution.
 	// @param taskID given task id
 	// @param endpoints given endpoint list.
 	// @return gse-task-id for this operation.
-	TerminateScriptExecution(ctx context.Context, taskID string, endpoints []*types.Endpoint) (string, error)
+	TerminateScriptExecution(ctx context.Context, taskID string, endpoints ...*types.Endpoint) (string, error)
 
 	// TransferFile transfer files from source to targets.
 	// @param opts given options.
 	// @param transfers given transfer details.
 	// @return gse-task-id for this transferring.
-	TransferFile(ctx context.Context, opts *types.TransferOptions, transfers []*types.TransferDetail) (string, error)
+	TransferFile(ctx context.Context, opts *types.TransferOptions, transfers ...*types.TransferDetail) (string, error)
 
 	// QueryFileTransmissionResult query file transmission result.
 	// @param taskID given task id.
 	// @param endpoints given endpoint list.
 	// @return file transmission result list.
-	QueryFileTransmissionResult(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
+	QueryFileTransmissionResult(ctx context.Context, taskID string, endpoints ...*types.Endpoint) (
 		[]*types.TransferResult, error)
 
 	// TerminateFileTransmission terminate file transmission.
 	// @param taskID given task id.
 	// @param endpoints given endpoint list.
 	// @return gse-task-id for this operation.
-	TerminateFileTransmission(ctx context.Context, taskID string, endpoints []*types.Endpoint) (string, error)
+	TerminateFileTransmission(ctx context.Context, taskID string, endpoints ...*types.Endpoint) (string, error)
 }
-type handler struct {
+
+// Handler this define the gse handler.
+type Handler struct {
 	cli *cli
 }
 
-// New initialize a new gse handler.
-func New(c *client.Capability, conf *Config) (Handler, error) {
+// New initialize a new gse Handler.
+func New(c *client.Capability, conf *Config) (*Handler, error) {
 	cli, err := newClient(c, conf)
 	if err != nil {
 		return nil, err
 	}
 
-	return &handler{cli: cli}, nil
+	return &Handler{cli: cli}, nil
 }
 
 // ListAgentInfo list agent detail information.
-func (h *handler) ListAgentInfo(ctx context.Context, agentIDList []string) ([]*types.AgentInfo, error) {
+func (h *Handler) ListAgentInfo(ctx context.Context, agentIDList ...string) ([]*types.AgentInfo, error) {
 	req := ListAgentInfoReq{
 		AgentIDList: agentIDList,
 	}
@@ -130,7 +132,15 @@ func (h *handler) ListAgentInfo(ctx context.Context, agentIDList []string) ([]*t
 }
 
 // ListAgentState ...
-func (h *handler) ListAgentState(ctx context.Context, agentIDList []string) ([]*types.AgentState, error) {
+func (h *Handler) ListAgentState(ctx context.Context, agentIDList ...string) ([]*types.AgentState, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+
+	if len(agentIDList) == 0 {
+		return nil, errors.New("agentIDList is empty")
+	}
+
 	req := &ListAgentStateReq{
 		AgentIDList: agentIDList,
 	}
@@ -155,8 +165,16 @@ func (h *handler) ListAgentState(ctx context.Context, agentIDList []string) ([]*
 }
 
 // ExecuteScript ...
-func (h *handler) ExecuteScript(ctx context.Context, endpoints []*types.EndpointWithAuth, scriptContent string,
-	timeout time.Duration) (string, error) {
+func (h *Handler) ExecuteScript(ctx context.Context, scriptContent string, timeout time.Duration,
+	endpoints ...*types.EndpointWithAuth) (string, error) {
+
+	if ctx == nil {
+		return "", errors.New("context is nil")
+	}
+
+	if len(endpoints) == 0 {
+		return "", errors.New("endpoints is empty")
+	}
 
 	eps := make([]*EndpointWithAuth, len(endpoints))
 	for idx, endpoint := range endpoints {
@@ -199,8 +217,16 @@ func (h *handler) ExecuteScript(ctx context.Context, endpoints []*types.Endpoint
 }
 
 // QueryScriptExecutionResult ...
-func (h *handler) QueryScriptExecutionResult(ctx context.Context, taskID string,
-	endpoints []*types.EndpointWithRestrict) ([]*types.ScriptResult, error) {
+func (h *Handler) QueryScriptExecutionResult(ctx context.Context, taskID string,
+	endpoints ...*types.EndpointWithRestrict) ([]*types.ScriptResult, error) {
+
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("endpoints is empty")
+	}
 
 	conditions := make([]*ScriptEndpointCondition, len(endpoints))
 	for idx, endpoint := range endpoints {
@@ -249,8 +275,16 @@ func (h *handler) QueryScriptExecutionResult(ctx context.Context, taskID string,
 }
 
 // TerminateScriptExecution ...
-func (h *handler) TerminateScriptExecution(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
-	string, error) {
+func (h *Handler) TerminateScriptExecution(ctx context.Context, taskID string,
+	endpoints ...*types.Endpoint) (string, error) {
+
+	if ctx == nil {
+		return "", errors.New("context is nil")
+	}
+
+	if len(endpoints) == 0 {
+		return "", errors.New("endpoints is empty")
+	}
 
 	eps := make([]*Endpoint, len(endpoints))
 	for idx, endpoint := range endpoints {
@@ -273,8 +307,16 @@ func (h *handler) TerminateScriptExecution(ctx context.Context, taskID string, e
 }
 
 // TransferFile ...
-func (h *handler) TransferFile(ctx context.Context, opts *types.TransferOptions, transfers []*types.TransferDetail) (
-	string, error) {
+func (h *Handler) TransferFile(ctx context.Context, opts *types.TransferOptions,
+	transfers ...*types.TransferDetail) (string, error) {
+
+	if ctx == nil {
+		return "", errors.New("context is nil")
+	}
+
+	if len(transfers) == 0 {
+		return "", errors.New("transfers is empty")
+	}
 
 	tasks := make([]*TransferDetail, len(transfers))
 	for i, transfer := range transfers {
@@ -324,8 +366,16 @@ func (h *handler) TransferFile(ctx context.Context, opts *types.TransferOptions,
 }
 
 // QueryFileTransmissionResult ...
-func (h *handler) QueryFileTransmissionResult(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
-	[]*types.TransferResult, error) {
+func (h *Handler) QueryFileTransmissionResult(ctx context.Context, taskID string,
+	endpoints ...*types.Endpoint) ([]*types.TransferResult, error) {
+
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("endpoints is empty")
+	}
 
 	eps := make([]*Endpoint, len(endpoints))
 	for idx, endpoint := range endpoints {
@@ -376,8 +426,16 @@ func (h *handler) QueryFileTransmissionResult(ctx context.Context, taskID string
 }
 
 // TerminateFileTransmission ...
-func (h *handler) TerminateFileTransmission(ctx context.Context, taskID string, endpoints []*types.Endpoint) (
+func (h *Handler) TerminateFileTransmission(ctx context.Context, taskID string, endpoints ...*types.Endpoint) (
 	string, error) {
+
+	if ctx == nil {
+		return "", errors.New("context is nil")
+	}
+
+	if len(endpoints) == 0 {
+		return "", errors.New("endpoints is empty")
+	}
 
 	eps := make([]*Endpoint, len(endpoints))
 	for idx, endpoint := range endpoints {
