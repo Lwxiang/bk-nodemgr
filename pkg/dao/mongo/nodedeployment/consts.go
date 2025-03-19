@@ -8,23 +8,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package types
+// Package nodedeployment ...
+package nodedeployment
 
-// NodeDeployment this is the info for node deployment.
-type NodeDeployment struct {
-	Token    string
-	Info     *DeploymentInfo
-	NodeConf *NodeConf
-}
+const (
+	// FieldKeyToken the token field key
+	FieldKeyToken = "data.token"
 
-// DeploymentInfo this is the info for node deployment.
-type DeploymentInfo struct {
-	OperInstID string
-	ActionName string
-}
+	// FieldKeyInfo the info field key
+	FieldKeyInfo = "data.info"
 
-// NodeConf this is the node conf for node deployment.
-type NodeConf struct {
-	PreSetting    map[string]any
-	CustomSetting map[string]any
-}
+	// FieldKeyNodeConf the node conf field key
+	FieldKeyNodeConf = "data.node_conf"
+)

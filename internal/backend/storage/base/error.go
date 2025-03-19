@@ -22,3 +22,8 @@ func ErrUpsertNilData() error {
 func ErrNilContent() error {
 	return errors.New("ctx is nil")
 }
+
+// ErrEmptyUniqueKey this error indicates that the user inserted an empty block of data when inserting data.
+func ErrEmptyUniqueKey() error {
+	return errors.New("empty unique key")
+}
