@@ -12,7 +12,10 @@
 package options
 
 import (
+	"context"
+
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/filex/iface"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/discover"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 )
 
@@ -23,4 +26,16 @@ type Capability struct {
 
 	// AgentFileGroup agent file group.
 	AgentFileGroup iface.FileGroup
+
+	// Discover provides discover handler.
+	DiscoverProvider discover.Provider
+}
+
+// Start start the capability.
+func (c *Capability) Start(ctx context.Context) error {
+	if err := c.DiscoverProvider.Start(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
