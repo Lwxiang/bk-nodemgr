@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"math"
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -829,6 +830,88 @@ func TestSliceUnique(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := SliceUnique(tt.args.source); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("SliceUnique() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// MapToSlice map to slice.
+func TestMapToSlice(t *testing.T) {
+	type args struct {
+		m map[string]int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []int
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				m: map[string]int{
+					"a": 1,
+					"b": 2,
+					"c": 3,
+					"d": 4,
+				},
+			},
+			want:    []int{1, 2, 3, 4},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MapToSlice(tt.args.m)
+
+			sort.Slice(got, func(i, j int) bool {
+				return got[i] < got[j]
+			})
+			sort.Slice(tt.want, func(i, j int) bool {
+				return tt.want[i] < tt.want[j]
+			})
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MapToSlice() got = %v, wantErr %v", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+// MapKeyToSlice map key to slice.
+func TestMapKeyToSlice(t *testing.T) {
+	type args struct {
+		m map[string]bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "normal",
+			args: args{
+				m: map[string]bool{
+					"a": true,
+					"b": true,
+					"c": true,
+					"d": true,
+				},
+			},
+			want: []string{"a", "b", "c", "d"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MapKeyToSlice(tt.args.m)
+			sort.Slice(tt.want, func(i, j int) bool {
+				return tt.want[i] < tt.want[j]
+			})
+			sort.Slice(got, func(i, j int) bool {
+				return got[i] < got[j]
+			})
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MapSetToSlice() = %v, want %v", got, tt.want)
 			}
 		})
 	}
