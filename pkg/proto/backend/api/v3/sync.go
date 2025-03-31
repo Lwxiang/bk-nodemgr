@@ -8,19 +8,22 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package backend
+package v3
 
-import (
-	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
-)
+// Validate check body.
+func (x *SyncCmdbHostReq) Validate() error {
+	return nil
+}
 
-// CodeOK defines the success code.
-const CodeOK = 0
+// AutoConvert auto convert.
+func (x *SyncCmdbHostReq) AutoConvert() {
+}
 
-func convertPage(page types.Page) *protoBackend.Page {
-	return &protoBackend.Page{
-		Offset: int32(page.Offset),
-		Limit:  int32(page.Limit),
-	}
+// Validate check body.
+func (req *SyncCmdbNetworkAreaReq) Validate() error {
+	return nil
+}
+
+// AutoConvert auto convert.
+func (req *SyncCmdbNetworkAreaReq) AutoConvert() {
 }

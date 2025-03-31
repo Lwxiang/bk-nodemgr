@@ -51,6 +51,7 @@ type HostStatic struct {
 	OuterIP    string
 	OuterIPV6  string
 	Mac        string
+	OSTypeCCID string
 	OSType     string
 	Arch       string
 	Addressing Addressing
@@ -188,7 +189,8 @@ type NetworkArea struct {
 	Name string
 
 	// cloud vendor.
-	CloudVendor string
+	CloudVendorCCID string
+	CloudVendor     string
 }
 
 // NetworkUnit represents a basic unit for proxy management.
@@ -256,19 +258,6 @@ func (tnm *TopoNameMapping) GetAccessPointName(id int64) string {
 	}
 
 	if name, ok := tnm.AccessPoint[id]; ok {
-		return name
-	}
-
-	return ""
-}
-
-// GetOsTypeName gets the name of an os type.
-func (tnm *TopoNameMapping) GetOsTypeName(osType string) string {
-	if tnm.OsType == nil {
-		return ""
-	}
-
-	if name, ok := tnm.OsType[osType]; ok {
 		return name
 	}
 
@@ -383,4 +372,10 @@ type TopoEvent struct {
 	AccessPointName string
 	OperateTime     time.Time
 	Operator        string
+}
+
+// TopoConstant defines the topo constants.
+type TopoConstant struct {
+	CloudVendor []string
+	OSType      []string
 }

@@ -9,6 +9,7 @@
  */
 
 // Package cmdb provides handlers to operate cmd api.
+// nolint:dupl
 package cmdb
 
 import (
@@ -28,6 +29,11 @@ import (
 type HeaderSetter interface {
 	GetAuthHeader() (string, error)
 }
+
+const (
+	languageHeaderKey   = "X-Bkcmdb-Language"
+	languageHeaderValue = "en"
+)
 
 // Config the config of cmdb.
 type Config struct {
@@ -76,6 +82,7 @@ func (c *cli) getCommonHeader(tenantID string) (http.Header, error) {
 	header := http.Header{}
 	header.Set(restheader.RIDKey, restheader.RIDGenerator())
 	header.Set(restheader.TenantIDKey, tenantID)
+	header.Set(languageHeaderKey, languageHeaderValue)
 
 	authHeader, err := c.config.HeaderSetter.GetAuthHeader()
 	if err != nil {

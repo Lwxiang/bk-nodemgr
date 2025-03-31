@@ -16,37 +16,28 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 )
 
-const (
-	// not max limit in business.
-	// return all data in one request.
-	maxBusinessLimit = 0
-)
-
-// ListBusiness list business with specified conditions.
-func (h *handler) ListBusiness(ctx *rest.Context) (interface{}, error) {
-	req := new(protoApplication.TopoBusinessListReq)
+// GetConstant get constant values.
+func (h *handler) GetConstant(ctx *rest.Context) (interface{}, error) {
+	req := new(protoApplication.TopoConstantGetReq)
 	if err := ctx.BindJSON(req); err != nil {
-		h.logger.Errorf("failed to list business, failed to decode request body. err: %v", err)
+		h.logger.Errorf("failed to get constant, failed to decode request body. err: %v", err)
 		return nil, errf.ErrWrap(errf.InvalidParameter, err)
 	}
 
 	sCtx, err := ctx.GetContext()
 	if err != nil {
-		h.logger.Errorf("failed to list business, failed to get request context. err: %v", err)
+		h.logger.Errorf("failed to get constant, failed to get request context. err: %v", err)
 		return nil, errf.ErrWrap(errf.InvalidParameter, err)
 	}
 
-	bizs, num, err := h.backendHandler.ListBusiness(
-		sCtx,
-		req.ConvertPageToTypes(maxBusinessLimit),
-		req.ConvertConditionsToTypes())
+	result, err := h.backendHandler.GetConstant(sCtx, req.ConvertFieldsToTypes())
 	if err != nil {
-		h.logger.Errorf("failed to list business, err: %v", err)
+		h.logger.Errorf("failed to get constant, failed to get constant values. err: %v", err)
 		return nil, errf.ErrWrap(errf.ThirdpartyRequestFailed, err)
 	}
 
-	resp := new(protoApplication.TopoBusinessListResp)
-	resp.ConvertBusinessFromTypes(num, bizs)
-
-	return resp.GetData(), nil
+	return &protoApplication.TopoConstantGetResp_Data{
+		CloudVendor: result.CloudVendor,
+		OsType:      result.OSType,
+	}, nil
 }

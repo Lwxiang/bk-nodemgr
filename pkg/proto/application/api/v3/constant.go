@@ -8,19 +8,23 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package backend
+package v3
 
-import (
-	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
-)
+import "github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 
-// CodeOK defines the success code.
-const CodeOK = 0
+// Validate check body.
+func (x *TopoConstantGetReq) Validate() error {
+	return nil
+}
 
-func convertPage(page types.Page) *protoBackend.Page {
-	return &protoBackend.Page{
-		Offset: int32(page.Offset),
-		Limit:  int32(page.Limit),
+// AutoConvert auto convert.
+func (x *TopoConstantGetReq) AutoConvert() {
+}
+
+// ConvertFieldsToTypes convert fields from proto to types.
+func (x *TopoConstantGetReq) ConvertFieldsToTypes() types.TopoConstantFields {
+	return types.TopoConstantFields{
+		CloudVendor: x.GetCloudVendor(),
+		OSType:      x.GetOsType(),
 	}
 }
