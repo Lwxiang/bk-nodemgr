@@ -59,7 +59,7 @@ func (h *handler) tenantDao(tenantID string) *dao {
 	}
 
 	newDaoClient := newDao(tenantID, h.client, h.logger)
-	if err := newDaoClient.ensureIndexes(); err != nil {
+	if err := newDaoClient.EnsureIndexes(); err != nil {
 		h.logger.Warnf("failed to ensure host indexes, err: %v", errors.Join(base.ErrEnsureIndexesFailed(), err))
 	}
 
@@ -86,7 +86,7 @@ func (h *handler) ListAll(ctx context.Context) ([]*types.Host, error) {
 		return nil, err
 	}
 
-	hosts, err := h.tenantDao(tenantID).listAll(ctx)
+	hosts, err := h.tenantDao(tenantID).List(ctx, base.AliveFilter(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (h *handler) Count(ctx context.Context, opts ...OptFn) (int64, error) {
 		filter = opt(filter)
 	}
 
-	return h.tenantDao(tenantID).count(ctx, filter)
+	return h.tenantDao(tenantID).Count(ctx, filter)
 }
 
 // List list host by page and conditions.
@@ -128,7 +128,7 @@ func (h *handler) List(ctx context.Context, page types.Page, opts ...OptFn) (
 		filter = opt(filter)
 	}
 
-	num, err := h.tenantDao(tenantID).count(ctx, filter)
+	num, err := h.tenantDao(tenantID).Count(ctx, filter)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -141,7 +141,7 @@ func (h *handler) List(ctx context.Context, page types.Page, opts ...OptFn) (
 		findOpt.SetLimit(int64(page.Limit))
 	}
 
-	hosts, err := h.tenantDao(tenantID).list(ctx, filter, findOpt)
+	hosts, err := h.tenantDao(tenantID).List(ctx, filter, findOpt)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -266,16 +266,24 @@ func convertHostFromTypes(host *types.Host) *Host {
 	dynamic := &HostDynamic{}
 	if host.Dynamic != nil {
 		dynamic = &HostDynamic{
-			NodeRole:         string(host.Dynamic.NodeRole),
-			NodeStatus:       string(host.Dynamic.NodeStatus),
-			NodeVersion:      host.Dynamic.NodeVersion,
-			NodeGeneration:   host.Dynamic.NodeGeneration,
-			AgentID:          host.Dynamic.AgentID,
-			NetworkUnitID:    host.Dynamic.NetworkUnitID,
-			Tag:              host.Dynamic.Tag,
-			ProxyClusterPort: host.Dynamic.ProxyClusterPort,
-			ProxyDataPort:    host.Dynamic.ProxyDataPort,
-			ProxyFilePort:    host.Dynamic.ProxyFilePort,
+			NodeRole:       string(host.Dynamic.NodeRole),
+			NodeStatus:     string(host.Dynamic.NodeStatus),
+			NodeVersion:    host.Dynamic.NodeVersion,
+			NodeGeneration: host.Dynamic.NodeGeneration,
+			AgentID:        host.Dynamic.AgentID,
+			NetworkUnitID:  host.Dynamic.NetworkUnitID,
+			ProxyTags: func() []string {
+				tags := make([]string, len(host.Dynamic.ProxyTags))
+				for idx := range host.Dynamic.ProxyTags {
+					tags[idx] = string(host.Dynamic.ProxyTags[idx])
+				}
+
+				return tags
+			}(),
+			ProxyAccessDisabled: host.Dynamic.ProxyAccessDisabled,
+			ProxyClusterPort:    host.Dynamic.ProxyClusterPort,
+			ProxyDataPort:       host.Dynamic.ProxyDataPort,
+			ProxyFilePort:       host.Dynamic.ProxyFilePort,
 		}
 	}
 
@@ -310,16 +318,24 @@ func convertHostToTypes(host *Host) *types.Host {
 	dynamic := &types.HostDynamic{}
 	if host.Dynamic != nil {
 		dynamic = &types.HostDynamic{
-			NodeRole:         types.NodeRole(host.Dynamic.NodeRole),
-			NodeStatus:       types.NodeStatus(host.Dynamic.NodeStatus),
-			NodeVersion:      host.Dynamic.NodeVersion,
-			NodeGeneration:   host.Dynamic.NodeGeneration,
-			AgentID:          host.Dynamic.AgentID,
-			NetworkUnitID:    host.Dynamic.NetworkUnitID,
-			Tag:              host.Dynamic.Tag,
-			ProxyClusterPort: host.Dynamic.ProxyClusterPort,
-			ProxyDataPort:    host.Dynamic.ProxyDataPort,
-			ProxyFilePort:    host.Dynamic.ProxyFilePort,
+			NodeRole:       types.NodeRole(host.Dynamic.NodeRole),
+			NodeStatus:     types.NodeStatus(host.Dynamic.NodeStatus),
+			NodeVersion:    host.Dynamic.NodeVersion,
+			NodeGeneration: host.Dynamic.NodeGeneration,
+			AgentID:        host.Dynamic.AgentID,
+			NetworkUnitID:  host.Dynamic.NetworkUnitID,
+			ProxyTags: func() []types.ProxyTag {
+				tags := make([]types.ProxyTag, len(host.Dynamic.ProxyTags))
+				for idx := range host.Dynamic.ProxyTags {
+					tags[idx] = types.ProxyTag(host.Dynamic.ProxyTags[idx])
+				}
+
+				return tags
+			}(),
+			ProxyAccessDisabled: host.Dynamic.ProxyAccessDisabled,
+			ProxyClusterPort:    host.Dynamic.ProxyClusterPort,
+			ProxyDataPort:       host.Dynamic.ProxyDataPort,
+			ProxyFilePort:       host.Dynamic.ProxyFilePort,
 		}
 	}
 

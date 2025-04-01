@@ -12,7 +12,10 @@
 // Everything from API or Database should be converted into types in this package before using.
 package types
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // Business represents a business under a tenant.
 type Business struct {
@@ -64,6 +67,16 @@ type HostStatic struct {
 // NodeRole represents a node role.
 type NodeRole string
 
+// Validate validates the node role.
+func (nodeRole NodeRole) Validate() error {
+	switch nodeRole {
+	case NodeRoleBlank, NodeRoleAgent, NodeRoleProxy:
+		return nil
+	default:
+		return errors.New("invalid node role")
+	}
+}
+
 // NodeRoleListToStringList converts a node role list to a string list.
 func NodeRoleListToStringList(nodeRoleList []NodeRole) []string {
 	data := make([]string, len(nodeRoleList))
@@ -97,6 +110,17 @@ const (
 
 // NodeStatus represents a node status when node role is not blank.
 type NodeStatus string
+
+// Validate validates the node status.
+func (nodeStatus NodeStatus) Validate() error {
+	switch nodeStatus {
+	case NodeStatusUnknown, NodeStatusInit, NodeStatusRunning,
+		NodeStatusDamaged, NodeStatusBusy, NodeStatusUpgrading, NodeStatusOffline:
+		return nil
+	default:
+		return errors.New("invalid node status")
+	}
+}
 
 // NodeStatusListToStringList converts a node status list to a string list.
 func NodeStatusListToStringList(nodeStatusList []NodeStatus) []string {
@@ -144,16 +168,41 @@ const (
 // HostDynamic represents a dynamic host under a host.
 // dynamic means it is set by user.
 type HostDynamic struct {
-	NodeRole         NodeRole
-	NodeStatus       NodeStatus
-	NodeVersion      string
-	NodeGeneration   int64
-	AgentID          string
-	NetworkUnitID    int64
-	Tag              string
+	NodeRole       NodeRole
+	NodeStatus     NodeStatus
+	NodeVersion    string
+	NodeGeneration int64
+	AgentID        string
+	NetworkUnitID  int64
+
+	// ProxyAccessDisabled This means that there will be no new proxy access connection establishment for this node.
+	// ! This setting does not affect the established connections.
+	ProxyAccessDisabled bool
+
+	// ProxyTags represents the tags of this proxy.
+	// ! Please make sure to use these tags on a whitelist basis.
+	ProxyTags        []ProxyTag
 	ProxyClusterPort int64
 	ProxyDataPort    int64
 	ProxyFilePort    int64
+}
+
+// ProxyTag represents a proxy tag.
+type ProxyTag string
+
+const (
+	// ProxyTagDedicatedInstaller means this node is a dedicated installer.
+	ProxyTagDedicatedInstaller = "dedicated_installer"
+)
+
+// Validate validates the proxy tag.
+func (tag ProxyTag) Validate() error {
+	switch tag {
+	case ProxyTagDedicatedInstaller:
+		return nil
+	default:
+		return errors.New("invalid proxy tag")
+	}
 }
 
 // NewBlankNodeDynamic returns a blank node dynamic.
