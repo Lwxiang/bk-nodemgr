@@ -15,9 +15,9 @@ import "github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 // TableName node deployment table name.
 const TableName = "node_deployment"
 
-// NodeDeployment represents the table of node deployment.
+// Data represents the table of node deployment.
 // Token should be the unique key.
-type NodeDeployment struct {
+type Data struct {
 	Token    string    `json:"token" bson:"token"`
 	Info     *Info     `json:"info" bson:"info"`
 	NodeConf *NodeConf `json:"node_conf" bson:"node_conf"`
@@ -25,17 +25,24 @@ type NodeDeployment struct {
 
 // Info this is the info of this node deployment.
 type Info struct {
-	OperInstID     string `json:"oper_inst_id" bson:"oper_inst_id"`
-	ActionName     string `json:"action_name" bson:"action_name"`
-	HostID         int64  `json:"host_id" bson:"host_id"`
-	OSType         string `json:"os_type" bson:"os_type"`
-	TenantID       string `json:"tenant_id" bson:"tenant_id"`
-	NodeRole       string `json:"node_role" bson:"node_role"`
-	NodeStatus     string `json:"node_status" bson:"node_status"`
-	NodeVersion    string `json:"node_version" bson:"node_version"`
-	NodeGeneration int64  `json:"node_generation" bson:"node_generation"`
-	AgentID        string `json:"agent_id" bson:"agent_id"`
-	NetworkUnitID  int64  `json:"network_unit_id" bson:"network_unit_id"`
+	OperInstID       string `json:"oper_inst_id" bson:"oper_inst_id"`
+	ActionName       string `json:"action_name" bson:"action_name"`
+	HostID           int64  `json:"host_id" bson:"host_id"`
+	OSType           string `json:"os_type" bson:"os_type"`
+	TenantID         string `json:"tenant_id" bson:"tenant_id"`
+	NodeRole         string `json:"node_role" bson:"node_role"`
+	NodeStatus       string `json:"node_status" bson:"node_status"`
+	NodeVersion      string `json:"node_version" bson:"node_version"`
+	NodeGeneration   int64  `json:"node_generation" bson:"node_generation"`
+	AgentID          string `json:"agent_id" bson:"agent_id"`
+	NetworkUnitID    int64  `json:"network_unit_id" bson:"network_unit_id"`
+	NetworkAreaID    int64  `json:"network_area_id" bson:"network_area_id"`
+	BizID            int64  `json:"biz_id" bson:"biz_id"`
+	InnerIP          string `json:"inner_ip" bson:"inner_ip"`
+	Addressing       string `json:"addressing" bson:"addressing"`
+	ProxyClusterPort int64  `json:"proxy_cluster_port" bson:"proxy_cluster_port"`
+	ProxyDataPort    int64  `json:"proxy_data_port" bson:"proxy_data_port"`
+	ProxyFilePort    int64  `json:"proxy_file_port" bson:"proxy_file_port"`
 }
 
 // NodeConf this is the node conf for node deployment.
@@ -45,9 +52,9 @@ type NodeConf struct {
 }
 
 // UniqueKey unique key of the table.
-func (deploy *NodeDeployment) UniqueKey() string {
+func (deploy *Data) UniqueKey() string {
 	return deploy.Token
 }
 
-// TableNodeDeployment represent the complete db structures of node deployment.
-type TableNodeDeployment base.TableBroker[*NodeDeployment]
+// Table represent the complete db structures of node deployment.
+type Table base.TableBroker[*Data]

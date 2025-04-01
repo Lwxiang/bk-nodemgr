@@ -26,22 +26,23 @@ type IHandler interface {
 	GetInfo(ctx context.Context, Token string) (*types.DeploymentInfo, error)
 	GetNodeConf(ctx context.Context, Token string) (*types.NodeConf, error)
 	SetNodeConf(ctx context.Context, Token string, nodeConf *types.NodeConf) error
+	UpdateInfo(ctx context.Context, Token string, info *types.DeploymentInfo) error
 }
 
-// Handler this is a handler to operate node deployment table.
+// Handler this is a Handler to operate node deployment table.
 type Handler struct {
 	dao    *dao
 	logger logger.Logger
 }
 
-// New new a handler.
+// New new a Handler.
 func New(client *mongo.Database, logger logger.Logger) *Handler {
 	h := &Handler{
 		dao:    newDao(client, logger),
 		logger: logger,
 	}
 
-	if err := h.dao.ensureIndexes(); err != nil {
+	if err := h.dao.EnsureIndexes(); err != nil {
 		h.logger.Warnf("failed to ensure nodedeloyment indexes, err: %v",
 			errors.Join(base.ErrEnsureIndexesFailed(), err))
 	}
@@ -61,7 +62,7 @@ func (h *Handler) GetInfo(ctx context.Context, Token string) (*types.DeploymentI
 
 	filter := base.AliveFilter()
 	filter = WithToken(Token)(filter)
-	data, err := h.dao.get(ctx, filter, FieldKeyInfo)
+	data, err := h.dao.Get(ctx, filter, FieldKeyInfo)
 	if err != nil {
 		return nil, base.ErrRecordNoFound()
 	}
@@ -75,17 +76,24 @@ func convertDeploymentInfoToTypes(info *Info) (*types.DeploymentInfo, error) {
 	}
 
 	return &types.DeploymentInfo{
-		OperInstID:     info.OperInstID,
-		ActionName:     info.ActionName,
-		HostID:         info.HostID,
-		OSType:         info.OSType,
-		TenantID:       info.TenantID,
-		NodeRole:       types.NodeRole(info.NodeRole),
-		NodeStatus:     types.NodeStatus(info.NodeStatus),
-		NodeVersion:    info.NodeVersion,
-		NodeGeneration: info.NodeGeneration,
-		AgentID:        info.AgentID,
-		NetworkUnitID:  info.NetworkUnitID,
+		OperInstID:       info.OperInstID,
+		ActionName:       info.ActionName,
+		HostID:           info.HostID,
+		OSType:           info.OSType,
+		TenantID:         info.TenantID,
+		NodeRole:         types.NodeRole(info.NodeRole),
+		NodeStatus:       types.NodeStatus(info.NodeStatus),
+		NodeVersion:      info.NodeVersion,
+		NodeGeneration:   info.NodeGeneration,
+		AgentID:          info.AgentID,
+		NetworkUnitID:    info.NetworkUnitID,
+		BizID:            info.BizID,
+		NetworkAreaID:    info.NetworkAreaID,
+		InnerIP:          info.InnerIP,
+		Addressing:       types.Addressing(info.Addressing),
+		ProxyClusterPort: info.ProxyClusterPort,
+		ProxyDataPort:    info.ProxyDataPort,
+		ProxyFilePort:    info.ProxyFilePort,
 	}, nil
 }
 
@@ -104,29 +112,23 @@ func (h *Handler) Create(ctx context.Context, nodeDeployment *types.NodeDeployme
 		return err
 	}
 
-	return h.dao.create(ctx, data)
+	return h.dao.Create(ctx, data)
 }
 
-func convertNodeDeploymentFromTypes(data *types.NodeDeployment) (*NodeDeployment, error) {
-	nodeDeployment := &NodeDeployment{
-		Token: data.Token,
-		Info: &Info{
-			OperInstID:     data.Info.OperInstID,
-			ActionName:     data.Info.ActionName,
-			HostID:         data.Info.HostID,
-			OSType:         data.Info.OSType,
-			TenantID:       data.Info.TenantID,
-			NodeRole:       string(data.Info.NodeRole),
-			NodeStatus:     string(data.Info.NodeStatus),
-			NodeVersion:    data.Info.NodeVersion,
-			NodeGeneration: data.Info.NodeGeneration,
-			AgentID:        data.Info.AgentID,
-			NetworkUnitID:  data.Info.NetworkUnitID,
-		},
+func convertNodeDeploymentFromTypes(data *types.NodeDeployment) (*Data, error) {
+	nodeDeployment := &Data{
+		Token:    data.Token,
+		Info:     new(Info),
 		NodeConf: new(NodeConf),
 	}
 
 	var err error
+
+	nodeDeployment.Info, err = convertDeploymentInfoFromTypes(data.Info)
+	if err != nil {
+		return nil, err
+	}
+
 	nodeDeployment.NodeConf, err = convertNodeConfFromTypes(data.NodeConf)
 	if err != nil {
 		return nil, err
@@ -158,7 +160,7 @@ func (h *Handler) GetNodeConf(ctx context.Context, Token string) (*types.NodeCon
 
 	filter := base.AliveFilter()
 	filter = WithToken(Token)(filter)
-	data, err := h.dao.get(ctx, filter, FieldKeyNodeConf)
+	data, err := h.dao.Get(ctx, filter, FieldKeyNodeConf)
 	if err != nil {
 		return nil, base.ErrRecordNoFound()
 	}
@@ -198,9 +200,66 @@ func (h *Handler) SetNodeConf(ctx context.Context, token string, nodeConf *types
 
 	filter := base.AliveFilter()
 	filter = WithToken(token)(filter)
-	if err := h.dao.updateField(ctx, filter, FieldKeyNodeConf, data); err != nil {
+	if err := h.dao.UpdateField(ctx, filter, FieldKeyNodeConf, data); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// UpdateInfo update a node deployment info.
+func (h *Handler) UpdateInfo(ctx context.Context, token string, info *types.DeploymentInfo) error {
+	if ctx == nil {
+		return base.ErrInvalidContext()
+	}
+
+	if token == "" {
+		return base.ErrInvalidID()
+	}
+
+	if info == nil {
+		return base.ErrEmptyParamData()
+	}
+
+	filter := base.AliveFilter()
+	filter = WithToken(token)(filter)
+	data, err := convertDeploymentInfoFromTypes(info)
+	if err != nil {
+		return err
+	}
+
+	if err := h.dao.UpdateField(ctx, filter, FieldKeyInfo, data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func convertDeploymentInfoFromTypes(info *types.DeploymentInfo) (*Info, error) {
+	if info == nil {
+		return nil, errors.New("info is nil")
+	}
+
+	data := &Info{
+		OperInstID:       info.OperInstID,
+		ActionName:       info.ActionName,
+		HostID:           info.HostID,
+		OSType:           info.OSType,
+		TenantID:         info.TenantID,
+		NodeRole:         string(info.NodeRole),
+		NodeStatus:       string(info.NodeStatus),
+		NodeVersion:      info.NodeVersion,
+		NodeGeneration:   info.NodeGeneration,
+		AgentID:          info.AgentID,
+		NetworkUnitID:    info.NetworkUnitID,
+		NetworkAreaID:    info.NetworkAreaID,
+		BizID:            info.BizID,
+		InnerIP:          info.InnerIP,
+		Addressing:       string(info.Addressing),
+		ProxyClusterPort: info.ProxyClusterPort,
+		ProxyDataPort:    info.ProxyDataPort,
+		ProxyFilePort:    info.ProxyFilePort,
+	}
+
+	return data, nil
 }
