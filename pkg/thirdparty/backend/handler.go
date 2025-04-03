@@ -39,6 +39,14 @@ type Handler interface {
 	// @return host list with page and the total count with filter.
 	ListHost(ctx context.Context, page types.Page, condition *types.HostCondition) ([]*types.Host, int64, error)
 
+	// DistinctHost distinct host by condition.
+	// @param ctx context, contains tenant-id.
+	// @param condition the filter conditions.
+	// @return the host distinct result.
+	DistinctHost(
+		ctx context.Context, condition *types.HostCondition) (
+		*types.HostDistinctResult, error)
+
 	// CountHost count host within specified tenant in context.
 	// @param ctx context, contains tenant-id.
 	// @param condition the filter conditions.
@@ -58,6 +66,14 @@ type Handler interface {
 	// @param condition the filter conditions.
 	// @return the topo-event count with filter.
 	CountTopoEvent(ctx context.Context, condition *types.TopoEventCondition) (int64, error)
+
+	// DistinctTopoEvent distinct topo-event by condition.
+	// @param ctx context, contains tenant-id.
+	// @param condition the filter conditions.
+	// @return the topo-event distinct result.
+	DistinctTopoEvent(
+		ctx context.Context, condition *types.TopoEventCondition) (
+		*types.TopoEventDistinctResult, error)
 
 	// ListAccessPoint list access points by page and conditions.
 	// @param ctx context, contains tenant-id.
@@ -220,6 +236,29 @@ func (h *handler) ListHost(ctx context.Context, page types.Page, condition *type
 	total, hosts := resp.ConvertHostsToTypes()
 
 	return hosts, total, nil
+}
+
+// DistinctHost distinct host within specified tenant in context.
+func (h *handler) DistinctHost(
+	ctx context.Context, condition *types.HostCondition) (
+	*types.HostDistinctResult, error) {
+
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &protoBackend.TopoHostDistinctReq{}
+	if err := req.ConvertConditionsFromTypes(condition); err != nil {
+		return nil, err
+	}
+
+	resp, err := h.cli.distinctHost(ctx, tenantID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.ConvertResultToTypes(), nil
 }
 
 // CountHost count host within specified tenant in context.
@@ -525,6 +564,29 @@ func (h *handler) CountTopoEvent(ctx context.Context, condition *types.TopoEvent
 	}
 
 	return resp.GetData().GetTotal(), nil
+}
+
+// DistinctTopoEvent distinct the number of topo events by conditions.
+func (h *handler) DistinctTopoEvent(
+	ctx context.Context, condition *types.TopoEventCondition) (
+	*types.TopoEventDistinctResult, error) {
+
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &protoBackend.TopoEventDistinctReq{}
+	if err := req.ConvertConditionsFromTypes(condition); err != nil {
+		return nil, err
+	}
+
+	resp, err := h.cli.distinctTopoEvent(ctx, tenantID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.ConvertResultToTypes(), nil
 }
 
 // ListAccessPoint list access point within specified tenant in context.

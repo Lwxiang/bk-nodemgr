@@ -64,3 +64,32 @@ func (h *handler) ListEvent(ctx *rest.Context) (interface{}, error) {
 
 	return resp.GetData(), nil
 }
+
+// DistinctEvent distincts events with conditions.
+// nolint: dupl
+func (h *handler) DistinctEvent(ctx *rest.Context) (interface{}, error) {
+	req := new(protoApplication.TopoEventDistinctReq)
+	if err := ctx.BindJSON(req); err != nil {
+		h.logger.Errorf("failed to distinct topoevent, failed to decode request body. err: %v", err)
+		return nil, errf.ErrWrap(errf.InvalidParameter, err)
+	}
+
+	sCtx, err := ctx.GetContext()
+	if err != nil {
+		h.logger.Errorf("failed to distinct topoevent, failed to get request context. err: %v", err)
+		return nil, errf.ErrWrap(errf.InvalidParameter, err)
+	}
+
+	result, err := h.backendHandler.DistinctTopoEvent(
+		sCtx,
+		req.ConvertConditionsToTypes())
+	if err != nil {
+		h.logger.Errorf("failed to distinct topoevent. failed to distinct host fields: %v", err)
+		return nil, errf.ErrWrap(errf.DBExecCmdFailed, err)
+	}
+
+	resp := new(protoApplication.TopoEventDistinctResp)
+	resp.ConvertResultFromTypes(result)
+
+	return resp.GetData(), nil
+}
