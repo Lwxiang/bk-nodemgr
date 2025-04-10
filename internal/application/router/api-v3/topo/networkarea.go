@@ -133,18 +133,18 @@ func (h *handler) ListNetworkArea(ctx *rest.Context) (interface{}, error) {
 	return resp.GetData(), nil
 }
 
-// StaticsNetworkArea statics network-area.
-// nolint: funlen
-func (h *handler) StaticsNetworkArea(ctx *rest.Context) (interface{}, error) {
+// StatisticsNetworkArea statistics network-area.
+// nolint: funlen, gocognit
+func (h *handler) StatisticsNetworkArea(ctx *rest.Context) (interface{}, error) {
 	sCtx, err := ctx.GetContext()
 	if err != nil {
-		h.logger.Errorf("failed to statics networkarea, failed to get request context. err: %v", err)
+		h.logger.Errorf("failed to statistics networkarea, failed to get request context. err: %v", err)
 		return nil, errf.ErrWrap(errf.InvalidParameter, err)
 	}
 
-	req := new(protoApplication.TopoNetworkAreaStaticsReq)
+	req := new(protoApplication.TopoNetworkAreaStatisticsReq)
 	if err := ctx.BindJSON(req); err != nil {
-		h.logger.ErrorCtxf(sCtx, "failed to statics networkarea, failed to decode request body. err: %v", err)
+		h.logger.ErrorCtxf(sCtx, "failed to statistics networkarea, failed to decode request body. err: %v", err)
 		return nil, errf.ErrWrap(errf.InvalidParameter, err)
 	}
 
@@ -154,27 +154,29 @@ func (h *handler) StaticsNetworkArea(ctx *rest.Context) (interface{}, error) {
 		req.ConvertNetworkUnitConditionToTypes(),
 	)
 	if err != nil {
-		h.logger.ErrorCtxf(sCtx, "failed to statics networkarea, failed to list networkunit. err: %v", err)
+		h.logger.ErrorCtxf(sCtx, "failed to statistics networkarea, failed to list networkunit. err: %v", err)
 		return nil, errf.ErrWrap(errf.DBExecCmdFailed, err)
 	}
 
 	// result is a map of networkareaID and networkareaStatics
-	result := make(map[int64]*protoApplication.NetworkAreaStatics)
+	result := make(map[int64]*protoApplication.NetworkAreaStatistics)
 	for _, networkunit := range networkunits {
 		if _, ok := result[networkunit.NetworkAreaID]; !ok {
-			result[networkunit.NetworkAreaID] = &protoApplication.NetworkAreaStatics{
+			result[networkunit.NetworkAreaID] = &protoApplication.NetworkAreaStatistics{
 				NetworkAreaID: networkunit.NetworkAreaID,
 			}
 		}
 		result[networkunit.NetworkAreaID].NetworkUnitCount++
 	}
 
+	networkAreaIDs := req.GetBkNetworkareaId()
 	gp := gopool.NewPool()
-	for _, networkAreaID := range req.GetBkNetworkareaId() {
-		id := networkAreaID
-		if _, ok := result[id]; !ok {
-			result[id] = &protoApplication.NetworkAreaStatics{
-				NetworkAreaID: id,
+	for idx := range networkAreaIDs {
+		networkAreaID := networkAreaIDs[idx]
+
+		if _, ok := result[networkAreaID]; !ok {
+			result[networkAreaID] = &protoApplication.NetworkAreaStatistics{
+				NetworkAreaID: networkAreaID,
 			}
 		}
 
@@ -182,15 +184,15 @@ func (h *handler) StaticsNetworkArea(ctx *rest.Context) (interface{}, error) {
 		gp.Go(func() error {
 			num, err := h.backendHandler.CountHost(sCtx, &types.HostCondition{
 				ExactInclude: &types.HostExactFields{
-					NetworkUnitID: []int64{id},
+					NetworkUnitID: []int64{networkAreaID},
 					NodeRole:      []types.NodeRole{types.NodeRoleAgent},
 				},
 			})
 			if err != nil {
-				return errors.Join(err, fmt.Errorf("failed to count agent, networkunit-id: %d", id))
+				return errors.Join(err, fmt.Errorf("failed to count agent, networkunit-id: %d", networkAreaID))
 			}
 
-			result[id].AgentCount = num
+			result[networkAreaID].AgentCount = num
 
 			return nil
 		})
@@ -199,15 +201,35 @@ func (h *handler) StaticsNetworkArea(ctx *rest.Context) (interface{}, error) {
 		gp.Go(func() error {
 			num, err := h.backendHandler.CountHost(sCtx, &types.HostCondition{
 				ExactInclude: &types.HostExactFields{
-					NetworkUnitID: []int64{id},
+					NetworkUnitID: []int64{networkAreaID},
 					NodeRole:      []types.NodeRole{types.NodeRoleProxy},
 				},
 			})
 			if err != nil {
-				return errors.Join(err, fmt.Errorf("failed to count proxy, networkunit-id: %d", id))
+				return errors.Join(err, fmt.Errorf("failed to count proxy, networkunit-id: %d", networkAreaID))
 			}
 
-			result[id].ProxyCount = num
+			result[networkAreaID].ProxyCount = num
+
+			return nil
+		})
+
+		gp.Go(func() error {
+			events, _, err := h.backendHandler.ListTopoEvent(sCtx, types.Page{Limit: 1}, &types.TopoEventCondition{
+				ExactInclude: &types.TopoEventExactFields{
+					NetworkAreaID: []int64{networkAreaID},
+				},
+			})
+			if err != nil {
+				return errors.Join(err, fmt.Errorf("failed to list topo event, networkunit-id: %d", networkAreaID))
+			}
+
+			if len(events) == 0 {
+				return nil
+			}
+
+			result[networkAreaID].LastOperator = events[0].Operator
+			result[networkAreaID].LastOperateTime = events[0].OperateTime
 
 			return nil
 		})
@@ -215,13 +237,13 @@ func (h *handler) StaticsNetworkArea(ctx *rest.Context) (interface{}, error) {
 
 	// wait until all servers stopped or application error.
 	if err := gp.Wait(); err != nil {
-		h.logger.ErrorCtxf(sCtx, "failed to statics networkarea, failed to count host: %v", err)
+		h.logger.ErrorCtxf(sCtx, "failed to statistics networkarea, failed to count host: %v", err)
 
 		return nil, errf.ErrWrap(errf.ThirdpartyRequestFailed, err)
 	}
 
-	resp := new(protoApplication.TopoNetworkAreaStaticsResp)
-	resp.ConvertNetworkAreaStaticsFromResult(result)
+	resp := new(protoApplication.TopoNetworkAreaStatisticsResp)
+	resp.ConvertNetworkAreaStatisticsFromResult(result)
 
 	return resp.GetData(), nil
 }
