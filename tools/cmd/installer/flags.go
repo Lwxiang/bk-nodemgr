@@ -20,18 +20,16 @@ import (
 const (
 	// CmdFlagPkgVersion this flag is used to specify the version of the package.
 	CmdFlagPkgVersion = "pkg_version"
-	// CmdFlagInstallEnv this flag is used to specify the install env.
-	CmdFlagInstallEnv = "install_env"
 	// CmdFlagDownloadEndpoint this flag is used to specify the download endpoint.
 	CmdFlagDownloadEndpoint = "download_endpoint"
 	// CmdFlagCallbackEndpoint this flag is used to specify the callback endpoint.
 	CmdFlagCallbackEndpoint = "callback_endpoint"
 	// CmdFlagPkgGeneration this flag is used to specify the generation of the package.
 	CmdFlagPkgGeneration = "pkg_generation"
-	// CmdFlagGsePrefix this flag is used to specify the gse prefix.
-	CmdFlagGsePrefix = "gse_prefix"
-	// CmdFlagNodeType this flag is used to specify the node type.
-	CmdFlagNodeType = "node_type"
+	// CmdFlagGseRoot this flag is used to specify the gse root.
+	CmdFlagGseRoot = "gse_root"
+	// CmdFlagNodeRole this flag is used to specify the node role.
+	CmdFlagNodeRole = "node_role"
 	// CmdFlagDebug this flag is used to specify the debug.
 	CmdFlagDebug = "debug"
 	// CmdFlagTmpDir this flag is used to specify the tmp dir.
@@ -59,19 +57,17 @@ const (
 	CmdDefaultPkgGeneration int = 2
 	// CmdDefaultTmpDir this flag is used to specify the default tmp dir.
 	CmdDefaultTmpDir = "/tmp"
-	// CmdDefaultInstallEnv this flag is used to specify the default install env.
-	CmdDefaultInstallEnv = "gse"
 )
 
-// CmdDefaultGsePrefix get default gse prefix.
-func CmdDefaultGsePrefix() string {
+// CmdDefaultGseRoot get default gse root.
+func CmdDefaultGseRoot() string {
 	switch runtime.GOOS {
 	// nolint: goconst
 	case "windows":
-		return "C:\\"
+		return "C:\\gse2"
 	default:
 		// nolint: goconst
-		return "/usr/local"
+		return "/usr/local/gse2"
 	}
 }
 

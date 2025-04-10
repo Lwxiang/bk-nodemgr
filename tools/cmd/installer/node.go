@@ -23,9 +23,8 @@ import (
 // nolint: gochecknoglobals
 var node = struct {
 	sync.Once
-	nodeType   constant.NodeType
-	installEnv string
-	gsePrefix  string
+	nodeRole   constant.NodeRole
+	gseRoot    string
 	generation int
 	version    string
 	agentID    string
@@ -69,57 +68,41 @@ func SetNodeVersion(version string) error {
 	return nil
 }
 
-// GetInstallEnv get install env.
-func GetInstallEnv() string {
-	return node.installEnv
+// GetGseRoot get gse root.
+func GetGseRoot() string {
+	return node.gseRoot
 }
 
-// SetInstallEnv set install env.
-func SetInstallEnv(installEnv string) error {
-	if installEnv == "" {
-		return errors.New("set install env failed, install env is empty")
+// SetGseRoot set gse root.
+func SetGseRoot(gseRoot string) error {
+	if gseRoot == "" {
+		return errors.New("set gse root failed, gse root is empty")
 	}
 
-	node.installEnv = installEnv
-
-	return nil
-}
-
-// GetGsePrefix get gse prefix.
-func GetGsePrefix() string {
-	return node.gsePrefix
-}
-
-// SetGsePrefix set gse prefix.
-func SetGsePrefix(gsePrefix string) error {
-	if gsePrefix == "" {
-		return errors.New("set gse prefix failed, gse prefix is empty")
-	}
-
-	gsePrefix, err := filepath.Abs(gsePrefix)
+	gseRoot, err := filepath.Abs(gseRoot)
 	if err != nil {
-		return fmt.Errorf("set gse prefix failed, err: %w", err)
+		return fmt.Errorf("set gse root failed, err: %w", err)
 	}
 
-	node.gsePrefix = filepath.FromSlash(gsePrefix)
+	node.gseRoot = filepath.FromSlash(gseRoot)
 
 	return nil
 }
 
-// SetNodeType set node type.
-func SetNodeType(nodeType constant.NodeType) error {
-	if err := nodeType.Validate(); err != nil {
-		return fmt.Errorf("set node type failed, err: %w", err)
+// SetNodeRole set node role.
+func SetNodeRole(nodeRole constant.NodeRole) error {
+	if err := nodeRole.Validate(); err != nil {
+		return fmt.Errorf("set node role failed, err: %w", err)
 	}
 
-	node.nodeType = nodeType
+	node.nodeRole = nodeRole
 
 	return nil
 }
 
-// GetNodeType get node type.
-func GetNodeType() constant.NodeType {
-	return node.nodeType
+// GetNodeRole get node role.
+func GetNodeRole() constant.NodeRole {
+	return node.nodeRole
 }
 
 // GetNodePkgGeneration get node pkg generation.

@@ -13,6 +13,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/datareporter"
 	"io"
 	"log"
 	"os"
@@ -21,7 +22,6 @@ import (
 
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/checkdeploy"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/constant"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/datareporter"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/filedownloader"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/logreporter"
@@ -81,7 +81,7 @@ func registerRootPersistentVars(rootCmd *cobra.Command) {
 	var (
 		logFilePath string
 		tmpDirPath  string
-		nodeType    string
+		nodeRole    string
 		debug       bool
 	)
 
@@ -92,16 +92,16 @@ func registerRootPersistentVars(rootCmd *cobra.Command) {
 		StringVar(&tmpDirPath, CmdFlagTmpDir, CmdDefaultTmpDir,
 			"the dir which used to store agent pkg, configs and install log")
 	rootCmd.PersistentFlags().
-		StringVar(&nodeType, CmdFlagNodeType, "agent", "this is the node type")
+		StringVar(&nodeRole, CmdFlagNodeRole, "agent", "this is the node role")
 	rootCmd.PersistentFlags().
 		BoolVar(&debug, CmdFlagDebug, false, "debug mode, default is false")
 
-	_ = rootCmd.MarkPersistentFlagRequired(CmdFlagNodeType)
+	_ = rootCmd.MarkPersistentFlagRequired(CmdFlagNodeRole)
 
 	logFile := new(os.File)
 	rootCmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
-		if err := SetNodeType(constant.NodeType(nodeType)); err != nil {
-			return fmt.Errorf("set node type failed, err: %v", err)
+		if err := SetNodeRole(constant.NodeRole(nodeRole)); err != nil {
+			return fmt.Errorf("set node role failed, err: %v", err)
 		}
 
 		if logFilePath != "" {
@@ -165,16 +165,15 @@ func registerRootVars(rootCmd *cobra.Command) {
 		pkgGeneration     int
 		pkgVersion        string
 		callBackEndPoint  string
-		gsePrefix         string
-		installEnv        string
+		gseRoot           string
 		token             string
 		reinstall         bool
 		reRegisterAgentID bool
 	)
 	rootCmd.PreRunE = func(_ *cobra.Command, _ []string) error {
-		if gsePrefix != "" {
-			if err := SetGsePrefix(gsePrefix); err != nil {
-				return fmt.Errorf("set gse prefix failed, err: %v", err)
+		if gseRoot != "" {
+			if err := SetGseRoot(gseRoot); err != nil {
+				return fmt.Errorf("set gse root failed, err: %v", err)
 			}
 		}
 
@@ -184,12 +183,6 @@ func registerRootVars(rootCmd *cobra.Command) {
 
 		if err := SetCallbackEndPoint(callBackEndPoint); err != nil {
 			return fmt.Errorf("set callback endpoint failed, err: %v", err)
-		}
-
-		if installEnv != "" {
-			if err := SetInstallEnv(installEnv); err != nil {
-				return fmt.Errorf("set install env failed, err: %v", err)
-			}
 		}
 
 		if err := SetNodeGeneration(pkgGeneration); err != nil {
@@ -249,7 +242,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 				GseCtlPath:   GetGseAgentCtlPath(),
 			})
 			if err := uninstallStep.Run(cmd.Context()); err != nil {
-				return err
+				fmt.Printf("uninstall step failed, err: %v\n", err)
 			}
 
 			return nil
@@ -262,7 +255,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 				PkgGeneration:        GetNodePkgGeneration(),
 				PkgPath:              GetGsePkgPath(),
 				PkgVersion:           GetNodePkgVersion(),
-				NodeType:             GetNodeType(),
+				NodeRole:             GetNodeRole(),
 				Token:                GetToken(),
 				TmpAgentConfPath:     GetTmpAgentConfPath(),
 				TmpFileProxyConfPath: GetTmpFileProxyConfPath(),
@@ -304,15 +297,6 @@ func registerRootVars(rootCmd *cobra.Command) {
 			return fmt.Errorf("set node agent id failed, err: %v", err)
 		}
 
-		reportDataStep := datareporter.NewStep(datareporter.StepArgs{
-			Token:            GetToken(),
-			AgentID:          GetNodeAgentID(),
-			CallbackEndpoint: GetCallBackEndpoint(),
-		})
-		if err := reportDataStep.Run(cmd.Context()); err != nil {
-			return fmt.Errorf("report data failed, err: %v", err)
-		}
-
 		startNodeStep := startnode.NewStep(startnode.StepArgs{
 			AgentPath:    GetGseAgentPath(),
 			AgentCtlPath: GetGseAgentCtlPath(),
@@ -331,24 +315,32 @@ func registerRootVars(rootCmd *cobra.Command) {
 			return fmt.Errorf("check deploy failed, err: %v", err)
 		}
 
+		reportDataStep := datareporter.NewStep(datareporter.StepArgs{
+			Token:            GetToken(),
+			AgentID:          GetNodeAgentID(),
+			CallbackEndpoint: GetCallBackEndpoint(),
+		})
+		if err := reportDataStep.Run(cmd.Context()); err != nil {
+			return fmt.Errorf("report data failed, err: %v", err)
+		}
+
 		return nil
 	}
 
 	// this is the root command's private variable.
-	rootCmd.Flags().StringVar(&installEnv, CmdFlagInstallEnv, CmdDefaultInstallEnv, "install env")
 	rootCmd.Flags().StringVar(&downloadEndpoint, CmdFlagDownloadEndpoint, "", "download endpoint")
 	rootCmd.Flags().StringVar(&callBackEndPoint, CmdFlagCallbackEndpoint, "", "callback endpoint")
 	rootCmd.Flags().IntVar(&pkgGeneration, CmdFlagPkgGeneration, CmdDefaultPkgGeneration,
 		"this is the gse pkg generation which will be installed")
 	rootCmd.Flags().StringVar(&token, CmdFlagToken, "", "token")
 	rootCmd.Flags().StringVar(&pkgVersion, CmdFlagPkgVersion, "", "this gse node pkg version which will be installed")
-	rootCmd.Flags().StringVar(&gsePrefix, CmdFlagGsePrefix, CmdDefaultGsePrefix(), "gse prefix")
+	rootCmd.Flags().StringVar(&gseRoot, CmdFlagGseRoot, CmdDefaultGseRoot(), "gse root")
 	rootCmd.Flags().BoolVar(&reinstall, CmdFlagReinstall, false, "reinstall")
 	rootCmd.Flags().BoolVar(&reRegisterAgentID, CmdFlagReRegisterAgentID, false, "re register agent id")
 	_ = rootCmd.MarkFlagRequired(CmdFlagDownloadEndpoint)
 	_ = rootCmd.MarkFlagRequired(CmdFlagCallbackEndpoint)
 	_ = rootCmd.MarkFlagRequired(CmdFlagPkgGeneration)
 	_ = rootCmd.MarkFlagRequired(CmdFlagPkgVersion)
-	_ = rootCmd.MarkFlagRequired(CmdFlagInstallEnv)
+	_ = rootCmd.MarkFlagRequired(CmdFlagGseRoot)
 	_ = rootCmd.MarkFlagRequired(CmdFlagToken)
 }
