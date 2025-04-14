@@ -13,12 +13,14 @@ package options
 
 import (
 	"context"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/filex/iface"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/nodedeployment"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/operation"
 	operinstdataStorage "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/operinstdata"
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/trigengine"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/crypter"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/discover"
@@ -33,7 +35,7 @@ type Capability struct {
 	Manager manager.Manager
 
 	// TopoStorage bk nodeman topo storage.
-	TopoStorage topo.IStorage
+	TopoStorage topoStg.IStorage
 
 	// TrigEngineStorage bk nodeman trigengine storage.
 	TrigEngineStorage trigengine.Storage
@@ -50,6 +52,9 @@ type Capability struct {
 	// CmdbHandler cmdb handler.
 	CmdbHandler cmdb.IHandler
 
+	// GSEHandler gse handler.
+	GSEHandler gse.IHandler
+
 	// Logger logger
 	Logger logger.Logger
 
@@ -58,6 +63,9 @@ type Capability struct {
 
 	// Crypter ...
 	Crypter crypter.Crypter
+
+	// InstallerFileGroup bk nodeman tool file group.
+	InstallerFileGroup iface.FileGroup
 
 	// Discover provides discover handler.
 	DiscoverProvider discover.Provider

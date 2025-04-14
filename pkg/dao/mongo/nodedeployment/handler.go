@@ -76,8 +76,8 @@ func convertDeploymentInfoToTypes(info *Info) (*types.DeploymentInfo, error) {
 	}
 
 	return &types.DeploymentInfo{
-		OperInstID: info.OperInstID,
-		ActionName: info.ActionName,
+		OperInstID:         info.OperInstID,
+		BlockingActionName: info.ActionName,
 		Host: types.Host{
 			HostID:   info.HostID,
 			TenantID: info.TenantID,
@@ -93,6 +93,8 @@ func convertDeploymentInfoToTypes(info *Info) (*types.DeploymentInfo, error) {
 				NodeStatus:     types.NodeStatus(info.NodeStatus),
 				NodeVersion:    info.NodeVersion,
 				NodeGeneration: types.NodeGeneration(info.NodeGeneration),
+				NodeCPUArch:    info.NodeCPUArch,
+				NodeOsType:     info.NodeOsType,
 				AgentID:        info.AgentID,
 				NetworkUnitID:  info.NetworkUnitID,
 				ProxyTags: func() []types.ProxyTag {
@@ -108,6 +110,13 @@ func convertDeploymentInfoToTypes(info *Info) (*types.DeploymentInfo, error) {
 				ProxyFilePort:    info.ProxyFilePort,
 			},
 		},
+		TmpDir:        info.TmpDir,
+		LoginIP:       info.LoginIP,
+		LoginPort:     info.LoginPort,
+		LoginUser:     info.LoginUser,
+		LoginMode:     types.LoginMode(info.LoginMode),
+		LoginPassword: info.LoginPassword,
+		LoginKeyFile:  info.LoginKeyFile,
 	}, nil
 }
 
@@ -256,12 +265,14 @@ func convertDeploymentInfoFromTypes(info *types.DeploymentInfo) (*Info, error) {
 
 	data := &Info{
 		OperInstID:     info.OperInstID,
-		ActionName:     info.ActionName,
+		ActionName:     info.BlockingActionName,
 		HostID:         info.Host.HostID,
 		OSType:         info.Host.Static.OSType,
 		TenantID:       info.Host.TenantID,
 		NodeRole:       string(info.Host.Dynamic.NodeRole),
 		NodeStatus:     string(info.Host.Dynamic.NodeStatus),
+		NodeCPUArch:    info.Host.Dynamic.NodeCPUArch,
+		NodeOsType:     info.Host.Dynamic.NodeOsType,
 		NodeVersion:    info.Host.Dynamic.NodeVersion,
 		NodeGeneration: int64(info.Host.Dynamic.NodeGeneration),
 		AgentID:        info.Host.Dynamic.AgentID,
@@ -281,6 +292,13 @@ func convertDeploymentInfoFromTypes(info *types.DeploymentInfo) (*Info, error) {
 		ProxyClusterPort: info.Host.Dynamic.ProxyClusterPort,
 		ProxyDataPort:    info.Host.Dynamic.ProxyDataPort,
 		ProxyFilePort:    info.Host.Dynamic.ProxyFilePort,
+		TmpDir:           info.TmpDir,
+		LoginIP:          info.LoginIP,
+		LoginPort:        info.LoginPort,
+		LoginUser:        info.LoginUser,
+		LoginMode:        string(info.LoginMode),
+		LoginPassword:    info.LoginPassword,
+		LoginKeyFile:     info.LoginKeyFile,
 	}
 
 	return data, nil
