@@ -12,10 +12,12 @@
 package startnode
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"fmt"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/gopool"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/constant"
@@ -23,8 +25,8 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/retrier"
 )
 
-// StartAgent ...
-func StartAgent(ctx context.Context, gseCtlPath string) error {
+// StartNode ...
+func StartNode(ctx context.Context, gseCtlPath string) error {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error(constant.StepStartNode, constant.StateFailed,
@@ -33,44 +35,84 @@ func StartAgent(ctx context.Context, gseCtlPath string) error {
 	}()
 	backoff := retrier.NewExpoBackoff(retrier.ExpoBackoffOptsDefault())
 	err := backoff.Do(ctx, func(attempt int) error {
-		var stdOut, stdErr bytes.Buffer
-
 		// nolint: gosec
 		cmd := exec.CommandContext(ctx,
 			gseCtlPath,
 			"start",
 		)
-		cmd.Stdout = &stdOut
-		cmd.Stderr = &stdErr
+		cmd.Dir = filepath.Dir(gseCtlPath)
+		stdoutPipe, err := cmd.StdoutPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stdout pipe, err: %w", err)
+		}
+
+		stderrPipe, err := cmd.StderrPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stderr pipe, err: %w", err)
+		}
 
 		logger.Debugf(constant.StepStartNode, constant.StateRunning,
 			"run agent start cmd: %s", cmd.String())
 
-		err := cmd.Run()
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("failed to start command, err: %w", err)
+		}
+
+		gp := gopool.NewPool()
+		var errOutput strings.Builder
+
+		gp.Go(func() error {
+			scanner := bufio.NewScanner(stderrPipe)
+			for scanner.Scan() {
+				line := scanner.Text()
+				logger.Warn(constant.StepStartNode, constant.StateRunning,
+					"agent stderr: %s", line)
+
+				errOutput.WriteString(line)
+				errOutput.WriteString("\n")
+			}
+
+			return nil
+		})
+
+		var hasOutput bool
+		gp.Go(func() error {
+			scanner := bufio.NewScanner(stdoutPipe)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line != "" {
+					hasOutput = true
+					logger.Infof(constant.StepStartNode, constant.StateRunning,
+						"agent output: %s", line)
+				}
+			}
+
+			return nil
+		})
+
+		err = cmd.Wait()
+
+		_ = gp.Wait()
+
 		if err != nil {
 			logger.Warn(constant.StepStartNode, constant.StateRunning,
-				"start agent failed, attempt: %d, stderr: %s, err: %w",
-				attempt, stdErr.String(), err)
-
+				"start agent failed, attempt: %d, err: %v",
+				attempt, err)
+			if errStr := errOutput.String(); errStr != "" {
+				logger.Warn(constant.StepStartNode, constant.StateRunning,
+					"start agent error output: %s", errStr)
+			}
 			return err
 		}
 
-		if stdErr.String() != "" {
+		if errStr := errOutput.String(); errStr != "" {
 			logger.Warn(constant.StepStartNode, constant.StateRunning,
-				"start agent failed, attempt: %d, stderr: %s",
-				attempt, stdErr.String())
+				"agent produced warnings: %s", errStr)
 		}
 
-		stdOutStr := stdOut.String()
-		if stdOutStr != "" {
-			outputLines := strings.Split(strings.TrimSpace(stdOutStr), "\n")
-			for _, line := range outputLines {
-				if line != "" {
-					logger.Infof(constant.StepStartNode, constant.StateRunning, "agent output: %s", line)
-				}
-			}
-		} else {
-			logger.Infof(constant.StepStartNode, constant.StateRunning, "start agent success (no output)")
+		if !hasOutput {
+			logger.Infof(constant.StepStartNode, constant.StateRunning,
+				"start agent success (no output)")
 		}
 
 		return nil

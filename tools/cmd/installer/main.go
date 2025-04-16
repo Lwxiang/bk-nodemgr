@@ -239,7 +239,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 
 			uninstallStep := uninstallnode.NewStep(uninstallnode.StepArgs{
 				SetupDirPath: GetSetupDir(),
-				GseCtlPath:   GetGseAgentCtlPath(),
+				GseCtlPath:   GetGseCtlPath(),
 			})
 			if err := uninstallStep.Run(cmd.Context()); err != nil {
 				fmt.Printf("uninstall step failed, err: %v\n", err)
@@ -298,9 +298,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 		}
 
 		startNodeStep := startnode.NewStep(startnode.StepArgs{
-			AgentPath:    GetGseAgentPath(),
-			AgentCtlPath: GetGseAgentCtlPath(),
-			ConfigPath:   GetGseAgentConfPath(),
+			GseCtlPath: GetGseCtlPath(),
 		})
 		if err := startNodeStep.Run(cmd.Context()); err != nil {
 			return err
@@ -309,7 +307,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 		fmt.Println(agentID)
 
 		checkDeployStep := checkdeploy.NewStep(checkdeploy.StepArgs{
-			SetupDir: GetSetupDir(),
+			RunDir: GetRunDir(),
 		})
 		if err := checkDeployStep.Run(cmd.Context()); err != nil {
 			return fmt.Errorf("check deploy failed, err: %v", err)

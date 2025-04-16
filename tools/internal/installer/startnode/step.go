@@ -21,24 +21,18 @@ import (
 
 // Step start node step.
 type Step struct {
-	agentPath    string
-	agentCtlPath string
-	configPath   string
+	gseCtlPath string
 }
 
 // StepArgs this define the args for step.
 type StepArgs struct {
-	AgentPath    string
-	AgentCtlPath string
-	ConfigPath   string
+	GseCtlPath string
 }
 
 // NewStep ...
 func NewStep(args StepArgs) *Step {
 	step := &Step{
-		agentPath:    args.AgentPath,
-		agentCtlPath: args.AgentCtlPath,
-		configPath:   args.ConfigPath,
+		gseCtlPath: args.GseCtlPath,
 	}
 
 	return step
@@ -48,34 +42,13 @@ func NewStep(args StepArgs) *Step {
 func (step *Step) Run(ctx context.Context) error {
 	logger.Infof(constant.StepStartNode, constant.StateStart, "start to start node")
 
-	logger.Infof(constant.StepStartNode, constant.StateRunning,
-		"agent path(%s), config path(%s)", step.agentPath, step.configPath)
-
-	// check gse agent health
-	healthState, err := CheckAgentHealth(ctx, step.agentPath, step.configPath)
-	if err != nil {
-		logger.Error(constant.StepStartNode, constant.StateFailed,
-			fmt.Sprintf("check agent health failed, err: %v", err))
-
-		return fmt.Errorf("check agent health failed, err: %v", err)
-	}
-	if !healthState.OK {
-		logger.Error(constant.StepStartNode, constant.StateFailed,
-			fmt.Sprintf("check agent health failed, health-state(%v)", healthState))
-
-		return fmt.Errorf("check agent health failed, health-state(%v)", healthState)
-	}
-	logger.Infof(constant.StepStartNode, constant.StateRunning, "successfully check agent health")
-
 	// start gse agent
-	if err := StartAgent(ctx, step.agentCtlPath); err != nil {
+	if err := StartNode(ctx, step.gseCtlPath); err != nil {
 		logger.Error(constant.StepStartNode, constant.StateFailed, fmt.Sprintf("start agent failed, err: %v", err))
 
 		return fmt.Errorf("start agent failed, err: %v", err)
 	}
 	logger.Infof(constant.StepStartNode, constant.StateRunning, "successfully start agent")
-
-	// TODO: start go proxy.
 
 	logger.Infof(constant.StepStartNode, constant.StateDone, "successfully start node")
 
