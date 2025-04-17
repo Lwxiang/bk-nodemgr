@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package nodeinstall
+package syncdata
 
 import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
@@ -16,38 +16,26 @@ import (
 	"time"
 )
 
-const (
-	// OperDefNameInstallNodeBySSH the name of the operation definition.
-	OperDefNameInstallNodeBySSH = "install_node_by_ssh"
-)
+// OperDefNameSyncBizAndHostFromCMDB sync all biz and their host from cmdb.
+const OperDefNameSyncBizAndHostFromCMDB = "oper_def_sync_biz_and_host"
 
-// OperInstallNodeBySSH the params of OperInstallNodeBySSH
-type OperInstallNodeBySSH struct {
-	Token string `json:"token"`
+// OperInstSyncBizAndHostFromCMDB the params of OperInstSyncBizAndHostFromCMDB
+type OperInstSyncBizAndHostFromCMDB struct {
+	TenantID string `json:"tenant_id"`
 }
 
-// OperDef the operdef of OperInstallNodeBySSH.
-func (oper *OperInstallNodeBySSH) OperDef() operengine.OperDefSnapshot {
+// OperDef the operdef of OperInstSyncBizAndHostFromCMDB.
+func (oper *OperInstSyncBizAndHostFromCMDB) OperDef() operengine.OperDefSnapshot {
 	return operengine.OperDefSnapshot{
-		OperDefName: OperDefNameInstallNodeBySSH,
-		ActionNames: []string{
-			ActionNameUpsertHost,
-			ActionNameRenderNodeDeployment,
-			ActionNameInstallNodeBySSH,
-			ActionNameWaitComplete,
-			ActionNameWaitGseReady,
-			ActionNameSyncNodeInfo,
-			ActionNameBindAgentHostRel,
-			ActionNamePushHostIdentifier,
-			ActionNameUpdateHost,
-		},
+		OperDefName: OperDefNameSyncBizAndHostFromCMDB,
+		ActionNames: []string{ActionNameSyncBizFromCMDB, ActionNameGenAllBizHostSyncOper},
 	}
 }
 
-// Param the param of OperInstallNodeBySSH.
-func (oper *OperInstallNodeBySSH) Param() operengine.OperInstParam {
+// Param the param of OperInstSyncBizAndHostFromCMDB.
+func (oper *OperInstSyncBizAndHostFromCMDB) Param() operengine.OperInstParam {
 	return operengine.OperInstParam{
-		Timeout:     time.Minute * 10,
+		Timeout:     10 * time.Minute, // nolint: mnd
 		InitContent: conv.StructToMapIgnoreError(oper),
 	}
 }
