@@ -77,6 +77,11 @@ func (x *NodeAgentInstallReq) AutoConvert() {
 		x.LoginPort = new(int64)
 		*x.LoginPort = -1
 	}
+
+	if x.BkHostId == nil {
+		x.BkHostId = new(int64)
+		*x.BkHostId = -1
+	}
 }
 
 // Validate check body.
@@ -140,5 +145,10 @@ func (x *NodeProxyInstallReq) AutoConvert() {
 	if x.LoginPort == nil {
 		x.LoginPort = new(int64)
 		*x.LoginPort = -1
+	}
+
+	if x.BkHostId == nil {
+		x.BkHostId = new(int64)
+		*x.BkHostId = -1
 	}
 }
