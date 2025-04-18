@@ -123,6 +123,9 @@ type IDaoHost interface {
 	// ListHost lists hosts by page and conditions.
 	ListHost(ctx context.Context, page types.Page, conditions ...*types.HostCondition) ([]*types.Host, int64, error)
 
+	// DeleteManyHost deletes hosts.
+	DeleteManyHost(ctx context.Context, hostIDs ...int64) error
+
 	// CountHost counts hosts by conditions.
 	CountHost(ctx context.Context, conditions ...*types.HostCondition) (int64, error)
 

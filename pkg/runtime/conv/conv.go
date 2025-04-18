@@ -384,3 +384,33 @@ func MapKeyToSlice[K cmp.Ordered, V any](source map[K]V) []K {
 
 	return target
 }
+
+// SliceToMap converts a slice to a map using a key extraction function.
+// Returns error if duplicate keys are detected.
+// nolint: nonamedreturns,varnamelen
+func SliceToMap[K comparable, V any](s []V, fn func(V) K) (m map[K]V, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+
+		if err != nil {
+			m = nil
+		}
+	}()
+
+	m = make(map[K]V, len(s))
+
+	for i, v := range s {
+		key := fn(v)
+
+		// Use a single mapping to check for duplicates and store values
+		if _, exists := m[key]; exists {
+			return nil, fmt.Errorf("duplicate key %v found at index %d", key, i)
+		}
+
+		m[key] = v
+	}
+
+	return m, nil
+}
