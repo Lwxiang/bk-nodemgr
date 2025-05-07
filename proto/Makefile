@@ -42,6 +42,7 @@ SH      = sh
 PROTOC  = protoc -Ithirdparty/
 FORMAT  = clang-format -i
 REPLACE = sed -i 's/,omitempty//g'
+FIXSWAGGER = ./convert_swagger_type.sh
 
 default: all
 pre:
@@ -88,6 +89,8 @@ file-v3: pre
 	$(ECHO) "successfully generated file api/v3"
 
 all: application-v3 backend-v3 file-v3 backend-callback
+	$(FIXSWAGGER) $(ROOT_DIR)/docs/swagger
+	$(ECHO) "convert_swagger_type done"
 	$(ECHO) "all generating done"
 
 clean:
