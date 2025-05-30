@@ -1,4 +1,4 @@
-//go:build linux || darwin || freebsd || aix
+//go:build windows
 
 /*
  * TencentBlueKing is pleased to support the open source community by making 蓝鲸智云-节点管理(BlueKing-BK-NODEMAN) available.
@@ -10,34 +10,19 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package utils ...
-package utils
+package uninstallnode
 
 import (
-	"errors"
-	"syscall"
+	"context"
+
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/constant"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/logger"
 )
 
-// CheckPIDExist check whether the corresponding process exists.
-func CheckPIDExist(pid int) (bool, error) {
-	if pid <= 1 {
-		return false, errors.New("dangerous pid, please make sure it's greater than 1")
-	}
+// forceUninstall uninstall agent by force way.
+func (step *Step) forceUninstall(_ context.Context) error {
+	// TODO: not implemented
+	logger.Infof(constant.StepUninstallNode, constant.StateRunning, "not implemented")
 
-	// Send signal 0, will not actually send signal, only check the existence of the process
-	err := syscall.Kill(pid, 0)
-	if err != nil {
-		if errors.Is(err, syscall.ESRCH) {
-			return false, errors.New("process not exist")
-		}
-
-		// this error means the process exist, but no permission to send signal.
-		if errors.Is(err, syscall.EPERM) {
-			return true, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
+	return nil
 }

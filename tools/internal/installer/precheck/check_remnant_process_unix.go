@@ -10,34 +10,28 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package utils ...
-package utils
+package precheck
 
 import (
-	"errors"
-	"syscall"
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/utils"
 )
 
-// CheckPIDExist check whether the corresponding process exists.
-func CheckPIDExist(pid int) (bool, error) {
-	if pid <= 1 {
-		return false, errors.New("dangerous pid, please make sure it's greater than 1")
-	}
-
-	// Send signal 0, will not actually send signal, only check the existence of the process
-	err := syscall.Kill(pid, 0)
+// CheckRemnantProcessInSetupDir check for any process remnants in SetupDir.
+func CheckRemnantProcessInSetupDir(_ context.Context, setupDirPath string) error {
+	process, err := utils.GetSameSpaceProcesses()
 	if err != nil {
-		if errors.Is(err, syscall.ESRCH) {
-			return false, errors.New("process not exist")
-		}
-
-		// this error means the process exist, but no permission to send signal.
-		if errors.Is(err, syscall.EPERM) {
-			return true, nil
-		}
-
-		return false, err
+		return fmt.Errorf("get same space processes failed, err: %v", err)
 	}
 
-	return true, nil
+	for _, p := range process {
+		if strings.HasPrefix(p.FullPath, setupDirPath) {
+			return fmt.Errorf("remnant process found, pid(%d), file path(%s)", p.PID, p.FullPath)
+		}
+	}
+
+	return nil
 }
