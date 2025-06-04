@@ -12,6 +12,8 @@
 package nodeworkflow
 
 import (
+	"context"
+
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"go.mongodb.org/mongo-driver/bson"
@@ -64,4 +66,18 @@ func (d *dao) GetIndexes() []mongo.IndexModel {
 	}
 
 	return indexes
+}
+
+// distinctString distinct string field.
+func (d *dao) distinctString(
+	ctx context.Context, key string, filter bson.D, distinctOpt *mongoOptions.DistinctOptions) ([]string, error) {
+
+	return d.DistinctString(ctx, key, filter, distinctOpt)
+}
+
+// distinctInt64 distinct int64 field.
+func (d *dao) distinctInt64(
+	ctx context.Context, key string, filter bson.D, distinctOpt *mongoOptions.DistinctOptions) ([]int64, error) {
+
+	return d.DistinctInt64(ctx, key, filter, distinctOpt)
 }
