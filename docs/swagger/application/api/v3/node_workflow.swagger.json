@@ -221,7 +221,7 @@
     }
   },
   "definitions": {
-    "ActionMessageMessage": {
+    "NodeWorkflowActionMessageMessage": {
       "type": "object",
       "properties": {
         "time": {
@@ -301,15 +301,23 @@
         }
       }
     },
-    "v3ActionMessage": {
+    "v3LifeCycle": {
       "type": "object",
       "properties": {
-        "logs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ActionMessageMessage"
-          }
+        "state": {
+          "type": "string"
+        },
+        "create_time": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "start_time": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "end_time": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
@@ -335,6 +343,29 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "v3NodeWorkflowActionData": {
+      "type": "object",
+      "properties": {
+        "life_cycle": {
+          "$ref": "#/definitions/v3LifeCycle"
+        },
+        "message": {
+          "$ref": "#/definitions/v3NodeWorkflowActionMessage"
+        }
+      }
+    },
+    "v3NodeWorkflowActionMessage": {
+      "type": "object",
+      "properties": {
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/NodeWorkflowActionMessageMessage"
           }
         }
       }
@@ -546,7 +577,7 @@
           "type": "string"
         },
         "definition": {
-          "$ref": "#/definitions/v3OperationDefinition"
+          "$ref": "#/definitions/v3NodeWorkflowOperationDefinition"
         },
         "instance_ids": {
           "type": "array",
@@ -555,9 +586,27 @@
           }
         },
         "param": {
-          "$ref": "#/definitions/v3OperationParam"
+          "$ref": "#/definitions/v3NodeWorkflowOperationParam"
+        },
+        "status": {
+          "$ref": "#/definitions/v3NodeWorkflowOperationStatus"
         }
       }
+    },
+    "v3NodeWorkflowOperationDefinition": {
+      "type": "object",
+      "properties": {
+        "opertion_name": {
+          "type": "string"
+        },
+        "action_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "OperationDefinition ..."
     },
     "v3NodeWorkflowOperationInstanceListReq": {
       "type": "object",
@@ -643,7 +692,7 @@
         "oper_inst_logs": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/v3ActionMessage"
+            "$ref": "#/definitions/v3NodeWorkflowActionData"
           }
         }
       }
@@ -698,6 +747,40 @@
         }
       }
     },
+    "v3NodeWorkflowOperationParam": {
+      "type": "object",
+      "properties": {
+        "timeout_second": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "area_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "inner_ipv4": {
+          "type": "string"
+        },
+        "inner_ipv6": {
+          "type": "string"
+        },
+        "node_version": {
+          "type": "string"
+        }
+      }
+    },
+    "v3NodeWorkflowOperationStatus": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "total_time_second": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
     "v3NodeWorkflowStatisticsReq": {
       "type": "object",
       "properties": {
@@ -738,30 +821,6 @@
             "type": "object",
             "$ref": "#/definitions/NodeWorkflowStatisticsRespStatisticsInfo"
           }
-        }
-      }
-    },
-    "v3OperationDefinition": {
-      "type": "object",
-      "properties": {
-        "opertion_name": {
-          "type": "string"
-        },
-        "action_names": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "description": "OperationDefinition ..."
-    },
-    "v3OperationParam": {
-      "type": "object",
-      "properties": {
-        "timeout_second": {
-          "type": "integer",
-          "format": "int64"
         }
       }
     },
