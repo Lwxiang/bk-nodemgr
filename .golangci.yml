@@ -594,6 +594,7 @@ linters-settings:
       - p *ProviderDefault
       - m *operMgr
       - g *Group
+      - t *Transfer
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
     # Default: false
@@ -691,3 +692,5 @@ linters-settings:
         alias: restheader
       - pkg: github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base
         alias: daoBase
+      - pkg: github.com/TencentBlueKing/bk-nodemgr/internal/file/storage/topo
+        alias: storageTopo
