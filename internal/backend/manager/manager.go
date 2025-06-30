@@ -457,9 +457,10 @@ func (mgr *manager) LaunchUpgradeNode(ctx context.Context, param UpgradeNodePara
 
 func deploymentInfoToMap(info *types.DeploymentInfo) map[string]any {
 	return map[string]any{
-		"areaID":      info.Host.Static.NetworkAreaID,
-		"innerIPV4":   info.Host.Static.InnerIP,
-		"innerIPV6":   info.Host.Static.InnerIPV6,
-		"nodeVersion": info.Host.Dynamic.NodeVersion,
+		"networkarea_id": info.Host.Static.NetworkAreaID,
+		"biz_id":         info.Host.Static.BizID,
+		"inner_ip":       info.Host.Static.InnerIP,
+		"inner_ipv6":     info.Host.Static.InnerIPV6,
+		"node_version":   info.Host.Dynamic.NodeVersion,
 	}
 }
