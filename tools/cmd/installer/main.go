@@ -169,6 +169,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 		callBackEndPoint  string
 		gseRoot           string
 		token             string
+		deployEnv         string
 		reinstall         bool
 		reRegisterAgentID bool
 		agentID           string
@@ -204,6 +205,10 @@ func registerRootVars(rootCmd *cobra.Command) {
 
 		if err := SetToken(token); err != nil {
 			return fmt.Errorf("set token failed, err: %v", err)
+		}
+
+		if err := SetDeployEnv(deployEnv); err != nil {
+			return fmt.Errorf("set deploy env failed, err: %v", err)
 		}
 
 		return nil
@@ -263,7 +268,9 @@ func registerRootVars(rootCmd *cobra.Command) {
 
 			uninstallStep := uninstallnode.NewStep(uninstallnode.StepArgs{
 				SetupDirPath: GetSetupDir(),
+				BinDirPath:   GetBinDir(),
 				GseCtlPath:   GetGseCtlPath(),
+				DeployEnv:    GetDeployEnv(),
 			})
 			if err := uninstallStep.Run(cmd.Context()); err != nil {
 				return fmt.Errorf("uninstall step failed, err: %v", err)
@@ -333,8 +340,9 @@ func registerRootVars(rootCmd *cobra.Command) {
 		fmt.Println(agentID)
 
 		checkDeployStep := checkdeploy.NewStep(checkdeploy.StepArgs{
-			RunDir:   GetRunDir(),
-			NodeRole: GetNodeRole(),
+			RunDir:    GetRunDir(),
+			NodeRole:  GetNodeRole(),
+			DeployEnv: GetDeployEnv(),
 		})
 		if err = checkDeployStep.Run(cmd.Context()); err != nil {
 			return fmt.Errorf("check deploy failed: %w", err)
@@ -358,6 +366,7 @@ func registerRootVars(rootCmd *cobra.Command) {
 	rootCmd.Flags().IntVar(&pkgGeneration, CmdFlagPkgGeneration, CmdDefaultPkgGeneration,
 		"this is the gse pkg generation which will be installed")
 	rootCmd.Flags().StringVar(&token, CmdFlagToken, "", "token")
+	rootCmd.Flags().StringVar(&deployEnv, CmdFlagDeployEnv, "", "deploy env")
 	rootCmd.Flags().StringVar(&pkgVersion, CmdFlagPkgVersion, "", "this gse node pkg version which will be installed")
 	rootCmd.Flags().StringVar(&gseRoot, CmdFlagGseRoot, CmdDefaultGseRoot(), "gse root")
 	rootCmd.Flags().StringVar(&agentID, CmdFlagAgentID, "", "gse agent id")
@@ -369,4 +378,5 @@ func registerRootVars(rootCmd *cobra.Command) {
 	_ = rootCmd.MarkFlagRequired(CmdFlagPkgVersion)
 	_ = rootCmd.MarkFlagRequired(CmdFlagGseRoot)
 	_ = rootCmd.MarkFlagRequired(CmdFlagToken)
+	_ = rootCmd.MarkFlagRequired(CmdFlagDeployEnv)
 }
