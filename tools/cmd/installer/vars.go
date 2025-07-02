@@ -242,19 +242,6 @@ func GetTmpConfigDir() string {
 	return filepath.Join(GetTmpDir(), "configs")
 }
 
-const baseNameAgent = "gse_agent"
-
-// GetGseAgentName get gse agent name.
-func GetGseAgentName() string {
-	osType := runtime.GOOS
-	switch osType {
-	case "windows":
-		return baseNameAgent + ".exe"
-	default:
-		return baseNameAgent
-	}
-}
-
 // nolint: gochecknoglobals
 var gseAgentPath = struct {
 	sync.Once
@@ -270,32 +257,19 @@ func GetGseAgentPath() string {
 	return gseAgentPath.filePath
 }
 
-const baseNameAgentCtl = "gsectl"
-
-// GetGseAgentCtlName gse agent ctl name.
-func GetGseAgentCtlName() string {
-	osType := runtime.GOOS
-	switch osType {
-	case "windows":
-		return baseNameAgentCtl + ".bat"
-	default:
-		return baseNameAgentCtl
-	}
-}
-
 // nolint: gochecknoglobals
-var gseAgentCtlPath = struct {
+var gsectlPath = struct {
 	sync.Once
 	filePath string
 }{}
 
 // GetGseCtlPath get gse agent ctl path.
 func GetGseCtlPath() string {
-	gseAgentCtlPath.Do(func() {
-		gseAgentCtlPath.filePath = filepath.Join(GetBinDir(), GetGseAgentCtlName())
+	gsectlPath.Do(func() {
+		gsectlPath.filePath = filepath.Join(GetBinDir(), GetGseCtlFileName())
 	})
 
-	return gseAgentCtlPath.filePath
+	return gsectlPath.filePath
 }
 
 // nolint: gochecknoglobals
@@ -304,10 +278,12 @@ var preCheckFilePath = struct {
 	filePath string
 }{}
 
+const preCheckFileName = "precheck.json"
+
 // GetPreCheckFilePath get preCheck file path.
 func GetPreCheckFilePath() string {
 	preCheckFilePath.Do(func() {
-		preCheckFilePath.filePath = filepath.Join(GetTmpDir(), "precheck.json")
+		preCheckFilePath.filePath = filepath.Join(GetTmpDir(), preCheckFileName)
 	})
 
 	return preCheckFilePath.filePath
@@ -363,4 +339,40 @@ func SetToken(tokenStr string) error {
 	}
 
 	return nil
+}
+
+// nolint: gochecknoglobals
+var reRegisterAgentID = struct {
+	sync.Once
+	enable bool
+}{}
+
+// GetReRegisterAgentID get reRegisterAgentID.
+func GetReRegisterAgentID() bool {
+	return reRegisterAgentID.enable
+}
+
+// SetReRegisterAgentID set reRegisterAgentID.
+func SetReRegisterAgentID(enable bool) {
+	reRegisterAgentID.Do(func() {
+		reRegisterAgentID.enable = enable
+	})
+}
+
+// nolint: gochecknoglobals
+var reinstall = struct {
+	sync.Once
+	enable bool
+}{}
+
+// GetReinstall get reinstall.
+func GetReinstall() bool {
+	return reinstall.enable
+}
+
+// SetReinstall set reinstall.
+func SetReinstall(enable bool) {
+	reinstall.Do(func() {
+		reinstall.enable = enable
+	})
 }
