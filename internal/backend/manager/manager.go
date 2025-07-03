@@ -54,6 +54,9 @@ type Manager interface {
 	// LaunchInstallNode launch a task to install node. returns the workflow-id.
 	LaunchInstallNode(ctx context.Context, param InstallNodeParam) (string, error)
 
+	// RetryOperationNode launch a task to retry operation instance
+	RetryOperationNode(ctx context.Context, param RetryOperationNodeParam) ([]string, error)
+
 	// LaunchUpgradeNode launch a task to upgrade node. returns the workflow-id.
 	LaunchUpgradeNode(ctx context.Context, param UpgradeNodeParam) (string, error)
 }
@@ -72,6 +75,14 @@ type UpgradeNodeParam struct {
 	BizIDs          []int64
 	Operator        string
 	NodeDeployments []*types.NodeDeployment
+}
+
+// RetryOperationNodeParam retry node param.
+type RetryOperationNodeParam struct {
+	WorkflowID string
+
+	RetryMod     types.NodeOperationRetryMode
+	OperationIDs []string
 }
 
 // NewManager creates a new manager.
@@ -355,6 +366,40 @@ func (mgr *manager) LaunchInstallNode(ctx context.Context, param InstallNodePara
 	return workflowID, nil
 }
 
+// RetryOperationNode launch a task to retry operation instance.
+func (mgr *manager) RetryOperationNode(ctx context.Context, param RetryOperationNodeParam) ([]string, error) {
+	instanceIDs := make([]string, 0)
+
+	workflow, err := mgr.conf.StorageNodeWorkflow.GetNodeWorkflow(ctx, param.WorkflowID)
+	if err != nil {
+		return nil, fmt.Errorf("get trigger failed, err: %w", err)
+	}
+
+	triggerCtl, err := mgr.workflowMgr.GetTrigger(ctx, workflow.TriggerID)
+	if err != nil {
+		return nil, fmt.Errorf("get trigger failed, err: %w", err)
+	}
+
+	operCtls, err := triggerCtl.ListOperation(ctx, param.OperationIDs...)
+	if err != nil {
+		return nil, fmt.Errorf("get operation failed, err: %w", err)
+	}
+
+	for _, operCtl := range operCtls {
+		instanceCtl, err := operCtl.CreateRetryOperationInstance(ctx, param.RetryMod)
+		if err != nil {
+			return nil, fmt.Errorf("create operation instance failed, err: %w", err)
+		}
+
+		if err := instanceCtl.LaunchOperationInstance(ctx); err != nil {
+			return nil, fmt.Errorf("launch operation instance failed, err: %w", err)
+		}
+
+		instanceIDs = append(instanceIDs, instanceCtl.GetOperationInstanceID())
+	}
+
+	return instanceIDs, nil
+}
 func (mgr *manager) createOper(
 	ctx context.Context,
 	tenantID string,

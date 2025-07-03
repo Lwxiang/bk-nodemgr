@@ -176,6 +176,12 @@ type IHandlerNodeAgent interface {
 	// @param hosts the install param.
 	// @return the installing workflow-ids and error.
 	InstallAgent(ctx context.Context, hostsParam []*types.NodeAgentInstallParam) (string, error)
+
+	// UpgradeAgent node agent.
+	// @param ctx context, contains tenant-id.
+	// @param hosts the upgrade param.
+	// @return the upgrading workflow-ids and error.
+	OperationRetry(ctx context.Context, retryParam *types.NodeOperationRetryParam) ([]string, error)
 }
 
 // IHandlerNodeWorkflow defines the node workflow handler.
@@ -983,6 +989,26 @@ func (h *handler) ListNodeWorkflowOperationInstanceStatus(ctx context.Context,
 	instanceStatus := resp.ConvertWorkflowOperationInstanceStatusToTypes()
 
 	return instanceStatus, nil
+}
+
+func (h *handler) OperationRetry(ctx context.Context, retryParam *types.NodeOperationRetryParam) ([]string, error) {
+	tenantID, err := tenant.GetID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &protoBackend.NodeWorkflowOperationRetryReq{}
+
+	req.ConvertOperationRetryParamFromTypes(*retryParam)
+
+	resp, err := h.cli.retryOperation(ctx, tenantID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	result := resp.ConvertResultToComm()
+
+	return result, nil
 }
 
 // ListRelease lists release by page and conditions.

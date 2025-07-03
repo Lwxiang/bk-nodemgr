@@ -28,6 +28,7 @@ type DefinitionSnapshot struct {
 	SnapshotName              string
 	SnapshotActionDefNames    []string
 	SnapshotDefaultParameters Param
+	RetryStartPoint           map[string]bool
 }
 
 // Name returns the name of the operation definition.

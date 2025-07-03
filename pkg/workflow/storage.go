@@ -51,6 +51,9 @@ type IStorageOperation interface {
 	ListOperationByTrigger(ctx context.Context, page types.Page, triggerID ...string) (
 		[]*operation.Operation, int64, error)
 
+	// ListOperation lists operation.
+	ListOperation(ctx context.Context, operationID ...string) ([]*operation.Operation, int64, error)
+
 	// ListOperationByCondition lists operation by condition.
 	ListOperationByCondition(ctx context.Context, page types.Page, condition ...*types.NodeWorkflowOperationCondition) (
 		[]*operation.Operation, int64, error)

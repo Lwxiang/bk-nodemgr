@@ -10,6 +10,10 @@
 
 package types
 
+import (
+	"fmt"
+)
+
 // NodeAgentInstallParam describes the node agent install parameter.
 type NodeAgentInstallParam struct {
 	BizID         int64
@@ -25,4 +29,32 @@ type NodeAgentInstallParam struct {
 	NetworkUnitID int64
 	OSType        string
 	TargetVersion string
+}
+
+// NodeOperationRetryParam validates the node install parameter.
+type NodeOperationRetryParam struct {
+	WorkflowID   string
+	OperationIDs []string
+	RetryMode    NodeOperationRetryMode
+}
+
+// NodeOperationRetryMode describes the node operation mode.
+type NodeOperationRetryMode string
+
+const (
+	// OperationRetryModeFull is the full node instance retry mode.
+	OperationRetryModeFull NodeOperationRetryMode = "full_node_instance_retry"
+
+	// OperationRetryModePartial is the partial node instance retry mode.
+	OperationRetryModePartial NodeOperationRetryMode = "partial_node_instance_retry"
+)
+
+// Validate validates the node operation retry mode.
+func (mode NodeOperationRetryMode) Validate() error {
+	switch mode {
+	case OperationRetryModeFull, OperationRetryModePartial:
+		return nil
+	default:
+		return fmt.Errorf("invalid node operation retry mode: %s", mode)
+	}
 }
