@@ -33,6 +33,7 @@ func install(cmd *cobra.Command, _ []string) (runErr error) {
 
 		reportStatusStep := statusreporter.NewStep(statusreporter.StepArgs{
 			Token:            GetToken(),
+			OperInstID:       GetOperInstID(),
 			Status:           state,
 			CallbackEndpoint: GetCallBackEndpoint(),
 		})
@@ -52,6 +53,7 @@ func install(cmd *cobra.Command, _ []string) (runErr error) {
 
 	reporter := logreporter.NewReporter(logreporter.ReportLogsArgs{
 		Token:            GetToken(),
+		OperInstID:       GetOperInstID(),
 		Reader:           logFile,
 		LogRptCnt:        0,
 		BulkSize:         defaultLogReportBulkSize,
