@@ -185,6 +185,39 @@
         ]
       }
     },
+    "/api/v3/node/workflow/operation/retry": {
+      "post": {
+        "summary": "NodeWorkflowOperationRetry retry node operation.",
+        "operationId": "NodeWorkflow_NodeWorkflowOperationRetry",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3NodeWorkflowOperationRetryReq"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3NodeWorkflowOperationRetryReq"
+            }
+          }
+        ],
+        "tags": [
+          "NodeWorkflow"
+        ]
+      }
+    },
     "/api/v3/node/workflow/statistics": {
       "post": {
         "summary": "NodeWorkflowStatistics provides node workflow statistics.",
@@ -211,39 +244,6 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v3NodeWorkflowStatisticsReq"
-            }
-          }
-        ],
-        "tags": [
-          "NodeWorkflow"
-        ]
-      }
-    },
-    "/api/v3/nodea/workflow/operation/retry": {
-      "post": {
-        "summary": "NodeWorkflowOperationRetry retry node operation.",
-        "operationId": "NodeWorkflow_NodeWorkflowOperationRetry",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v3NodeWorkflowOperationRetryReq"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v3NodeWorkflowOperationRetryReq"
             }
           }
         ],
@@ -609,9 +609,6 @@
         "operation_id": {
           "type": "string"
         },
-        "definition": {
-          "$ref": "#/definitions/v3NodeWorkflowOperationDefinition"
-        },
         "instance_ids": {
           "type": "array",
           "items": {
@@ -625,21 +622,6 @@
           "$ref": "#/definitions/v3NodeWorkflowOperationStatus"
         }
       }
-    },
-    "v3NodeWorkflowOperationDefinition": {
-      "type": "object",
-      "properties": {
-        "opertion_name": {
-          "type": "string"
-        },
-        "action_names": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "description": "OperationDefinition ..."
     },
     "v3NodeWorkflowOperationExactConditions": {
       "type": "object",
@@ -837,10 +819,6 @@
     "v3NodeWorkflowOperationParam": {
       "type": "object",
       "properties": {
-        "timeout_second": {
-          "type": "integer",
-          "format": "int64"
-        },
         "bk_networkarea_id": {
           "type": "integer",
           "format": "int64"
