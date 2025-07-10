@@ -14,7 +14,11 @@ package types
 import (
 	"fmt"
 	"math"
+	"strings"
 )
+
+// SortSeparator is the separator for sort keys.
+const SortSeparator = ","
 
 // Page describe the page data in request.
 type Page struct {
@@ -39,6 +43,29 @@ func (p *Page) Validate() error {
 	}
 
 	return nil
+}
+
+// WithFieldDesc returns the field with descending order.
+func WithFieldDesc(field string) string {
+	return "-" + field
+}
+
+// WithFieldAsc returns the field with ascending order.
+func WithFieldAsc(field string) string {
+	return field
+}
+
+// WithSortFields returns the sort fields as a comma-separated string.
+func WithSortFields(fields ...string) string {
+	validFields := make([]string, 0, len(fields))
+
+	for _, field := range fields {
+		if field != "" {
+			validFields = append(validFields, field)
+		}
+	}
+
+	return strings.Join(validFields, SortSeparator)
 }
 
 // UnlimitedPage is an unlimited page.
