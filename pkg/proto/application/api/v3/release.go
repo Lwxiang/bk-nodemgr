@@ -328,6 +328,122 @@ func (x *PackageReleaseDeleteReq) SetIdentifer(
 	x.Version = ver
 }
 
+// AutoConvert auto convert.
+func (x *PackageReleaseDeployedHostCountReq) AutoConvert() {
+}
+
+// Validate check body.
+func (x *PackageReleaseDeployedHostCountReq) Validate() error {
+	return nil
+}
+
+// GetIdentifier get identifier.
+func (x *PackageReleaseDeployedHostCountReq) GetIdentifier() []*PackageReleaseIdentifier {
+	identifiers := make([]*PackageReleaseIdentifier, len(x.GetRequestItems()))
+	for idx, item := range x.GetRequestItems() {
+		identifiers[idx] = &PackageReleaseIdentifier{
+			Generation:  types.Generation(item.GetGeneration()),
+			ReleaseType: types.ReleaseType(item.GetReleaseType()),
+			Platform:    ConvertPlatformToTypes(item.GetPlatform()),
+			Version:     item.GetVersion(),
+		}
+	}
+
+	return identifiers
+}
+
+// ConvertConditionsToHostTypes convert conditions to types.
+func (x *PackageReleaseDeployedHostCountReq) ConvertConditionsToHostTypes() (*types.HostCondition, error) {
+	items := x.GetRequestItems()
+	if len(items) == 0 {
+		return &types.HostCondition{}, nil
+	}
+
+	condition := &types.HostExactFields{
+		NodeRole:       make([]types.NodeRole, 0),
+		NodeGeneration: make([]int64, 0),
+		OSType:         make([]string, 0),
+		Arch:           make([]string, 0),
+		NodeVersion:    make([]string, 0),
+	}
+
+	for _, item := range items {
+		role, err := ConvertReleaseTypeToNodeRole(types.ReleaseType(item.GetReleaseType()))
+		if err != nil {
+			return nil, err
+		}
+		condition.NodeRole = append(condition.NodeRole, role)
+		condition.OSType = append(condition.OSType, item.GetPlatform().GetOsType())
+		condition.Arch = append(condition.Arch, item.GetPlatform().GetCpuArch())
+		condition.NodeGeneration = append(condition.NodeGeneration, item.GetGeneration())
+		condition.NodeVersion = append(condition.NodeVersion, item.GetVersion())
+	}
+
+	return &types.HostCondition{
+		ExactInclude: condition,
+	}, nil
+}
+
+// CountHostsByOsType count hosts by request.
+func (x *PackageReleaseDeployedHostCountReq) CountHostsByOsTypeAndArch(hosts []*types.Host) ([]int64, int64, error) {
+	statMap := make(map[PackageReleaseIdentifier]int64)
+	for _, host := range hosts {
+		if host.Dynamic == nil {
+			continue
+		}
+
+		key := PackageReleaseIdentifier{
+			Platform: platform.Platform{
+				OS:   host.Dynamic.NodeOsType,
+				Arch: host.Dynamic.NodeCPUArch,
+			},
+			Version: host.Dynamic.NodeVersion,
+		}
+		statMap[key]++
+	}
+
+	results := make([]int64, len(x.GetRequestItems()))
+	for i, item := range x.GetRequestItems() {
+		if item.GetPlatform() == nil {
+			results[i] = 0
+			continue
+		}
+
+		reqKey := PackageReleaseIdentifier{
+			Platform: platform.Platform{
+				OS:   criteria.OSType(item.GetPlatform().GetOsType()),
+				Arch: criteria.CPUArch(item.GetPlatform().GetCpuArch()),
+			},
+			Version: item.GetVersion(),
+		}
+		results[i] = statMap[reqKey]
+	}
+
+	return results, int64(len(hosts)), nil
+}
+
+// ConvertResultFromTypes convert result from types.
+func (x *PackageReleaseDeployedHostCountResp) ConvertResultFromTypes(result []int64, total int64) {
+	if result == nil {
+		return
+	}
+	items := make([]int64, len(result))
+	copy(items, result)
+
+	x.Data = &PackageReleaseDeployedHostCountResp_Data{
+		Total: total,
+		Items: items,
+	}
+}
+
+// PackageReleaseIdentifier defines the identifier of package release.
+type PackageReleaseIdentifier struct {
+	Generation  types.Generation
+	ReleaseType types.ReleaseType
+	Platform    platform.Platform
+	Version     string
+}
+
 func newEmptyRelease() *Release {
 	return &Release{
 		Generation:  new(int64),
