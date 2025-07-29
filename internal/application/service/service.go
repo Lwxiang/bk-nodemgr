@@ -14,9 +14,12 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"runtime"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/authidentity"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/frontsetting"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/options"
 	apiv3 "github.com/TencentBlueKing/bk-nodemgr/internal/application/router/api-v3"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/router/healthz"
@@ -25,14 +28,15 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/config"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/etcddiscover"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/apigw"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/discovery"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/discover"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/gopool"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/ssl"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/backend"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bklogin"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/file"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -63,13 +67,12 @@ type Service struct {
 	Cap *options.Capability
 }
 
-const (
-	// RouterNameHTTPServer defines the name of http server router.
-	RouterNameHTTPServer = "http-server"
-)
-
 // NewService creates a new application service.
 func NewService(conf *config.ApplicationService) (*Service, error) {
+	if err := conf.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to new service: %w", err)
+	}
+
 	svc := &Service{
 		conf: conf,
 		Cap: &options.Capability{
@@ -88,30 +91,50 @@ func NewService(conf *config.ApplicationService) (*Service, error) {
 
 	svc.Cap.BackendHandler, err = newBackendHandler(svc.conf.Backend)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to new service: %w", err)
 	}
 
 	svc.Cap.FileHandler, err = newFileHandler(svc.Cap.DiscoverProvider)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to new service: %w", err)
 	}
 
-	svc.registerRestServer(conf)
+	svc.Cap.AuthIdentity, err = svc.newBKTicketAuthIdentity(conf.BKLogin)
+	if err != nil {
+		return nil, fmt.Errorf("failed to new service: %w", err)
+	}
+
+	svc.Cap.FrontSetting = frontsetting.NewFrontSetting(conf.Front.BKLoginURL, conf.Front.BKSharedResBaseJsUrl, conf.Front.SiteURL)
+
+	if err := svc.registerRestServer(conf); err != nil {
+		return nil, fmt.Errorf("failed to new service: %w", err)
+	}
 
 	return svc, nil
 }
 
-func (svc *Service) registerRestServer(conf *config.ApplicationService) {
+func (svc *Service) registerRestServer(conf *config.ApplicationService) error {
+	bkloginHandler, err := newBKLoginHandler(conf.BKLogin, svc.Cap.Logger)
+	if err != nil {
+		return fmt.Errorf("failed to register rest server: %w", err)
+	}
+
+	authIdentity := &authidentity.BKTicketAuthIdentity{
+		BKLoginHandler: bkloginHandler,
+	}
+
 	httpServer := rest.NewServer(
 		svc.ctx,
 		rest.ServerOptions{
-			Name:      string(discover.EndpointNameApplicationBasic),
-			IP:        conf.HTTPServer.BindIP,
-			Port:      conf.HTTPServer.Port,
-			LogWriter: loggerWriter{},
+			Name:         string(discover.EndpointNameApplicationBasic),
+			IP:           conf.HTTPServer.BindIP,
+			Port:         conf.HTTPServer.Port,
+			LogWriter:    loggerWriter{},
+			AuthIdentity: authIdentity,
 			StaticOptions: rest.NewStaticOptions(conf.HTTPServer.StaticDir).
 				WithHTMLs("index.html").
 				WithDirs("assets").
+				WithDirs("static").
 				WithDirs("images").
 				WithFiles("bk.svg", "favicon.png", "nodeman.png"),
 		},
@@ -123,6 +146,8 @@ func (svc *Service) registerRestServer(conf *config.ApplicationService) {
 	)
 
 	svc.servers = append(svc.servers, httpServer)
+
+	return nil
 }
 
 // loggerWriter implements rest.LoggerWriter.
@@ -166,8 +191,8 @@ func withAPIV3(capability *options.Capability) rest.OptionFunc {
 
 // newBackendHandler creates a new backend handler.
 func newBackendHandler(conf config.BackendGateway) (backend.Handler, error) {
-	apiGwHeaderSetter := newAPIGwHeaderSetter(&conf.APIGateway)
-	apiGwClientCapability, err := newAPIGwClientCapability(&conf.APIGateway)
+	apiGwHeaderSetter := newAPIGwHeaderSetter(&conf.APIGatewayClient)
+	apiGwClientCapability, err := newAPIGwClientCapability(&conf.APIGatewayClient)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +232,7 @@ func newFileHandler(discov discover.Discover) (file.IHandler, error) {
 }
 
 // newAPIGwClientCapability creates a new api-gateway client capability.
-func newAPIGwClientCapability(conf *config.APIGateway) (*client.Capability, error) {
+func newAPIGwClientCapability(conf *config.APIGatewayClient) (*client.Capability, error) {
 	httpClient, err := client.NewClient(&ssl.TLSConfig{
 		InsecureSkipVerify: conf.TLS.InsecureSkipVerify,
 		CertFile:           conf.TLS.CertFile,
@@ -231,7 +256,7 @@ func newAPIGwClientCapability(conf *config.APIGateway) (*client.Capability, erro
 }
 
 // newAPIGwHeaderSetter creates a new api-gateway header setter.
-func newAPIGwHeaderSetter(conf *config.APIGateway) apigw.HeaderSetter {
+func newAPIGwHeaderSetter(conf *config.APIGatewayClient) apigw.HeaderSetter {
 	return &apigw.Config{
 		Endpoints:   conf.Endpoints,
 		AppCode:     conf.AppCode,
@@ -242,6 +267,48 @@ func newAPIGwHeaderSetter(conf *config.APIGateway) apigw.HeaderSetter {
 		BkToken:     conf.BkToken,
 		AccessToken: conf.AccessToken,
 	}
+}
+
+func (svc *Service) newBKTicketAuthIdentity(conf config.BKLogin) (rest.AuthIdentity, error) {
+	bkloginHandler, err := newBKLoginHandler(conf, svc.Cap.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register rest server: %w", err)
+	}
+
+	authIdentity := &authidentity.BKTicketAuthIdentity{
+		BKLoginHandler: bkloginHandler,
+	}
+
+	return authIdentity, nil
+}
+
+// newBKLoginHandler
+func newBKLoginHandler(conf config.BKLogin, logger logger.Logger) (bklogin.IHandler, error) {
+	httpClient, err := client.NewClient(&ssl.TLSConfig{
+		InsecureSkipVerify: conf.TLS.InsecureSkipVerify,
+		CertFile:           conf.TLS.CertFile,
+		KeyFile:            conf.TLS.KeyFile,
+		CAFile:             conf.TLS.CAFile,
+		Password:           conf.TLS.Password,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to new bklogin handler: %v", err)
+	}
+
+	clientCap := &client.Capability{
+		Client:               httpClient,
+		Discover:             discovery.NewDiscovery(DiscoveryNameApigw, []string{conf.LoginURL}),
+		ToleranceLatencyTime: client.ToleranceLatencyTimeDefault,
+		MetricOpts:           client.MetricOption{},
+		Logger:               logger,
+	}
+
+	bkloginHandler, err := bklogin.New(clientCap, &bklogin.Config{LoginURL: conf.LoginURL}, bklogin.WithLogger(logger))
+	if err != nil {
+		return nil, fmt.Errorf("failed to new bklogin handler: %w", err)
+	}
+
+	return bkloginHandler, nil
 }
 
 // Start starts the application service.

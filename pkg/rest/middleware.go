@@ -14,31 +14,37 @@ package rest
 import (
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 	"github.com/gin-gonic/gin"
 )
 
-// MiddlewareContext ...
+// AuthIdentity verify auth info.
+type AuthIdentity interface {
+	Verify(rCtx *Context) error
+}
+
+// MiddlewareContext verify auth info.
 func MiddlewareContext() gin.HandlerFunc {
 	return func(gCtx *gin.Context) {
-		rCtx := InitRestContext(gCtx)
-
-		if gCtx.Request.Method == http.MethodOptions {
-			gCtx.Next()
-			return
-		}
-
-		switch {
-		case initContextWithJWT(rCtx):
-		default:
-			rCtx.AbortWithJSONError(errf.Unauthorized, nil)
-			return
-		}
+		_ = initRestContext(gCtx)
 
 		gCtx.Next()
 	}
+}
+
+// MiddlewareAuth verify auth info.
+func MiddlewareAuth(identity AuthIdentity) gin.HandlerFunc {
+	return func(gCtx *gin.Context) {
+		rCtx := loadRestContext(gCtx)
+
+		if err := identity.Verify(rCtx); err != nil {
+			rCtx.AbortWithJSONError(errf.Unauthorized, []error{err})
+
+			return
+		}
+	}
+
 }
 
 type recvLoggerConfig struct {
@@ -67,10 +73,4 @@ func MiddlewareReceivedLog(conf recvLoggerConfig) gin.HandlerFunc {
 
 		gCtx.Next()
 	}
-}
-
-// initContextWithJWT init context with jwt
-func initContextWithJWT(_ *Context) bool {
-	// TODO: implement jwt
-	return true
 }
