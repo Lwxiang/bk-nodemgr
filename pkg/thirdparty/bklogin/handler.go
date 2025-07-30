@@ -12,21 +12,21 @@ package bklogin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	restclient "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/base"
 )
 
-// IHandler defines the handler interface
+// IHandler defines the handler interface.
 type IHandler interface {
 	// Verify verify the bk_ticket.
 	Verify(ctx context.Context, bkTicket string) (string, error)
 
-	// LoginURL return the login url.
-	LoginURL() string
+	// GetAuthIdentity get the auth identity.
+	GetAuthIdentity() *AuthIdentity
 }
 
 // Handler the Handler of cmdb.
@@ -62,7 +62,7 @@ func WithLogger(logger logger.Logger) OptionFn {
 }
 
 // New initialize a new cmdb Handler.
-func New(c *client.Capability, conf *Config, opts ...OptionFn) (IHandler, error) {
+func New(c *restclient.Capability, conf *Config, opts ...OptionFn) (IHandler, error) {
 	cli, err := newClient(c)
 	if err != nil {
 		return nil, err
@@ -84,12 +84,11 @@ func New(c *client.Capability, conf *Config, opts ...OptionFn) (IHandler, error)
 // Verify the bk_ticket is valid or not, and return the bk_username.
 func (h *Handler) Verify(ctx context.Context, bkTicket string) (string, error) {
 	if ctx == nil {
-		return "", fmt.Errorf("failed to verify bk_ticket: %w", base.ErrInvalidContex())
+		return "", errors.New("failed to verify bk_ticket: invalid context")
 	}
 
 	if bkTicket == "" {
-		return "", fmt.Errorf("failed to verify bk_ticket: %w",
-			base.ErrInvalidParam())
+		return "", errors.New("failed to verify bk_ticket: invalid param")
 	}
 
 	resp, err := h.cli.getUserInfo(ctx, &GetUserInfoReq{BKTicket: bkTicket})
@@ -100,7 +99,9 @@ func (h *Handler) Verify(ctx context.Context, bkTicket string) (string, error) {
 	return resp.Username, nil
 }
 
-// LoginURL return the login url.
-func (h *Handler) LoginURL() string {
-	return h.conf.LoginURL
+// GetAuthIdentity ...
+func (h *Handler) GetAuthIdentity() *AuthIdentity {
+	return &AuthIdentity{
+		handler: h,
+	}
 }

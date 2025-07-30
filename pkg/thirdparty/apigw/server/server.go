@@ -8,18 +8,5 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package base
-
-import (
-	"errors"
-)
-
-// ErrInvalidContex this define the error when ctx is invalid
-func ErrInvalidContex() error {
-	return errors.New("invalid context")
-}
-
-// ErrInvalidParam this define the error when param is invalid
-func ErrInvalidParam() error {
-	return errors.New("invalid param")
-}
+// Package server provide the capability to run as a apigw server.
+package server

@@ -8,33 +8,34 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package authidentity
+package bklogin
 
 import (
 	"fmt"
 
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bklogin"
+	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 )
 
 const (
-	// CookieKeyBKTicket is the key of cookie
+	// CookieKeyBKTicket is the key of cookie.
 	CookieKeyBKTicket = "bk_ticket"
 )
 
-// BKTicketAuthIdentity verify the ticket.
-type BKTicketAuthIdentity struct {
-	BKLoginHandler bklogin.IHandler
+var _ restserver.AuthIdentity = &AuthIdentity{}
+
+// AuthIdentity verify the ticket.
+type AuthIdentity struct {
+	handler *Handler
 }
 
 // Verify the ticket.
-func (identity *BKTicketAuthIdentity) Verify(rCtx *rest.Context) error {
+func (identity *AuthIdentity) Verify(rCtx *restserver.Context) error {
 	bkTicket, err := rCtx.GetCookie(CookieKeyBKTicket)
 	if err != nil {
 		return fmt.Errorf("failed to verify authentication: %w", err)
 	}
 
-	loginUsername, err := identity.BKLoginHandler.Verify(rCtx, bkTicket)
+	loginUsername, err := identity.handler.Verify(rCtx, bkTicket)
 	if err != nil {
 		return fmt.Errorf("failed to verify authentication: %w", err)
 	}

@@ -8,4 +8,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package bklogin
+package bkrepo
+
+const (
+	// HeaderKeyAuth is authorization header key for standard apis.
+	HeaderKeyAuth = "Authorization"
+)

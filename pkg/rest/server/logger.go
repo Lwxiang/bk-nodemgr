@@ -8,4 +8,12 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package base
+package server
+
+import "io"
+
+// LogWriter defines the log writer.
+type LogWriter interface {
+	InfoWriter() io.Writer
+	ErrorWriter() io.Writer
+}

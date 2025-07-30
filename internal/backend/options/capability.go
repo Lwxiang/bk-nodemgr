@@ -28,7 +28,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/creditvault"
 	fileiface "github.com/TencentBlueKing/bk-nodemgr/pkg/filex/iface"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/relayhandler"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/rest"
+	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/crypter"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/discover"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/locker"
@@ -104,60 +104,60 @@ type Capability struct {
 	CreditVault creditvault.ICreditVault
 
 	// AuthIdentity auth identity.
-	AuthIdentity rest.AuthIdentity
+	AuthIdentity restserver.AuthIdentity
 }
 
 // Start ...
-func (c *Capability) Start(ctx context.Context) error {
-	if err := c.DiscoverProvider.Start(ctx); err != nil {
+func (capability *Capability) Start(ctx context.Context) error {
+	if err := capability.DiscoverProvider.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageTopo.Start(ctx); err != nil {
+	if err := capability.StorageTopo.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageTrigger.Start(ctx); err != nil {
+	if err := capability.StorageTrigger.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageOperInst.Start(ctx); err != nil {
+	if err := capability.StorageOperInst.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageOperation.Start(ctx); err != nil {
+	if err := capability.StorageOperation.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageNodeDeployment.Start(ctx); err != nil {
+	if err := capability.StorageNodeDeployment.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageNodeWorkflow.Start(ctx); err != nil {
+	if err := capability.StorageNodeWorkflow.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageScheduleWorkflow.Start(ctx); err != nil {
+	if err := capability.StorageScheduleWorkflow.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageRelease.Start(ctx); err != nil {
+	if err := capability.StorageRelease.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageGlobalSettings.Start(ctx); err != nil {
+	if err := capability.StorageGlobalSettings.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.ProxyMessager.Start(ctx); err != nil {
+	if err := capability.ProxyMessager.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.StorageCredit.Start(ctx); err != nil {
+	if err := capability.StorageCredit.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := c.Manager.Start(ctx); err != nil {
+	if err := capability.Manager.Start(ctx); err != nil {
 		return err
 	}
 
@@ -165,8 +165,8 @@ func (c *Capability) Start(ctx context.Context) error {
 }
 
 // GracefulShutdown ...
-func (c *Capability) GracefulShutdown() error {
-	if err := c.Manager.GracefulShutdown(); err != nil {
+func (capability *Capability) GracefulShutdown() error {
+	if err := capability.Manager.GracefulShutdown(); err != nil {
 		return err
 	}
 
