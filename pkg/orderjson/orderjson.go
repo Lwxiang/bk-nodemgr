@@ -13,7 +13,7 @@ package orderjson
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"strings"
 )
 
@@ -37,7 +37,10 @@ func (o *OrderedData) Set(key string, value any) error {
 		o.orderedKeys = make([]string, 0)
 	}
 
-	o.orderedKeys = append(o.orderedKeys, key)
+	if _, ok := o.dataMap[key]; !ok {
+		o.orderedKeys = append(o.orderedKeys, key)
+	}
+
 	o.dataMap[key] = value
 
 	return nil
@@ -46,18 +49,19 @@ func (o *OrderedData) Set(key string, value any) error {
 // Get gets the value.
 func (o *OrderedData) Get(key string) (any, error) {
 	if o.dataMap == nil {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	value, ok := o.dataMap[key]
 	if !ok {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	return value, nil
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
+// nolint: gocognit
 func (o *OrderedData) UnmarshalJSON(raw []byte) error {
 	// check json is valid.
 	var tmpValue any
@@ -77,7 +81,7 @@ func (o *OrderedData) UnmarshalJSON(raw []byte) error {
 		for len(itemStr) > 0 {
 			key, next := cutdownFirstKey(itemStr)
 			if next < 0 {
-				return fmt.Errorf("not a valid ordered json data")
+				return errInvalidOrderedJson
 			}
 
 			// record the ordered keys.
@@ -96,7 +100,7 @@ func (o *OrderedData) UnmarshalJSON(raw []byte) error {
 			}
 
 			if subNext < 0 {
-				return fmt.Errorf("not a valid ordered json data")
+				return errInvalidOrderedJson
 			}
 
 			subData := new(OrderedData)
@@ -123,7 +127,7 @@ func (o *OrderedData) UnmarshalJSON(raw []byte) error {
 			case '{', '[':
 				next = cutdownFirstElement(itemStr)
 				if next < 0 {
-					return fmt.Errorf("not a valid ordered json data")
+					return errInvalidOrderedJson
 				}
 			default:
 				next = cutdownBeforeFirstComma(itemStr)
@@ -153,6 +157,7 @@ func (o *OrderedData) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
+// nolint: gocognit
 func (o OrderedData) MarshalJSON() ([]byte, error) {
 	if o.data != nil {
 		return json.Marshal(o.data)
@@ -163,7 +168,7 @@ func (o OrderedData) MarshalJSON() ([]byte, error) {
 	}
 
 	if o.dataMap == nil {
-		return nil, fmt.Errorf("not a valid ordered json data")
+		return nil, errInvalidOrderedJson
 	}
 
 	// build json.
@@ -176,7 +181,10 @@ func (o OrderedData) MarshalJSON() ([]byte, error) {
 		}
 
 		// marshal key.
-		keyBytes, _ := json.Marshal(key)
+		keyBytes, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
 		b.Write(keyBytes)
 		b.WriteString(":")
 
@@ -192,6 +200,8 @@ func (o OrderedData) MarshalJSON() ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
+var errInvalidOrderedJson = errors.New("invalid ordered json")
+
 func cutdownFirstKey(raw string) (string, int) {
 	key := make([]rune, 0)
 	skip := false
@@ -200,6 +210,7 @@ func cutdownFirstKey(raw string) (string, int) {
 		if skip {
 			skip = false
 			key = append(key, c)
+
 			continue
 		}
 
@@ -218,11 +229,13 @@ func cutdownFirstKey(raw string) (string, int) {
 			}
 
 			inQuote = true
+
 			continue
 		}
 
 		if inQuote {
 			key = append(key, c)
+
 			continue
 		}
 	}
@@ -236,6 +249,7 @@ func cutdownBeforeFirstComma(raw string) int {
 	for i, c := range raw {
 		if skip {
 			skip = false
+
 			continue
 		}
 
@@ -245,11 +259,13 @@ func cutdownBeforeFirstComma(raw string) int {
 
 		if c == '\\' {
 			skip = true
+
 			continue
 		}
 
 		if c == '"' {
 			inQuote = !inQuote
+
 			continue
 		}
 
@@ -268,6 +284,7 @@ func cutdownFirstElement(raw string) int {
 	for i, c := range raw {
 		if skip {
 			skip = false
+
 			continue
 		}
 
@@ -277,11 +294,13 @@ func cutdownFirstElement(raw string) int {
 
 		if c == '\\' {
 			skip = true
+
 			continue
 		}
 
 		if c == '"' {
 			inQuote = !inQuote
+
 			continue
 		}
 
@@ -298,6 +317,7 @@ func cutdownFirstElement(raw string) int {
 			switch string(stack[len(stack)-2:]) {
 			case "{}", "[]":
 				stack = stack[:len(stack)-2]
+
 				continue
 			}
 
