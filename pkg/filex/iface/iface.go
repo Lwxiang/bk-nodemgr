@@ -15,6 +15,7 @@ import (
 	"context"
 	"io"
 	"strings"
+	"time"
 )
 
 // FileGroup directory interface.
@@ -75,6 +76,9 @@ type FileInfo struct {
 
 	// Md5 the md5 of file.
 	MD5 string
+
+	// ModTime the mod time of file.
+	ModTime time.Time
 
 	// Description the description of file.
 	Description string
