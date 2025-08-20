@@ -283,6 +283,7 @@ func NewService(conf *config.BackendService) (*Service, error) {
 		StorageConfigPolicy:   svc.Cap.StorageConfigPolicy,
 		HostPasswordVault:     svc.Cap.CreditVault,
 		FileHandler:           svc.Cap.FileHandler,
+		ProxyMessager:         svc.Cap.ProxyMessager,
 		WorkflowConfig: manager.WorkflowConfig{
 			WorkNodeNum: conf.Workflow.WorkerNum,
 			Redis: manager.RedisConfig{

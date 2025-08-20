@@ -18,9 +18,10 @@ import (
 	"runtime"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/file"
-	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/manager"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/handler"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/options"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/router/callback"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/router/download"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/blog"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/config"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/filex/local"
@@ -83,13 +84,18 @@ func NewService(conf *config.RelayService) (*Service, error) {
 		PluginName:       conf.PluginName,
 	})
 
-	// TODO: write basedir to config
 	svc.Cap.FileManager = file.NewFileManager(svc.ctx,
-		"",
+		conf.FileManagerDirPath,
 		svc.Cap.Logger)
 
+	clientHandler := handler.NewClientHandler(svc.Cap.FileManager,
+		svc.Cap.Messager,
+		svc.Cap.Logger,
+		conf.StorageTmpDirPath)
+
 	dispatcher := svc.Cap.Messager.EventDispatcher()
-	dispatcher.RegisterHandler(protoRelay.EventTypeEcho, manager.EchoHandler)
+	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeCheckPkgState, clientHandler.CheckPkgStats)
+	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeTransferPkgComplete, clientHandler.StoragePkg)
 
 	requestIDSetter := restserver.NewRequestIDSetter()
 	tenantIDSetter := restserver.NewTenantIDSetter()
@@ -118,6 +124,8 @@ func NewService(conf *config.RelayService) (*Service, error) {
 			TenantIDSetter:  tenantIDSetter,
 			LogWriter:       loggerWriterAdaptor{},
 		},
+		restserver.WithPing(),
+		withDownload(svc.Cap),
 	)
 	svc.servers = append(svc.servers, fileServer)
 
@@ -128,6 +136,13 @@ func NewService(conf *config.RelayService) (*Service, error) {
 func withCallbackServer(capability *options.Capability) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
 		callback.Load(rg, capability)
+	}
+}
+
+// withDownload load download.
+func withDownload(capability *options.Capability) restserver.OptionFunc {
+	return func(rg *gin.RouterGroup) {
+		download.Load(rg, capability)
 	}
 }
 
