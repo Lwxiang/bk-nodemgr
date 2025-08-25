@@ -73,7 +73,7 @@ func (h *handler) CheckPkgStats(ctx context.Context, payload []byte) {
 func (h *handler) StoragePkg(ctx context.Context, payload []byte) {
 	h.logger.Infof("handler storage pkg event.")
 
-	var event protoRelay.TransferPkgCompleteReq
+	var event protoRelay.NotifyReceiveReq
 
 	if err := json.Unmarshal(payload, &event); err != nil {
 		h.logger.Errorf("failed to unmarshal storage pkg event: %v", err)

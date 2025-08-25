@@ -304,7 +304,10 @@ func (mgr *manager) registerActionDefNodeInstall() error {
 		nodeinstall.NewActionVersionCompatCheck(mgr.conf.StorageNodeDeployment, mgr.logger),
 		nodeinstall.NewActionReconfigNode(mgr.conf.StorageNodeDeployment, mgr.conf.GSEHandler, mgr.logger, mgr.conf.Provider),
 		nodeinstall.NewActionRestartNode(mgr.conf.StorageNodeDeployment, mgr.conf.GSEHandler, mgr.logger),
+		nodeinstall.NewActionSelectRelayHost(mgr.conf.StorageTopo, mgr.conf.StorageNodeDeployment, mgr.logger),
 		nodeinstall.NewActionEnsurePkgToRelay(mgr.conf.InstallerFileGroup, mgr.conf.StorageRelease, mgr.conf.StorageOperInst, mgr.conf.StorageNodeDeployment, mgr.conf.FileHandler, mgr.conf.ProxyMessager, mgr.logger),
+		nodeinstall.NewActionPagentDetectInfoBySSH(mgr.logger, mgr.conf.StorageOperInst, mgr.conf.StorageNodeDeployment, mgr.conf.StorageRelease, mgr.conf.StorageHostCredit, mgr.conf.HostPasswordVault, mgr.conf.ProxyMessager),
+		nodeinstall.NewActionInstallPagentBySSH(mgr.conf.ProxyMessager, mgr.conf.StorageNodeDeployment, mgr.conf.StorageHostCredit, mgr.conf.StorageOperInst, mgr.conf.HostPasswordVault, mgr.logger),
 	)
 }
 
@@ -425,7 +428,7 @@ func (mgr *manager) LaunchInstallNode(ctx context.Context, param InstallNodePara
 		deploy := nodeDeploy
 
 		gp.Go(func() error {
-			return mgr.createOper(ctx, param.Operator, triggerCtl, deploy)
+			return mgr.createInstallNodeOper(ctx, param.Operator, triggerCtl, deploy)
 		})
 	}
 
@@ -479,7 +482,8 @@ func (mgr *manager) RetryOperationNode(ctx context.Context, param RetryOperation
 
 	return instanceIDs, nil
 }
-func (mgr *manager) createOper(
+
+func (mgr *manager) createInstallNodeOper(
 	ctx context.Context,
 	operator string,
 	triggerCtl workflow.ITriggerCtl,
@@ -500,25 +504,9 @@ func (mgr *manager) createOper(
 		return err
 	}
 
-	// TODO: distinguish between pagent and agent based on workunitID
-	var operationDef operation.Definition
-
-	switch deploy.Info.Host.Static.OSType {
-	case string(criteria.OSLinux), string(criteria.OSDarwin):
-		operationDef = nodeinstall.NewOperInstallNodeBySSH(nodeinstall.OperParamInstallNodeBySSH{
-			Token:    deploy.Token,
-			Operator: operator,
-		})
-	case string(criteria.OSWindows):
-		operationDef = nodeinstall.NewOperInstallNodeByWMI(nodeinstall.OperParamInstallNodeByWMI{
-			Token:    deploy.Token,
-			Operator: operator,
-		})
-	default:
-		operationDef = nodeinstall.NewOperInstallNodeBySSH(nodeinstall.OperParamInstallNodeBySSH{
-			Token:    deploy.Token,
-			Operator: operator,
-		})
+	operationDef, err := mgr.getOperationDefinition(deploy, operator)
+	if err != nil {
+		return err
 	}
 
 	operationParam := operationDef.DefaultParameters()
@@ -540,6 +528,51 @@ func (mgr *manager) createOper(
 		tenantID, triggerCtl.GetTriggerID(), operCtl.GetOperationID(), deploy.Token)
 
 	return nil
+}
+
+func (mgr *manager) getOperationDefinition(
+	deploy *types.NodeDeployment,
+	operator string,
+) (operation.Definition, error) {
+
+	var operationDef operation.Definition
+
+	if deploy.Info.InstallOptions.DirectLink {
+		switch deploy.Info.Host.Static.OSType {
+		case string(criteria.OSLinux), string(criteria.OSDarwin):
+			operationDef = nodeinstall.NewOperInstallNodeBySSH(nodeinstall.OperParamInstallNodeBySSH{
+				Token:    deploy.Token,
+				Operator: operator,
+			})
+		case string(criteria.OSWindows):
+			operationDef = nodeinstall.NewOperInstallNodeByWMI(nodeinstall.OperParamInstallNodeByWMI{
+				Token:    deploy.Token,
+				Operator: operator,
+			})
+		default:
+			operationDef = nodeinstall.NewOperInstallNodeBySSH(nodeinstall.OperParamInstallNodeBySSH{
+				Token:    deploy.Token,
+				Operator: operator,
+			})
+		}
+	} else {
+		switch deploy.Info.Host.Static.OSType {
+		case string(criteria.OSLinux), string(criteria.OSDarwin):
+			operationDef = nodeinstall.NewOperInstallPagentNodeBySSH(nodeinstall.OperParamInstallPagentNodeBySSH{
+				Token:    deploy.Token,
+				Operator: operator,
+			})
+		case string(criteria.OSWindows):
+			return nil, errors.New("implete me")
+		default:
+			operationDef = nodeinstall.NewOperInstallPagentNodeBySSH(nodeinstall.OperParamInstallPagentNodeBySSH{
+				Token:    deploy.Token,
+				Operator: operator,
+			})
+		}
+	}
+
+	return operationDef, nil
 }
 
 // LaunchUpgradeNode launch a task to upgrade node. returns the workflow-id.

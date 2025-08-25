@@ -45,7 +45,19 @@ func (oper *operInstallPagentNodeBySSH) Name() string {
 // ActionDefNames returns the action def names.
 func (oper *operInstallPagentNodeBySSH) ActionDefNames() []string {
 	return []string{
+		ActionNameTryReuseAgentID,
+		ActionNameUpsertHostToCMDB,
+		ActionNameSelectRelayHost,
+		ActionNamePagentDetectInfoBySSH,
+		ActionNameRenderNodeDeployment,
 		ActionNameEnsurePkgToRelay,
+		ActionNameInstallPagentBySSH,
+		ActionNameWaitInstallerComplete,
+		ActionNameWaitGseReady,
+		ActionNameSyncNodeInfo,
+		ActionNameBindAgentHostRel,
+		ActionNamePushHostIdentifier,
+		ActionNameUpdateHost,
 	}
 }
 
@@ -55,7 +67,19 @@ func (oper *operInstallPagentNodeBySSH) DefaultParameters() operation.Param {
 		Timeout:     10 * time.Minute, // nolint: mnd
 		InitContent: conv.StructToMapIgnoreError(oper.param),
 		RetryStartPoint: map[string]bool{
-			ActionNameEnsurePkgToRelay: true,
+			ActionNameTryReuseAgentID:       true,
+			ActionNameUpsertHostToCMDB:      true,
+			ActionNameSelectRelayHost:       true,
+			ActionNamePagentDetectInfoBySSH: true,
+			ActionNameRenderNodeDeployment:  true,
+			ActionNameEnsurePkgToRelay:      true,
+			ActionNameInstallPagentBySSH:    true,
+			ActionNameWaitInstallerComplete: false,
+			ActionNameWaitGseReady:          false,
+			ActionNameSyncNodeInfo:          true,
+			ActionNameBindAgentHostRel:      true,
+			ActionNamePushHostIdentifier:    true,
+			ActionNameUpdateHost:            true,
 		},
 	}
 }

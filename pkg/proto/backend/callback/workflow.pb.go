@@ -620,7 +620,7 @@ func (x *ReportFileStateReq) GetFileState() []*ReportFileStateReqFileState {
 }
 
 // ReportStorageResultReq describes the HTTP request body when report relay
-// storage result req.
+// storage result.
 type ReportStorageResultReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ActionName    string                 `protobuf:"bytes,1,opt,name=action_name,json=actionName,proto3" json:"action_name"`
@@ -681,6 +681,162 @@ func (x *ReportStorageResultReq) GetErrMsg() string {
 	return ""
 }
 
+// ReportDetectResultReq describes the HTTP request body when report relay
+// detech result.
+type ReportDetectResultReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ActionName    string                 `protobuf:"bytes,1,opt,name=action_name,json=actionName,proto3" json:"action_name"`
+	OperInstId    string                 `protobuf:"bytes,2,opt,name=oper_inst_id,json=operInstId,proto3" json:"oper_inst_id"`
+	ErrMsg        string                 `protobuf:"bytes,3,opt,name=err_msg,json=errMsg,proto3" json:"err_msg"`
+	OsType        string                 `protobuf:"bytes,4,opt,name=os_type,json=osType,proto3" json:"os_type"`
+	CpuArch       string                 `protobuf:"bytes,5,opt,name=cpu_arch,json=cpuArch,proto3" json:"cpu_arch"`
+	ConnectionDir string                 `protobuf:"bytes,6,opt,name=connection_dir,json=connectionDir,proto3" json:"connection_dir"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportDetectResultReq) Reset() {
+	*x = ReportDetectResultReq{}
+	mi := &file_workflow_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportDetectResultReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportDetectResultReq) ProtoMessage() {}
+
+func (x *ReportDetectResultReq) ProtoReflect() protoreflect.Message {
+	mi := &file_workflow_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportDetectResultReq.ProtoReflect.Descriptor instead.
+func (*ReportDetectResultReq) Descriptor() ([]byte, []int) {
+	return file_workflow_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ReportDetectResultReq) GetActionName() string {
+	if x != nil {
+		return x.ActionName
+	}
+	return ""
+}
+
+func (x *ReportDetectResultReq) GetOperInstId() string {
+	if x != nil {
+		return x.OperInstId
+	}
+	return ""
+}
+
+func (x *ReportDetectResultReq) GetErrMsg() string {
+	if x != nil {
+		return x.ErrMsg
+	}
+	return ""
+}
+
+func (x *ReportDetectResultReq) GetOsType() string {
+	if x != nil {
+		return x.OsType
+	}
+	return ""
+}
+
+func (x *ReportDetectResultReq) GetCpuArch() string {
+	if x != nil {
+		return x.CpuArch
+	}
+	return ""
+}
+
+func (x *ReportDetectResultReq) GetConnectionDir() string {
+	if x != nil {
+		return x.ConnectionDir
+	}
+	return ""
+}
+
+// ReportInstallBySSHResultReq describes the HTTP request body when report relay
+// install by ssh result.
+type ReportInstallBySSHResultReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ActionName    string                 `protobuf:"bytes,1,opt,name=action_name,json=actionName,proto3" json:"action_name"`
+	OperInstId    string                 `protobuf:"bytes,2,opt,name=oper_inst_id,json=operInstId,proto3" json:"oper_inst_id"`
+	ErrMsg        string                 `protobuf:"bytes,3,opt,name=err_msg,json=errMsg,proto3" json:"err_msg"`
+	StdOut        string                 `protobuf:"bytes,4,opt,name=std_out,json=stdOut,proto3" json:"std_out"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportInstallBySSHResultReq) Reset() {
+	*x = ReportInstallBySSHResultReq{}
+	mi := &file_workflow_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportInstallBySSHResultReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportInstallBySSHResultReq) ProtoMessage() {}
+
+func (x *ReportInstallBySSHResultReq) ProtoReflect() protoreflect.Message {
+	mi := &file_workflow_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportInstallBySSHResultReq.ProtoReflect.Descriptor instead.
+func (*ReportInstallBySSHResultReq) Descriptor() ([]byte, []int) {
+	return file_workflow_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ReportInstallBySSHResultReq) GetActionName() string {
+	if x != nil {
+		return x.ActionName
+	}
+	return ""
+}
+
+func (x *ReportInstallBySSHResultReq) GetOperInstId() string {
+	if x != nil {
+		return x.OperInstId
+	}
+	return ""
+}
+
+func (x *ReportInstallBySSHResultReq) GetErrMsg() string {
+	if x != nil {
+		return x.ErrMsg
+	}
+	return ""
+}
+
+func (x *ReportInstallBySSHResultReq) GetStdOut() string {
+	if x != nil {
+		return x.StdOut
+	}
+	return ""
+}
+
 type ReportFileStateReqFileState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FileName      string                 `protobuf:"bytes,1,opt,name=file_name,json=fileName,proto3" json:"file_name"`
@@ -691,7 +847,7 @@ type ReportFileStateReqFileState struct {
 
 func (x *ReportFileStateReqFileState) Reset() {
 	*x = ReportFileStateReqFileState{}
-	mi := &file_workflow_proto_msgTypes[10]
+	mi := &file_workflow_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -703,7 +859,7 @@ func (x *ReportFileStateReqFileState) String() string {
 func (*ReportFileStateReqFileState) ProtoMessage() {}
 
 func (x *ReportFileStateReqFileState) ProtoReflect() protoreflect.Message {
-	mi := &file_workflow_proto_msgTypes[10]
+	mi := &file_workflow_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -820,12 +976,34 @@ var file_workflow_proto_rawDesc = string([]byte{
 	0x6f, 0x70, 0x65, 0x72, 0x5f, 0x69, 0x6e, 0x73, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x0a, 0x6f, 0x70, 0x65, 0x72, 0x49, 0x6e, 0x73, 0x74, 0x49, 0x64, 0x12, 0x17,
 	0x0a, 0x07, 0x65, 0x72, 0x72, 0x5f, 0x6d, 0x73, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x06, 0x65, 0x72, 0x72, 0x4d, 0x73, 0x67, 0x42, 0x45, 0x5a, 0x43, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x54, 0x65, 0x6e, 0x63, 0x65, 0x6e, 0x74, 0x42, 0x6c, 0x75,
-	0x65, 0x4b, 0x69, 0x6e, 0x67, 0x2f, 0x62, 0x6b, 0x2d, 0x6e, 0x6f, 0x64, 0x65, 0x6d, 0x67, 0x72,
-	0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2f, 0x62, 0x61,
-	0x63, 0x6b, 0x65, 0x6e, 0x64, 0x2f, 0x63, 0x61, 0x6c, 0x6c, 0x62, 0x61, 0x63, 0x6b, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x06, 0x65, 0x72, 0x72, 0x4d, 0x73, 0x67, 0x22, 0xce, 0x01, 0x0a, 0x15, 0x52, 0x65, 0x70, 0x6f,
+	0x72, 0x74, 0x44, 0x65, 0x74, 0x65, 0x63, 0x74, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x65,
+	0x71, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6e, 0x61, 0x6d, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4e, 0x61,
+	0x6d, 0x65, 0x12, 0x20, 0x0a, 0x0c, 0x6f, 0x70, 0x65, 0x72, 0x5f, 0x69, 0x6e, 0x73, 0x74, 0x5f,
+	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6f, 0x70, 0x65, 0x72, 0x49, 0x6e,
+	0x73, 0x74, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x65, 0x72, 0x72, 0x5f, 0x6d, 0x73, 0x67, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x72, 0x72, 0x4d, 0x73, 0x67, 0x12, 0x17, 0x0a,
+	0x07, 0x6f, 0x73, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x6f, 0x73, 0x54, 0x79, 0x70, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x63, 0x70, 0x75, 0x5f, 0x61, 0x72,
+	0x63, 0x68, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x70, 0x75, 0x41, 0x72, 0x63,
+	0x68, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f,
+	0x64, 0x69, 0x72, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x63, 0x6f, 0x6e, 0x6e, 0x65,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x44, 0x69, 0x72, 0x22, 0x92, 0x01, 0x0a, 0x1b, 0x52, 0x65, 0x70,
+	0x6f, 0x72, 0x74, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6c, 0x6c, 0x42, 0x79, 0x53, 0x53, 0x48, 0x52,
+	0x65, 0x73, 0x75, 0x6c, 0x74, 0x52, 0x65, 0x71, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x63, 0x74, 0x69,
+	0x6f, 0x6e, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x61,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x20, 0x0a, 0x0c, 0x6f, 0x70, 0x65,
+	0x72, 0x5f, 0x69, 0x6e, 0x73, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0a, 0x6f, 0x70, 0x65, 0x72, 0x49, 0x6e, 0x73, 0x74, 0x49, 0x64, 0x12, 0x17, 0x0a, 0x07, 0x65,
+	0x72, 0x72, 0x5f, 0x6d, 0x73, 0x67, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x65, 0x72,
+	0x72, 0x4d, 0x73, 0x67, 0x12, 0x17, 0x0a, 0x07, 0x73, 0x74, 0x64, 0x5f, 0x6f, 0x75, 0x74, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x64, 0x4f, 0x75, 0x74, 0x42, 0x45, 0x5a,
+	0x43, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x54, 0x65, 0x6e, 0x63,
+	0x65, 0x6e, 0x74, 0x42, 0x6c, 0x75, 0x65, 0x4b, 0x69, 0x6e, 0x67, 0x2f, 0x62, 0x6b, 0x2d, 0x6e,
+	0x6f, 0x64, 0x65, 0x6d, 0x67, 0x72, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x63, 0x6f, 0x6c, 0x2f, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x2f, 0x63, 0x61, 0x6c, 0x6c,
+	0x62, 0x61, 0x63, 0x6b, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 })
 
 var (
@@ -840,7 +1018,7 @@ func file_workflow_proto_rawDescGZIP() []byte {
 	return file_workflow_proto_rawDescData
 }
 
-var file_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_workflow_proto_goTypes = []any{
 	(*GetAgentConfReq)(nil),             // 0: callback.GetAgentConfReq
 	(*GetFileProxyConfReq)(nil),         // 1: callback.GetFileProxyConfReq
@@ -852,11 +1030,13 @@ var file_workflow_proto_goTypes = []any{
 	(*ReportStatusReq)(nil),             // 7: callback.ReportStatusReq
 	(*ReportFileStateReq)(nil),          // 8: callback.ReportFileStateReq
 	(*ReportStorageResultReq)(nil),      // 9: callback.ReportStorageResultReq
-	(*ReportFileStateReqFileState)(nil), // 10: callback.ReportFileStateReq.fileState
+	(*ReportDetectResultReq)(nil),       // 10: callback.ReportDetectResultReq
+	(*ReportInstallBySSHResultReq)(nil), // 11: callback.ReportInstallBySSHResultReq
+	(*ReportFileStateReqFileState)(nil), // 12: callback.ReportFileStateReq.fileState
 }
 var file_workflow_proto_depIdxs = []int32{
 	5,  // 0: callback.ReportLogReq.logs:type_name -> callback.ReportLog
-	10, // 1: callback.ReportFileStateReq.file_state:type_name -> callback.ReportFileStateReq.fileState
+	12, // 1: callback.ReportFileStateReq.file_state:type_name -> callback.ReportFileStateReq.fileState
 	2,  // [2:2] is the sub-list for method output_type
 	2,  // [2:2] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
@@ -875,7 +1055,7 @@ func file_workflow_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_workflow_proto_rawDesc), len(file_workflow_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

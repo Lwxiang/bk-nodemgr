@@ -19,6 +19,8 @@ import (
 
 	nodedeployment "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/node-deployment"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/release"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/relayconstant"
+
 	fileiface "github.com/TencentBlueKing/bk-nodemgr/pkg/filex/iface"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/nodepkg"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/platform"
@@ -38,16 +40,6 @@ import (
 const (
 	// ActionNameEnsurePkgToRelay defines the action name.
 	ActionNameEnsurePkgToRelay = "ensure_pkg_to_relay"
-
-	// TODO: remove these key to constants
-
-	// relayFileStateKey defines the relay file state key.
-	relayFileStateKey        = "relay_file_state"
-	relayFileStateStorageKey = "relay_file_state_storage_dir"
-
-	// relayStorageResultKey defines the relay storage result key.
-	relayStorageResultKey    = "relay_storage_result"
-	relayStorageResultMsgKey = "err_msg"
 
 	queryRelayTimeout          = 3 * time.Second
 	waitForRelayReportInterval = 2 * time.Second
@@ -115,7 +107,7 @@ func (act *actionEnsurePkgToRelay) Description() string {
 
 // Timeout returns the timeout of the action.
 func (act *actionEnsurePkgToRelay) Timeout() time.Duration {
-	return 5 * time.Minute
+	return 5 * time.Minute // nolint: mnd
 }
 
 // Tags returns the tags of the action.
@@ -274,6 +266,7 @@ func (act *actionEnsurePkgToRelay) queryRelayPackageState(
 	}
 
 	ctx.Data.LogI("package state query sent to relay.")
+
 	return nil
 }
 
@@ -310,7 +303,7 @@ func (act *actionEnsurePkgToRelay) waitForRelayReportFile(
 				continue
 			}
 
-			fileStateRaw, exists := privateData[relayFileStateKey]
+			fileStateRaw, exists := privateData[relayconstant.FileStateKey]
 			if !exists {
 				continue
 			}
@@ -321,7 +314,7 @@ func (act *actionEnsurePkgToRelay) waitForRelayReportFile(
 			}
 
 			if fileStorageDir == "" {
-				if storageDirRaw, exists := fileState[relayFileStateStorageKey]; exists {
+				if storageDirRaw, exists := fileState[relayconstant.FileStateStorageKey]; exists {
 					if storageDir, ok := storageDirRaw.(string); ok && storageDir != "" {
 						fileStorageDir = storageDir
 						ctx.Data.LogI(fmt.Sprintf("relay storage dir set. dir(%s)", fileStorageDir))
@@ -548,7 +541,7 @@ func (act *actionEnsurePkgToRelay) transferInstaller(ctx *action.InstanceContext
 func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackage(
 	ctx *action.InstanceContext, pkgNames []string, relayInfo *types.RelayInfo) error {
 
-	event := protoRelay.TransferPkgCompleteReq{
+	event := protoRelay.NotifyReceiveReq{
 		ActionName: ctx.Data.Name,
 		OperInstID: ctx.Data.OperationInstanceID,
 		PkgName:    pkgNames}
@@ -558,7 +551,7 @@ func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackage(
 	}
 
 	errCh := act.proxyMessager.PushToClient(ctx.Ctx,
-		protoRelay.ServerPushEventTypeTransferPkgComplete, data, relayInfo.AgentID)
+		protoRelay.ServerPushEventTypeNotifyReceive, data, relayInfo.AgentID)
 
 	select {
 	case err := <-errCh:
@@ -599,20 +592,20 @@ func (act *actionEnsurePkgToRelay) waitForRelayReportStorage(
 				continue
 			}
 
-			relayStorageResultRaw, exists := privateData[relayStorageResultKey]
+			relayStorageResultRaw, exists := privateData[relayconstant.StorageResultKey]
 			if !exists {
 				continue
 			}
 
 			relayStorageResult, ok := relayStorageResultRaw.(map[string]any)
 			if !ok {
-				return errors.New("unexpected type for relay ")
+				return errors.New("unexpected type for relay storage result")
 			}
 
-			errMsgRaw := relayStorageResult[relayStorageResultMsgKey]
+			errMsgRaw := relayStorageResult[relayconstant.StorageResultMsgKey]
 			errMsg, ok := errMsgRaw.(string)
 			if !ok {
-				return errors.New("unexpected type for file state")
+				return errors.New("unexpected type for relay storage result message")
 			}
 
 			if errMsg == "" {

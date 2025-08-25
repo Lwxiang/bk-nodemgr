@@ -29,6 +29,8 @@ const (
 type IHandler interface {
 	CheckPkgStats(ctx context.Context, payload []byte)
 	StoragePkg(ctx context.Context, payload []byte)
+	DetectInfoBySSH(ctx context.Context, payload []byte)
+	InstallPagentBySSH(ctx context.Context, payload []byte)
 }
 
 // handler is a relay client handler.
@@ -38,17 +40,28 @@ type handler struct {
 	fileManager file.IFileManager
 	client      relayhandler.IClientMessager
 
+	callbackSvcIP   string
+	callbackSvcPort int
+
+	fileSvcIP   string
+	fileSvcPort int
+
 	logger logger.Logger
 }
 
 // NewClientHandler creates a new file handler.
 func NewClientHandler(fm file.IFileManager, client relayhandler.IClientMessager,
-	logger logger.Logger, storageTmpDir string) IHandler {
+	logger logger.Logger, storageTmpDir string,
+	callbackSvcIP string, callbackSvcPort int, fileSvcIP string, fileSvcPort int) IHandler {
 
 	return &handler{
-		storageTmpDir: storageTmpDir,
-		fileManager:   fm,
-		client:        client,
-		logger:        logger,
+		storageTmpDir:   storageTmpDir,
+		fileManager:     fm,
+		client:          client,
+		callbackSvcIP:   callbackSvcIP,
+		callbackSvcPort: callbackSvcPort,
+		fileSvcIP:       fileSvcIP,
+		fileSvcPort:     fileSvcPort,
+		logger:          logger,
 	}
 }

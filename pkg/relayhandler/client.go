@@ -162,7 +162,6 @@ func (m *clientMessager) handleAck(ctx context.Context, content []byte) {
 }
 
 func (m *clientMessager) handleServerPush(ctx context.Context, messageID string, content []byte) {
-	m.config.Logger.Infof("begin handle server push. message-id(%s)", messageID)
 	go m.sendAck(ctx, messageID)
 
 	exists, err := m.fileMsgTracker.TryMarkProcessed(ctx, messageID)
@@ -186,14 +185,13 @@ func (m *clientMessager) dispatcherServerPushEvent(ctx context.Context, content 
 		return
 	}
 
-	m.config.Logger.Infof("begin dispatching event. event-type(%s)", push.EventType)
+	m.config.Logger.Infof("begin dispatching event.message-id(%s).event-type(%s)", push.Base.MessageID, push.EventType)
 
 	if m.eventDispatcher == nil {
 		m.config.Logger.Errorf("no event dispatcher registered for event. event-type(%s)", push.EventType)
 		return
 	}
 
-	m.config.Logger.Infof("dispatching event. event-type(%s)", push.EventType)
 	m.eventDispatcher.Dispatch(ctx, push.EventType, push.Payload)
 }
 

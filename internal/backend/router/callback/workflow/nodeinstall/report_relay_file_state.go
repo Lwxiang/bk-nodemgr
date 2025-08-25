@@ -14,11 +14,10 @@ package nodeinstall
 import (
 	"net/http"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/relay/relayconstant"
 	protoCallback "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/callback"
 	"github.com/gin-gonic/gin"
 )
-
-const relayStateKey = "relay_file_state"
 
 func (h *handler) RelayReportFileState(gCtx *gin.Context) {
 	req := new(protoCallback.ReportFileStateReq)
@@ -43,9 +42,10 @@ func (h *handler) RelayReportFileState(gCtx *gin.Context) {
 	for _, fileState := range req.GetFileState() {
 		fileStateMap[fileState.GetFileName()] = fileState.GetFileStatus()
 	}
+	fileStateMap[relayconstant.FileStateStorageKey] = req.GetStorageTmpDir()
 
 	dataMap := make(map[string]any)
-	dataMap[relayStateKey] = fileStateMap
+	dataMap[relayconstant.FileStateKey] = fileStateMap
 
 	if err := h.IDomainNodeInstall.UpsertActionInstancePrivateData(gCtx,
 		req.GetOperInstId(), req.GetActionName(), dataMap); err != nil {

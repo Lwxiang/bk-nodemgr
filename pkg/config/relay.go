@@ -39,16 +39,22 @@ const (
 
 // RelayService the config of relay service.
 type RelayService struct {
-	Plugin             GSEPlugin      `yaml:"plugin" usage:"gse agent plugin config of relay service"`
-	AgentFileGroup     FileGroup      `yaml:"agentFileGroup" usage:"agent file group config of relay service"`
-	ProxyFileGroup     FileGroup      `yaml:"proxyFileGroup" usage:"proxy file group config of relay service"`
-	MessageIDPath      string         `yaml:"messageIDPath" usage:"message id full path of relay service"`
-	CallbackServer     CallbackServer `yaml:"callbackServer" usage:"callback server config of relay service"`
-	FileServer         HTTPServer     `yaml:"fileServer" usage:"file server config of relay service"`
-	Log                Log            `yaml:"log" usage:"log config of relay service"`
-	PluginName         string         `yaml:"pluginName" usage:"gse agent plugin name of relay service"`
-	FileManagerDirPath string         `yaml:"fileManagerDirPath" usage:"file manager dir path of relay service"`
-	StorageTmpDirPath  string         `yaml:"storageTmpDirPath" usage:"storage tmp dir path of relay service"`
+	Plugin GSEPlugin `yaml:"plugin" usage:"gse agent plugin config of relay service"`
+
+	AgentFileGroup FileGroup `yaml:"agentFileGroup" usage:"agent file group config of relay service"`
+	ProxyFileGroup FileGroup `yaml:"proxyFileGroup" usage:"proxy file group config of relay service"`
+
+	CallbackServer CallbackServer `yaml:"callbackServer" usage:"callback server config of relay service"`
+	FileServer     HTTPServer     `yaml:"fileServer" usage:"file server config of relay service"`
+
+	PluginName string `yaml:"pluginName" usage:"gse agent plugin name of relay service"`
+
+	MessageIDPath string `yaml:"messageIDPath" usage:"message id full path of relay service"`
+
+	FileManagerDirPath string `yaml:"fileManagerDirPath" usage:"file manager dir path of relay service"`
+	StorageTmpDirPath  string `yaml:"storageTmpDirPath" usage:"storage tmp dir path of relay service"`
+
+	Log Log `yaml:"log" usage:"log config of relay service"`
 }
 
 // NewRelayService generates a new RelayService with default value.

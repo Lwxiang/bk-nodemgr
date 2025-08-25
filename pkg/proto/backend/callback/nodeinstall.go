@@ -171,3 +171,43 @@ func (x *ReportStorageResultReq) Validate() error {
 
 	return nil
 }
+
+// AutoConvert auto convert.
+func (x *ReportDetectResultReq) AutoConvert() {
+}
+
+// Validate check request body.
+func (x *ReportDetectResultReq) Validate() error {
+	if x.GetActionName() == "" {
+		return errors.New("action_name is required")
+	}
+	if x.GetOperInstId() == "" {
+		return errors.New("oper_inst_id is required")
+	}
+
+	if x.GetCpuArch() == "" {
+		return errors.New("cpu_arch is required")
+	}
+
+	if x.GetOsType() == "" {
+		return errors.New("os_type is required")
+	}
+
+	return nil
+}
+
+// AutoConvert auto convert.
+func (x *ReportInstallBySSHResultReq) AutoConvert() {
+}
+
+// Validate check request body.
+func (x *ReportInstallBySSHResultReq) Validate() error {
+	if x.GetActionName() == "" {
+		return errors.New("action_name is required")
+	}
+	if x.GetOperInstId() == "" {
+		return errors.New("oper_inst_id is required")
+	}
+
+	return nil
+}

@@ -19,34 +19,37 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (h *handler) RelayReportStorageResult(gCtx *gin.Context) {
-	req := new(protoCallback.ReportStorageResultReq)
+func (h *handler) RelayReportInstallBySSHInfo(gCtx *gin.Context) {
+	req := new(protoCallback.ReportInstallBySSHResultReq)
 	if err := gCtx.BindJSON(req); err != nil {
-		h.logger.Errorf("report stroage file result failed: %v", err)
+		h.logger.Errorf("report install by ssh info failed: %s", err)
 		gCtx.JSON(http.StatusBadRequest, err)
 
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		h.logger.Errorf("report stroage file result failed: %v", err)
+		h.logger.Errorf("report install by ssh info failed: %s", err)
 		gCtx.JSON(http.StatusBadRequest, err)
 
 		return
 	}
 
-	h.logger.Infof("report relay stroage file result. instance(%s), action(%s) ",
+	h.logger.Infof("report detect info. instance(%s), action(%s) ",
 		req.GetOperInstId(), req.GetActionName())
 
+	installResult := map[string]string{
+		relayconstant.InstallBySSHResultStdOutKey: req.GetStdOut(),
+		relayconstant.InstallBySSHResultErrMsgKey: req.GetErrMsg(),
+	}
+
 	dataMap := map[string]any{
-		relayconstant.StorageResultKey: map[string]string{
-			relayconstant.StorageResultMsgKey: req.GetErrMsg(),
-		},
+		relayconstant.InstallBySSHResultKey: installResult,
 	}
 
 	if err := h.IDomainNodeInstall.UpsertActionInstancePrivateData(gCtx,
 		req.GetOperInstId(), req.GetActionName(), dataMap); err != nil {
-		h.logger.Errorf("update action private failed: %v", err)
+		h.logger.Errorf("update action private failed: %s", err)
 		gCtx.JSON(http.StatusInternalServerError, err)
 	}
 

@@ -94,8 +94,14 @@ const (
 	// ServerPushEventTypeCheckPkgState describes the check pkg state event type.
 	ServerPushEventTypeCheckPkgState ServerPushEventType = "check_pkg_state"
 
-	// ServerPushEventTypeTransferPkgComplete describes the transfer pkg complete event type.
-	ServerPushEventTypeTransferPkgComplete ServerPushEventType = "transfer_pkg_complete"
+	// ServerPushEventTypeNotifyReceive describes the notify receive event type.
+	ServerPushEventTypeNotifyReceive ServerPushEventType = "notify_receive"
+
+	// ServerPushEventTypeDetectInfoBySSH describes the detect info by ssh event type.
+	ServerPushEventTypeDetectInfoBySSH ServerPushEventType = "detect_info_by_ssh"
+
+	// ServerPushEventTypeInstallBySSH describes the install by ssh event type.
+	ServerPushEventTypeInstallBySSH ServerPushEventType = "install_by_ssh"
 )
 
 // define server_push relay event struct.
@@ -121,8 +127,8 @@ type FileInfo struct {
 	FileMD5  string `json:"file_md5"`
 }
 
-// TransferPkgCompleteReq describes the transfer pkg complete request.
-type TransferPkgCompleteReq struct {
+// NotifyReceiveReq describes the transfer pkg complete request.
+type NotifyReceiveReq struct {
 	// ActionName describes the action name.
 	ActionName string `json:"action_name"`
 
@@ -131,6 +137,34 @@ type TransferPkgCompleteReq struct {
 
 	// PkgName describes the package name.
 	PkgName []string `json:"pkg_name"`
+}
+
+// DetectInfoBySSHReq defines the detect info by ssh request.
+type DetectInfoBySSHReq struct {
+	ActionName string `json:"action_name"`
+	OperInstID string `json:"oper_inst_id"`
+
+	IP        string `json:"ip"`
+	Port      int64  `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	LoginMode string `json:"login_mode"`
+}
+
+// InstallPagentBySSHReq defines the install pagent by ssh request.
+type InstallPagentBySSHReq struct {
+	ActionName string `json:"action_name"`
+	OperInstID string `json:"oper_inst_id"`
+
+	IP        string `json:"ip"`
+	Port      int64  `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	LoginMode string `json:"login_mode"`
+
+	InstallerWorkDir string   `json:"installer_work_dir"`
+	ToolsName        string   `json:"tools_name"`
+	InstallerCmd     []string `json:"installer_cmd"`
 }
 
 // ClientReport defines the client report signal.

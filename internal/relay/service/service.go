@@ -54,6 +54,7 @@ type Service struct {
 }
 
 // NewService creates a new relay service.
+// nolint: funlen
 func NewService(conf *config.RelayService) (*Service, error) {
 	svc := &Service{
 		conf: conf,
@@ -88,14 +89,21 @@ func NewService(conf *config.RelayService) (*Service, error) {
 		conf.FileManagerDirPath,
 		svc.Cap.Logger)
 
+	// TODO: write a client handler config.
 	clientHandler := handler.NewClientHandler(svc.Cap.FileManager,
 		svc.Cap.Messager,
 		svc.Cap.Logger,
-		conf.StorageTmpDirPath)
+		conf.StorageTmpDirPath,
+		conf.CallbackServer.AdvertiseIPV4,
+		conf.CallbackServer.Port,
+		conf.FileServer.AdvertiseIPV4,
+		conf.FileServer.Port)
 
 	dispatcher := svc.Cap.Messager.EventDispatcher()
 	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeCheckPkgState, clientHandler.CheckPkgStats)
-	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeTransferPkgComplete, clientHandler.StoragePkg)
+	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeNotifyReceive, clientHandler.StoragePkg)
+	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeDetectInfoBySSH, clientHandler.DetectInfoBySSH)
+	dispatcher.RegisterHandler(protoRelay.ServerPushEventTypeInstallBySSH, clientHandler.InstallPagentBySSH)
 
 	requestIDSetter := restserver.NewRequestIDSetter()
 	tenantIDSetter := restserver.NewTenantIDSetter()
