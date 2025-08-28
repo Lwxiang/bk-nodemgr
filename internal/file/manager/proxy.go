@@ -29,7 +29,7 @@ import (
 // nolint:funlen,gocognit,gocyclo,cyclop
 // NOCC: golint/fnsize(func design is not suitable for splitting).
 func (m *Manager) PublishReleaseProxy(ctx contextx.IContext, uploadID string) error {
-	up, err := m.storageUpload.GetUpload(ctx, uploadID)
+	up, err := m.storageUpload.GetServerUpload(ctx, uploadID)
 	if err != nil {
 		m.logger.ErrorCtxf(ctx, "failed to publish release proxy, failed to get upload(%s). err: %v", uploadID, err)
 
@@ -128,11 +128,7 @@ func (m *Manager) PublishReleaseProxy(ctx contextx.IContext, uploadID string) er
 				return err
 			}
 
-			agentRelease, err := m.storageRelease.GetRelease(ctx,
-				types.Generation2,
-				types.ReleaseTypeAgent,
-				pkg.platform,
-				detail.Version)
+			agentRelease, err := m.storageRelease.GetReleaseAgent(ctx, types.Generation2, pkg.platform, detail.Version)
 			if err != nil {
 				m.logger.ErrorCtxf(ctx, "failed to publish release proxy, failed to get agent release. err: %v", err)
 
@@ -168,7 +164,7 @@ func (m *Manager) PublishReleaseProxy(ctx contextx.IContext, uploadID string) er
 	}
 
 	// upsert release bintool.
-	if err = m.storageRelease.UpsertManyRelease(ctx, conv.MapValueToSlice(releasesMap)); err != nil {
+	if err = m.storageRelease.UpsertManyReleaseProxy(ctx, types.Generation2, conv.MapValueToSlice(releasesMap)); err != nil {
 		m.logger.ErrorCtxf(ctx, "failed to publish release proxy, failed to upsert release proxy: %v", err)
 
 		return err

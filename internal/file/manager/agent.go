@@ -66,9 +66,10 @@ func (m *Manager) UploadOriginAgent(ctx contextx.IContext, pkgFile io.ReadCloser
 
 		return nil, err
 	}
+	gen := types.Generation2
 
 	pkgName, err := nodepkg.FormatPkgName(
-		types.Generation2,
+		gen,
 		types.ReleaseTypeOriginAgent,
 		platform.EmptyPlatform(),
 		detail.Version,
@@ -99,7 +100,7 @@ func (m *Manager) UploadOriginAgent(ctx contextx.IContext, pkgFile io.ReadCloser
 	detail.FileInfo = file.Info()
 
 	// check if release existed.
-	existed, err := m.storageRelease.ExistReleaseAgent(ctx, detail.Version, detail.Platforms...)
+	existed, err := m.storageRelease.ExistReleaseAgent(ctx, gen, detail.Version, detail.Platforms...)
 	if err != nil {
 		m.logger.ErrorCtxf(ctx, "failed to upload origin agent package. failed to check if release existed. err: %v", err)
 
@@ -108,7 +109,7 @@ func (m *Manager) UploadOriginAgent(ctx contextx.IContext, pkgFile io.ReadCloser
 	detail.Existed = existed
 
 	// create the upload record.
-	uploadID, err := m.storageUpload.CreateUpload(ctx, &types.Upload{
+	uploadID, err := m.storageUpload.CreateAgentUpload(ctx, &types.Upload{
 		Category:  types.UploadCategoryOriginAgent,
 		SavedName: pkgName,
 	})
@@ -246,7 +247,7 @@ func checkGSE2OriginAgentPkg(file io.ReadCloser) (*types.OriginPkgDetail, error)
 // nolint:funlen,gocognit,gocyclo,cyclop
 // NOCC: golint/fnsize(func design is not suitable for splitting).
 func (m *Manager) PublishReleaseAgent(ctx contextx.IContext, uploadID string) error {
-	up, err := m.storageUpload.GetUpload(ctx, uploadID)
+	up, err := m.storageUpload.GetAgentUpload(ctx, uploadID)
 	if err != nil {
 		m.logger.ErrorCtxf(ctx, "failed to publish release agent, failed to get upload(%s). err: %v", uploadID, err)
 
@@ -307,6 +308,7 @@ func (m *Manager) PublishReleaseAgent(ctx contextx.IContext, uploadID string) er
 	}
 
 	gp := gopool.NewPool()
+	gen := types.Generation2
 
 	releasesMap := make(map[string]*types.Release)
 	for idx := range releasePkgs {
@@ -314,7 +316,7 @@ func (m *Manager) PublishReleaseAgent(ctx contextx.IContext, uploadID string) er
 		gp.Go(func() error {
 			// generate package name.
 			pkgName, err := nodepkg.FormatPkgName(
-				types.Generation2,
+				gen,
 				types.ReleaseTypeAgent,
 				pkg.platform,
 				detail.Version,
@@ -346,7 +348,7 @@ func (m *Manager) PublishReleaseAgent(ctx contextx.IContext, uploadID string) er
 			}
 
 			releasesMap[pkg.platform.String()] = &types.Release{
-				Generation:     types.Generation2,
+				Generation:     gen,
 				Type:           types.ReleaseTypeAgent,
 				Platform:       pkg.platform,
 				Version:        detail.Version,
@@ -368,7 +370,7 @@ func (m *Manager) PublishReleaseAgent(ctx contextx.IContext, uploadID string) er
 	}
 
 	// upsert release bintool.
-	if err = m.storageRelease.UpsertManyRelease(ctx, conv.MapValueToSlice(releasesMap)); err != nil {
+	if err = m.storageRelease.UpsertManyReleaseAgent(ctx, gen, conv.MapValueToSlice(releasesMap)); err != nil {
 		m.logger.ErrorCtxf(ctx, "failed to publish release agent, failed to upsert release agent: %v", err)
 
 		return err
