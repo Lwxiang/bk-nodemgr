@@ -20,8 +20,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func newDao(releaseType string, client *mongo.Database, logger logger.ILogger) *dao {
-	tableName := TableName(releaseType)
+func newDao(tableName string, client *mongo.Database, logger logger.ILogger) *dao {
 	d := &dao{
 		client:    client.Collection(tableName),
 		logger:    logger,
