@@ -25,22 +25,9 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
-// IOfficialPlugin defines the interface of official plugin.
-type IOfficialPlugin interface {
-	// ExistReleaseOfficialPluginGen2 checks if release official plugin exists.
-	ExistReleaseOfficialPluginGen2(ctx contextx.IContext, pluginName string, version string, plat ...platform.Platform) (bool, error)
-
-	// UpsertManyReleaseOfficialPluginGen2 upserts many release official plugin gen2.
-	UpsertManyReleaseOfficialPluginGen2(ctx context.Context, releaseOfficialPlugins []*types.ReleaseOfficialPlugin) error
-}
-
-// ExistReleaseOfficialPluginGen2 checks if release plugin exists.
-func (s *Storage) ExistReleaseOfficialPluginGen2(
-	ctx contextx.IContext, pluginName string, version string, plats ...platform.Platform) (result bool, err error) {
-
-	// record metric.
-	metric := s.metric().Start("exist_official_plugin")
-	defer metric.End(err)
+// existReleaseOfficialPlugin checks if release plugin exists.
+func (s *Storage) existReleaseOfficialPlugin(
+	ctx contextx.IContext, pluginName string, version string, plats ...platform.Platform) (bool, error) {
 
 	fileNames := make([]string, 0, len(plats))
 	for _, plat := range plats {
@@ -52,20 +39,20 @@ func (s *Storage) ExistReleaseOfficialPluginGen2(
 		fileNames = append(fileNames, pluginFileName)
 	}
 
-	var num int64
-	if num, err = s.daoRelease.Count(ctx, types.ReleaseTypeOfficialPlugin, types.Generation2,
-		release.WithFileName(fileNames...)); err != nil {
+	num, err := s.daoRelease.Count(ctx, types.ReleaseTypeOfficialPlugin, types.Generation2,
+		release.WithFileName(fileNames...))
+	if err != nil {
 		return false, err
 	}
 
-	return num > 0, nil
+	result := num > 0
+
+	return result, nil
 }
 
-// UpsertManyReleaseOfficialPluginGen2 upsert many release.
-func (s *Storage) UpsertManyReleaseOfficialPluginGen2(ctx context.Context, releaseOfficialPlugins []*types.ReleaseOfficialPlugin) (err error) {
-	// record metric.
-	metric := s.metric().Start("upsert_many_official_plugin")
-	defer metric.End(err)
+// upsertManyReleaseOfficialPlugin upsert many release.
+func (s *Storage) upsertManyReleaseOfficialPlugin(ctx context.Context, releaseOfficialPlugins []*types.ReleaseOfficialPlugin) error {
+	var err error
 
 	releases := make([]*types.Release, 0, len(releaseOfficialPlugins))
 	for _, rls := range releaseOfficialPlugins {
@@ -82,5 +69,10 @@ func (s *Storage) UpsertManyReleaseOfficialPluginGen2(ctx context.Context, relea
 		releases = append(releases, &rls.Release)
 	}
 
-	return s.daoRelease.UpsertMany(ctx, types.ReleaseTypeOfficialPlugin, types.Generation2, releases...)
+	err = s.daoRelease.UpsertMany(ctx, types.ReleaseTypeOfficialPlugin, types.Generation2, releases...)
+	if err != nil {
+		return fmt.Errorf("failed to upsert many release agent: %v", err)
+	}
+
+	return nil
 }
