@@ -61,6 +61,36 @@ func (mode NodeOperationRetryMode) Validate() error {
 	case OperationRetryModeFull, OperationRetryModePartial:
 		return nil
 	default:
-		return fmt.Errorf("invalid node operation retry mode: %s", mode)
+		return fmt.Errorf("invalid node operation retry mode. mode(%s)", mode)
 	}
+}
+
+// NodeAgentInstallEligibility describes the node agent install eligibility.
+type NodeAgentInstallEligibility string
+
+const (
+	// NodeAgentInstallEligibilityConflictIP indicates there is a conflicting IP under the same business context.
+	NodeAgentInstallEligibilityConflictIP NodeAgentInstallEligibility = "conflict_ip"
+
+	// NodeAgentInstallEligibilityDuplicateIP indicates there are duplicate IPs in dynamic addressing mode.
+	NodeAgentInstallEligibilityDuplicateIP NodeAgentInstallEligibility = "duplicate_dynamic_ip"
+
+	// NodeAgentInstallEligibilityExistProxy indicates a proxy already exists on this node.
+	NodeAgentInstallEligibilityExistProxy NodeAgentInstallEligibility = "exist_proxy"
+
+	// NodeAgentInstallEligibilityExistAgent indicates an agent already exists on this node.
+	NodeAgentInstallEligibilityExistAgent NodeAgentInstallEligibility = "exist_agent"
+
+	// NodeAgentInstallEligibilityNormal indicates a normal node agent installation; the host can be reused.
+	NodeAgentInstallEligibilityNormal NodeAgentInstallEligibility = "normal_install"
+
+	// NodeAgentInstallEligibilityClean indicates a clean node agent installation and can be imported into CMDB.
+	NodeAgentInstallEligibilityClean NodeAgentInstallEligibility = "clean_install"
+)
+
+// NodeAgentInstallCheckResult describes the node agent install check result.
+type NodeAgentInstallCheckResult struct {
+	InnerIP             string
+	InstallEligibilitiy NodeAgentInstallEligibility
+	DuplicateHostIDs    []int64
 }
