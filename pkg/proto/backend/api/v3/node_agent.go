@@ -270,6 +270,20 @@ func (x *NodeAgentInstallCheckReq) Validate() error {
 func (x *NodeAgentInstallCheckReq) AutoConvert() {
 }
 
+// ConvertHostParamFromTypes convert host param from types.
+func (x *NodeAgentInstallCheckReq) ConvertHostParamFromTypes(checkParam []*types.NodeAgentInstallCheckInfo) {
+	hostsParam := make([]*NodeAgentInstallCheckReq_Host, len(checkParam))
+	for idx, host := range checkParam {
+		hostsParam[idx] = &NodeAgentInstallCheckReq_Host{
+			BkBizId:         host.BizID,
+			BkHostInnerip:   host.InnerIP,
+			BkNetworkunitId: host.NetworkUnitID,
+		}
+	}
+
+	x.Host = hostsParam
+}
+
 // ConvertResultFromTypes convert result from types.
 func (x *NodeAgentInstallCheckResp) ConvertResultFromTypes(result []*types.NodeAgentInstallCheckResult, total int) {
 	items := make([]*NodeAgentInstallEligibility, 0, total)
@@ -288,4 +302,24 @@ func (x *NodeAgentInstallCheckResp) ConvertResultFromTypes(result []*types.NodeA
 		TotalCount:    int64(total),
 		Eligibilities: items,
 	}
+}
+
+// ConvertResultToTypes convert result to types.
+func (x *NodeAgentInstallCheckResp) ConvertResultToTypes() []*types.NodeAgentInstallCheckResult {
+	if x.GetData() == nil {
+		return nil
+	}
+
+	data := x.GetData()
+
+	items := make([]*types.NodeAgentInstallCheckResult, len(data.GetEligibilities()))
+	for idx, item := range data.GetEligibilities() {
+		items[idx] = &types.NodeAgentInstallCheckResult{
+			InnerIP:             item.GetInnerIp(),
+			InstallEligibilitiy: types.NodeAgentInstallEligibility(item.GetEligibilityStatus()),
+			DuplicateHostIDs:    item.GetDuplicateHostIds(),
+		}
+	}
+
+	return items
 }
