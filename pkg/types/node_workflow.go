@@ -13,6 +13,8 @@ package types
 import (
 	"fmt"
 	"time"
+
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operation"
 )
 
 // NodeWorkflow represents the workflow of a node.
@@ -144,38 +146,37 @@ type NodeWorkflowOperationStatus struct {
 	Index       int
 	OperationID string
 	TriggerID   string
-	State       OperationState
+	State       NodeWorkflowOperationState
 }
 
-// OperationState ...
-type OperationState string
+// NodeWorkflowOperationState defines the state of node workflow operation.
+type NodeWorkflowOperationState string
 
-// NodeWorkflowOperationStatusList.
 const (
-	// StateInit operation instance state init.
-	StateInit OperationState = "init"
+	// NodeWorkflowOperationStateInit node workflow operation state init.
+	NodeWorkflowOperationStateInit NodeWorkflowOperationState = "init"
 
-	// StateLaunched operation instance state launched.
-	StateLaunched OperationState = "launched"
+	// NodeWorkflowOperationStateLaunched node workflow operation state launched.
+	NodeWorkflowOperationStateLaunched NodeWorkflowOperationState = "launched"
 
-	// StateRunning operation instance state running.
-	StateRunning OperationState = "running"
+	// NodeWorkflowOperationStateRunning node workflow operation state running.
+	NodeWorkflowOperationStateRunning NodeWorkflowOperationState = "running"
 
-	// StateSuccess operation instance state success.
-	StateSuccess OperationState = "success"
+	// NodeWorkflowOperationStateSuccess node workflow operation state success.
+	NodeWorkflowOperationStateSuccess NodeWorkflowOperationState = "success"
 
-	// StateFailed operation instance state failed.
-	StateFailed OperationState = "failed"
+	// NodeWorkflowOperationStateFailed node workflow operation state failed.
+	NodeWorkflowOperationStateFailed NodeWorkflowOperationState = "failed"
 
-	// StateTimeout operation instance state timeout.
-	StateTimeout OperationState = "timeout"
+	// NodeWorkflowOperationStateTimeout node workflow operation state timeout.
+	NodeWorkflowOperationStateTimeout NodeWorkflowOperationState = "timeout"
 
-	// StateTerminated operation instance state terminated.
-	StateTerminated OperationState = "terminated"
+	// NodeWorkflowOperationStateTerminated node workflow operation state terminated.
+	NodeWorkflowOperationStateTerminated NodeWorkflowOperationState = "terminated"
 )
 
 // WorkflowOperationStatusListToStringList converts a node status list to a string list.
-func WorkflowOperationStatusListToStringList(operationStatusList []OperationState) []string {
+func WorkflowOperationStatusListToStringList(operationStatusList []NodeWorkflowOperationState) []string {
 	data := make([]string, len(operationStatusList))
 	for idx, operationStatus := range operationStatusList {
 		data[idx] = string(operationStatus)
@@ -185,10 +186,10 @@ func WorkflowOperationStatusListToStringList(operationStatusList []OperationStat
 }
 
 // StringListToWorkflowOperationStatusList converts a string list to a node status list.
-func StringListToWorkflowOperationStatusList(stringList []string) []OperationState {
-	data := make([]OperationState, len(stringList))
+func StringListToWorkflowOperationStatusList(stringList []string) []NodeWorkflowOperationState {
+	data := make([]NodeWorkflowOperationState, len(stringList))
 	for idx, operationStatus := range stringList {
-		data[idx] = OperationState(operationStatus)
+		data[idx] = NodeWorkflowOperationState(operationStatus)
 	}
 
 	return data
@@ -206,5 +207,27 @@ func GetFinishedNodeWorkflowStatus() []NodeWorkflowStatus {
 // OperationSummary ...
 type OperationSummary struct {
 	TotalDuration int64
-	LastStatus    string
+	LastStatus    NodeWorkflowOperationState
+}
+
+// InstanceStatusToNodeWorkflowOperationState converts the instance status to operation state.
+func InstanceStatusToNodeWorkflowOperationState(status operation.State) (NodeWorkflowOperationState, error) {
+	switch status {
+	case operation.StateInit:
+		return NodeWorkflowOperationStateInit, nil
+	case operation.StateLaunched:
+		return NodeWorkflowOperationStateLaunched, nil
+	case operation.StateRunning:
+		return NodeWorkflowOperationStateRunning, nil
+	case operation.StateSuccess:
+		return NodeWorkflowOperationStateSuccess, nil
+	case operation.StateFailed:
+		return NodeWorkflowOperationStateFailed, nil
+	case operation.StateTimeout:
+		return NodeWorkflowOperationStateTimeout, nil
+	case operation.StateTerminated:
+		return NodeWorkflowOperationStateTerminated, nil
+	default:
+		return "", fmt.Errorf("invalid operation instance state. state(%s)", status)
+	}
 }
