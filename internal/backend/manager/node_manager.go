@@ -291,6 +291,12 @@ func (mgr *Manager) LaunchUpgradeNode(ctx contextx.ITenantUserContext, param Upg
 		deploy := nodeDeploy
 
 		gp.Go(func() error {
+			operationDef := mgr.getUpgradeOperationDef(deploy, param.Operator)
+			enablePagentInstaller(deploy)
+
+			operationParam := operationDef.DefaultParameters()
+			operationParam.ExtraContent = convNodeDeploymentInfoToMap(deploy.Info)
+
 			if err := mgr.conf.StorageNode.CreateNodeDeployment(ctx, deploy); err != nil {
 				mgr.logger.ErrorCtxf(ctx,
 					"failed to create node deployment. "+
@@ -300,11 +306,6 @@ func (mgr *Manager) LaunchUpgradeNode(ctx contextx.ITenantUserContext, param Upg
 				return err
 			}
 
-			operationDef := node.NewOperUpgradeNode(node.OperParamUpgradeNode{
-				Token:    deploy.Token,
-				Operator: param.Operator,
-			})
-			operationParam := operationDef.DefaultParameters()
 			operationParam.ExtraContent = convNodeDeploymentInfoToMap(deploy.Info)
 
 			operCtl, err := triggerCtl.CreateOperation(ctx, operationDef, operationParam)
@@ -335,6 +336,44 @@ func (mgr *Manager) LaunchUpgradeNode(ctx contextx.ITenantUserContext, param Upg
 	}
 
 	return workflowID, nil
+}
+
+func (mgr *Manager) getUpgradeOperationDef(deploy *types.NodeDeployment, operator string) operation.Definition {
+	// proxy.
+	if deploy.Info.Host.Dynamic.NodeRole == types.NodeRoleProxy {
+		return node.NewOperUpgradeNode(node.OperParamUpgradeNode{
+			Token:    deploy.Token,
+			Operator: operator,
+		})
+	}
+
+	// direct link, use agent.
+	if deploy.Info.UpgradeOptions.DirectLink {
+		return node.NewOperUpgradeNode(node.OperParamUpgradeNode{
+			Token:    deploy.Token,
+			Operator: operator,
+		})
+	}
+
+	// indirect link, use pagent.
+	return node.NewoperUpgradePagent(node.OperParamUpgradePagent{
+		Token:    deploy.Token,
+		Operator: operator,
+	})
+}
+
+func enablePagentInstaller(deploy *types.NodeDeployment) {
+	if deploy.Info.Host.Dynamic.NodeRole == types.NodeRoleProxy {
+		return
+	}
+
+	if deploy.Info.UpgradeOptions.DirectLink {
+		return
+	}
+
+	// if not direct link, use pagent. than we noly need to transfer installer.
+	deploy.Info.TransferOptions.SelectDownloads = true
+	deploy.Info.TransferOptions.EnableInstaller = true
 }
 
 // LaunchReconfigNode launch a task to reconfig node. returns the workflow-id.
