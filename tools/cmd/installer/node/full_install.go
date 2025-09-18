@@ -18,19 +18,19 @@ import (
 
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/flag"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/handler"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/step"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/persistent"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/agenthandler"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/checkdeploy"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/datareporter"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/filedownloader"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/nodeinstaller"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/nodestarter"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/nodestopper"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/nodeuninstaller"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/precheck"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/statusreporter"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/checkdeploy"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/datareporter"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/filedownloader"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/nodeinstaller"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/nodestarter"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/nodestopper"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/nodeuninstaller"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/precheck"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/node/statusreporter"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/logreporter"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/types"
 	"github.com/spf13/cobra"
 )
@@ -97,7 +97,7 @@ func NewFullInstall() *cobra.Command {
 			}()
 
 			// init log settings.
-			lHandler := logger.NewHandler(logDir, deployToken, operInstID, callbackSvrAddr)
+			lHandler := logreporter.NewHandler(logDir, deployToken, operInstID, reportLogUrl(callbackSvrAddr))
 			if err := lHandler.Start(); err != nil {
 				return fmt.Errorf("failed to init logger: %w", err)
 			}

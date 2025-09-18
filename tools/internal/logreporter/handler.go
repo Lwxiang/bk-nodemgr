@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package logger
+package logreporter
 
 import (
 	"fmt"
@@ -16,8 +16,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/logreporter"
 )
 
 const (
@@ -30,16 +28,16 @@ const (
 )
 
 // NewHandler creates a new logger handler.
-func NewHandler(logDir, deployToken, operInstID, callbackSvrAddr string) *Handler {
+func NewHandler(logDir, deployToken, operInstID, reportLogURL string) *Handler {
 	return &Handler{
 		logDir:      logDir,
 		logFilePath: filepath.Join(logDir, fmt.Sprintf("installer_%s.log", time.Now().Format("2006-01-02T15-04-05"))),
-		args: logreporter.ReportLogsArgs{
-			Token:           deployToken,
-			OperInstID:      operInstID,
-			LogRptCnt:       0,
-			BulkSize:        defaultLogReportBulkSize,
-			CallbackSvrAddr: callbackSvrAddr,
+		args: ReportLogsArgs{
+			Token:        deployToken,
+			OperInstID:   operInstID,
+			LogRptCnt:    0,
+			BulkSize:     defaultLogReportBulkSize,
+			ReportLogURL: reportLogURL,
 		},
 	}
 }
@@ -48,11 +46,11 @@ func NewHandler(logDir, deployToken, operInstID, callbackSvrAddr string) *Handle
 type Handler struct {
 	logDir      string
 	logFilePath string
-	args        logreporter.ReportLogsArgs
+	args        ReportLogsArgs
 
 	logWFile     *os.File
 	logRFile     *os.File
-	reporter     *logreporter.Reporter
+	reporter     *Reporter
 	watchStopper func() error
 }
 
@@ -75,7 +73,7 @@ func (lh *Handler) Start() error {
 	}
 
 	lh.args.Reader = lh.logRFile
-	lh.reporter = logreporter.NewReporter(lh.args)
+	lh.reporter = NewReporter(lh.args)
 
 	errCh, stopper := lh.reporter.Watch(1 * time.Second)
 	go func() {
