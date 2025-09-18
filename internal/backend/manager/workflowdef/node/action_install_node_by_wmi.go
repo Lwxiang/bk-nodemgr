@@ -26,6 +26,7 @@ import (
 	fileiface "github.com/TencentBlueKing/bk-nodemgr/pkg/filex/iface"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/filex/local"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/tool"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/discover"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/logger"
@@ -290,7 +291,11 @@ func (act *actionInstallNodeByWMI) executeInstallCMD(std *utils.NodeActionStanda
 	if err != nil {
 		return fmt.Errorf("failed to create temp bat file for wmi execution: %w", err)
 	}
-	defer tmp.Clean()
+	defer func() {
+		if err := tmp.Clean(); err != nil {
+			std.InstanceData().LogE(fmt.Sprintf("failed to clean temp file: %v", err))
+		}
+	}()
 
 	_, _, err = client.UploadFile(std.Context(), tmpInstallBat.Path(), std.DeployInfo().InstallerWorkDir)
 	if err != nil {
@@ -331,8 +336,8 @@ func (act *actionInstallNodeByWMI) buildBat(param *InstallParamsWin) string {
 	}
 	installLogPath := winpath.Clean(fmt.Sprintf("%s.stdout", param.InstallerPath))
 
-	installCmd := fmt.Sprintf("cd %s && %s full-install %s >%s 2>&1",
-		winpath.Join(param.BaseWorkDir, system.GetEnv()), param.InstallerPath, strings.Join(args, " "), installLogPath)
+	installCmd := fmt.Sprintf("cd %s && %s %s %s >%s 2>&1",
+		winpath.Join(param.BaseWorkDir, system.GetEnv()), param.InstallerPath, installer.NodeCmdFullInstall, strings.Join(args, " "), installLogPath)
 
 	return installCmd
 }

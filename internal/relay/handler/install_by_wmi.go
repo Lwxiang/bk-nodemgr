@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/filex/local"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	protoRelay "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/relay"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/tmp"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/winpath"
@@ -100,7 +101,11 @@ func (h *handler) InstallPagentByWMI(ctx context.Context, payload []byte) {
 		errMsg = fmt.Sprintf("failed to create temp file: %v", err)
 		return
 	}
-	defer tmp.Clean()
+	defer func() {
+		if err := tmp.Clean(); err != nil {
+			h.logger.Errorf(fmt.Sprintf("failed to clean temp file: %v", err))
+		}
+	}()
 
 	// transfer install bat file
 	stdOut, stdErr, err = client.UploadFile(ctx, tmpInstallBat.Path(), event.InstallerWorkDir)
@@ -134,8 +139,8 @@ func (h *handler) buildBat(installerPath, targetWorkDir string, args []string) s
 
 	installLogPath := winpath.Clean(fmt.Sprintf("%s.stdout", installerPath))
 
-	installCmd := fmt.Sprintf("cd %s && %s full-install %s >%s 2>&1",
-		targetWorkDir, installerPath, strings.Join(args, " "), installLogPath)
+	installCmd := fmt.Sprintf("cd %s && %s %s %s >%s 2>&1",
+		targetWorkDir, installerPath, installer.NodeCmdFullInstall, strings.Join(args, " "), installLogPath)
 
 	return installCmd
 }
