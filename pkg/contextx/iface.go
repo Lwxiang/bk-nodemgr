@@ -10,21 +10,31 @@
 
 package contextx
 
-// IUserContext user context.
-type IUserContext interface {
-	IContext
-	BKUsername() string
+import "context"
+
+// IContext this is the context of the nodemgr.
+type IContext interface {
+	context.Context
+	IContextValues
 }
 
-// ITenantContext tenant context.
-type ITenantContext interface {
-	IContext
+// IContextValues describes the context values.
+type IContextValues interface {
+	// Values get all values.
+	Values() map[string]any
+
+	// TenantID get tenant-id from values.
 	TenantID() string
-}
+	// CheckTenantID validate tenant-id.
+	CheckTenantID() error
 
-// ITenantUserContext tenant user context.
-type ITenantUserContext interface {
-	IContext
-	ITenantContext
-	IUserContext
+	// BKUsername get bk-username from values.
+	BKUsername() string
+	// CheckBKUsername validate bk-username.
+	CheckBKUsername() error
+
+	// MessageID get message-id from values.
+	MessageID() string
+	// CheckMessageID validate message-id.
+	CheckMessageID() error
 }
