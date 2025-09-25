@@ -8,7 +8,6 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package download ...
 package download
 
 import (
@@ -22,13 +21,26 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
-// Agent download agent package.
-func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, error) {
-	req := new(protoFile.DownloadAgentReq)
-	if err := rCtx.BindJSON(req); err != nil {
+// Plugin download plugin package.
+func (h *handler) Plugin(ctx restserver.IContext) (*restserver.FileResponse, error) {
+	req := new(protoFile.DownloadPluginReq)
+	if err := ctx.BindJSON(req); err != nil {
 		h.logger.Error("bind json failed", err)
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
+	pluginType := types.PluginType(req.GetPluginType())
+	pluginName := req.GetPluginName()
+
+	var rt types.ReleaseType
+	switch pluginType {
+	case types.PluginTypeOfficial:
+		rt = types.ReleaseTypeOfficialPlugin
+	case types.PluginTypeExternal:
+		rt = types.ReleaseTypeExternalPlugin
+	default:
+		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("unsupport plugin type(%s)", pluginType))
 	}
 
 	os, err := platform.NormalizeOS(req.GetOsType())
@@ -41,9 +53,10 @@ func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, err
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("normalize arch failed: %w", err))
 	}
 
-	file, _, err := h.manager.EnsureNodeToLocal(rCtx,
-		types.ReleaseTypeAgent,
-		types.Generation(req.GetGeneration()),
+	file, _, err := h.manager.EnsurePluginToLocal(ctx,
+		rt,
+		pluginName,
+		types.Generation2,
 		platform.Platform{
 			OS:   os,
 			Arch: arch,
@@ -52,7 +65,7 @@ func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, err
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("get file failed: %w", err))
 	}
 
-	reader, err := file.Content(rCtx)
+	reader, err := file.Content(ctx)
 	if err != nil {
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("get file content failed: %w", err))
 	}
