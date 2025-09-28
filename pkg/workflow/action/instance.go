@@ -12,6 +12,7 @@ package action
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
@@ -34,13 +35,14 @@ type InstanceData struct {
 	OperationDefName    string
 	OperationInstanceID string
 
-	Name        string
-	Index       int
-	TotalIndex  int
-	Messages    []common.Message
-	Content     map[string]any
-	PrivateData map[string]any
-	Lifecycle   *Lifecycle
+	Name          string
+	Index         int
+	TotalIndex    int
+	Messages      []common.Message
+	MessagesMutex sync.Mutex
+	Content       map[string]any
+	PrivateData   map[string]any
+	Lifecycle     *Lifecycle
 }
 
 // Info gets info string.
@@ -51,6 +53,9 @@ func (data *InstanceData) Info() string {
 
 // LogI logs messages.
 func (data *InstanceData) LogI(messages ...string) {
+	data.MessagesMutex.Lock()
+	defer data.MessagesMutex.Unlock()
+
 	for _, message := range messages {
 		data.Messages = append(data.Messages, common.Message{
 			Time:  time.Now(),
@@ -62,6 +67,9 @@ func (data *InstanceData) LogI(messages ...string) {
 
 // LogW logs error messages.
 func (data *InstanceData) LogW(messages ...string) {
+	data.MessagesMutex.Lock()
+	defer data.MessagesMutex.Unlock()
+
 	for _, message := range messages {
 		data.Messages = append(data.Messages, common.Message{
 			Time:  time.Now(),
@@ -73,6 +81,9 @@ func (data *InstanceData) LogW(messages ...string) {
 
 // LogE logs error messages.
 func (data *InstanceData) LogE(messages ...string) {
+	data.MessagesMutex.Lock()
+	defer data.MessagesMutex.Unlock()
+
 	for _, message := range messages {
 		data.Messages = append(data.Messages, common.Message{
 			Time:  time.Now(),
