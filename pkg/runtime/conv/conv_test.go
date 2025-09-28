@@ -1092,3 +1092,104 @@ func TestSliceToMap(t *testing.T) {
 		})
 	}
 }
+
+// TestEmpty tests the Empty function.
+func TestEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		s    any
+		want bool
+	}{
+		{
+			name: "empty string",
+			s:    "",
+			want: true,
+		},
+		{
+			name: "string with spaces",
+			s:    "   ",
+			want: false,
+		},
+		{
+			name: "non-empty string",
+			s:    "hello",
+			want: false,
+		},
+		{
+			name: "empty slice",
+			s:    []string{},
+			want: true,
+		},
+		{
+			name: "nil slice",
+			s:    []string(nil),
+			want: true,
+		},
+		{
+			name: "non-empty slice",
+			s:    []string{"apple", "banana"},
+			want: false,
+		},
+		{
+			name: "empty map",
+			s:    map[string]int{},
+			want: true,
+		},
+		{
+			name: "nil map",
+			s:    map[string]int(nil),
+			want: true,
+		},
+		{
+			name: "non-empty map",
+			s:    map[string]int{"a": 1},
+			want: false,
+		},
+		{
+			name: "nil value",
+			s:    nil,
+			want: true,
+		},
+		{
+			name: "integer zero",
+			s:    0,
+			want: true,
+		},
+		{
+			name: "float zero",
+			s:    0.0,
+			want: true,
+		},
+		{
+			name: "nil channel",
+			s:    (chan int)(nil),
+			want: true},
+		{
+			name: "non-nil channel",
+			s:    make(chan int),
+			want: false},
+		{
+			name: "empty struct",
+			s:    struct{}{},
+			want: true},
+		{
+			name: "nil function",
+			s:    (func())(nil),
+			want: true},
+		{
+			name: "pointer to zero",
+			s: func() interface{} {
+				x := 0
+				return &x
+			}(),
+			want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsEmpty(tt.s); got != tt.want {
+				t.Errorf("Empty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
