@@ -225,3 +225,12 @@ func (x *NodeAgentInstallCheckResp) ConvertResultFromTypes(result []*types.NodeA
 		TotalCount:   int64(num),
 	}
 }
+
+// AutoConvert auto convert.
+func (x *UploadAgentTemplateReq) AutoConvert() {
+}
+
+// Validate check body.
+func (x *UploadAgentTemplateReq) Validate() error {
+	return nil
+}
