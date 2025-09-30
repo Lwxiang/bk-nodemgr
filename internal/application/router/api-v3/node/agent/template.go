@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	sheetName = "install_template"
-	fileName  = "install_template.xlsx"
+	sheetName        = "install_template"
+	templateFileName = "install_template.xlsx"
 
 	exampleUserDesc   = "login_username"
 	exampleCreditDesc = "fill in your password or key according to LoginMode"
@@ -41,8 +41,8 @@ type column struct {
 }
 
 const (
-	templateKeyInnerIP   = "inner_ip"
-	templateKeyInnerIPV6 = "inner_ipv6"
+	templateKeyInnerIP   = "bk_host_innerip"
+	templateKeyInnerIPV6 = "bk_host_inneripv6"
 	templateKeyOsType    = "os_type"
 	templateKeyLoginIP   = "login_ip"
 	templateKeyLoginPort = "login_port"
@@ -75,51 +75,53 @@ func getColumns() []column {
 
 // DownloadTemplate downloads the agent install template.
 func (h *handler) DownloadTemplate(rCtx restserver.IContext) (*restserver.FileResponse, error) {
-	data, err := createTemplate()
-	if err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to create template: %v", err)
-		return nil, resterrf.ErrWrap(resterrf.Aborted, err)
-	}
-
-	return &restserver.FileResponse{
-		Data:        data,
-		FileName:    fileName,
-		ContentType: restserver.MIMETypeXls,
-	}, nil
-}
-
-// createTemplate create agent install template.
-// nolint:errcheck
-func createTemplate() (io.ReadCloser, error) {
+	// create template file
 	f := excelize.NewFile()
 	defer f.Close()
 
+	// create sheet
 	index, err := f.NewSheet(sheetName)
 	if err != nil {
-		return nil, fmt.Errorf("create sheet failed: %w", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to create sheet")
+		return nil, resterrf.ErrWrap(resterrf.Aborted, fmt.Errorf("failed to create sheet: %w", err))
 	}
 
+	// set active sheet
 	f.SetActiveSheet(index)
+
 	// delete default sheet
-	f.DeleteSheet("Sheet1")
+	if err := f.DeleteSheet("Sheet1"); err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to delete default sheet")
+		return nil, resterrf.ErrWrap(resterrf.Aborted, fmt.Errorf("failed to delete default sheet: %w", err))
+	}
 
 	// set header
 	for colIndex, col := range getColumns() {
 		cell, _ := excelize.CoordinatesToCellName(colIndex+1, 1)
-		f.SetCellValue(sheetName, cell, col.name)
+		if err := f.SetCellValue(sheetName, cell, col.name); err != nil {
+			logger.G.Biz(rCtx).WithErr(err).Error("failed to set cell value")
+			return nil, resterrf.ErrWrap(resterrf.Aborted, fmt.Errorf("failed to set cell value: %w", err))
+		}
 	}
 
 	// set sample data
 	if err := setSampleData(f); err != nil {
-		return nil, err
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to set sample data")
+		return nil, resterrf.ErrWrap(resterrf.Aborted, err)
 	}
 
 	buffer := new(bytes.Buffer)
 	if err := f.Write(buffer); err != nil {
-		return nil, fmt.Errorf("write to buffer failed: %w", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to write buffer")
+		return nil, resterrf.ErrWrap(resterrf.Aborted, fmt.Errorf("failed to write buffer: %w", err))
 	}
 
-	return io.NopCloser(buffer), nil
+	return &restserver.FileResponse{
+		Data:        io.NopCloser(buffer),
+		Size:        int64(buffer.Len()),
+		FileName:    templateFileName,
+		ContentType: restserver.MIMETypeXls,
+	}, nil
 }
 
 // setSampleData sets sample data to the excel file.
@@ -177,13 +179,13 @@ func (h *handler) UploadTemplate(rCtx restserver.IContext) (interface{}, error) 
 	req := new(protoApplication.UploadAgentTemplateReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload template, failed to parse file form: %v", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload template, failed to parse file form")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload template, failed to open file: %v", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload template, failed to open file")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 	defer file.Close()
@@ -191,7 +193,7 @@ func (h *handler) UploadTemplate(rCtx restserver.IContext) (interface{}, error) 
 	// parse excel file to infos
 	infos, err := parseExcelToInfos(file)
 	if err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to parse excel file: %v", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to parse excel file")
 		return nil, resterrf.ErrWrap(resterrf.InvalidFileResource, err)
 	}
 
