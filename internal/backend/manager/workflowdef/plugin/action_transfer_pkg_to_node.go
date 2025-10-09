@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 	"time"
 
-	pluginployment "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin"
-	storageTopo "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	pluginStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/deployconstant"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/platform"
@@ -37,7 +37,7 @@ const (
 )
 
 // NewActionTransferPluginPkgToNode get a new action.
-func NewActionTransferPluginPkgToNode(daoPluginDeployment pluginployment.IDaoPluginDeployment, daoHost storageTopo.IStorageHost, fileHandler file.IHandler) action.Definition {
+func NewActionTransferPluginPkgToNode(daoPluginDeployment pluginStg.IDaoPluginDeployment, daoHost topoStg.IStorageHost, fileHandler file.IHandler) action.Definition {
 
 	return &actionTransferPluginPkgToNode{
 		daoPluginDeployment: daoPluginDeployment,
@@ -54,8 +54,8 @@ type ActionParamTransferPluginPkgToNode struct {
 }
 
 type actionTransferPluginPkgToNode struct {
-	daoPluginDeployment pluginployment.IDaoPluginDeployment
-	daoHost             storageTopo.IStorageHost
+	daoPluginDeployment pluginStg.IDaoPluginDeployment
+	daoHost             topoStg.IStorageHost
 	fileHandler         file.IHandler
 }
 

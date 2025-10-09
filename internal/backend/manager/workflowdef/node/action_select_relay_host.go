@@ -16,9 +16,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
+	nodeUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
 	nodeStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/node"
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
@@ -31,7 +31,7 @@ const (
 
 // NewActionSelectRelayHost get a new action.
 func NewActionSelectRelayHost(
-	storageHost topo.IStorageHost,
+	storageHost topoStg.IStorageHost,
 	storageNodeDeployment nodeStg.IDaoNodeDeployment,
 ) action.Definition {
 
@@ -43,12 +43,12 @@ func NewActionSelectRelayHost(
 
 // ActParamSelectRelayHost ...
 type ActParamSelectRelayHost struct {
-	utils.NodeActionStandardParam `json:",inline"`
+	nodeUtils.NodeActionStandardParam `json:",inline"`
 }
 
 // actionSelectRelayHost ...
 type actionSelectRelayHost struct {
-	storageHost           topo.IStorageHost
+	storageHost           topoStg.IStorageHost
 	storageNodeDeployment nodeStg.IDaoNodeDeployment
 }
 
@@ -100,7 +100,7 @@ func (act *actionSelectRelayHost) Do(ctx *action.InstanceContext) (err error) {
 	}
 
 	// initialize standard data.
-	std := utils.NewNodeActionStandarder(act.storageNodeDeployment)
+	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment)
 	if err = std.Initialize(ctx, param.NodeActionStandardParam); err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (act *actionSelectRelayHost) Do(ctx *action.InstanceContext) (err error) {
 }
 
 func (act *actionSelectRelayHost) selectDedicatedInstallerHost(
-	std *utils.NodeActionStandarder) (types.RelayInfo, error) {
+	std *nodeUtils.NodeActionStandarder) (types.RelayInfo, error) {
 
 	hosts, num, err := act.storageHost.ListHost(std.Context(), types.UnlimitedPage(), &types.HostCondition{
 		ExactInclude: &types.HostExactFields{

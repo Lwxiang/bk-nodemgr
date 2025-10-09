@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
+	nodeUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
 	nodeStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/node"
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 
@@ -31,7 +31,7 @@ const (
 
 // NewActionTryReuseAgentID ...
 func NewActionTryReuseAgentID(
-	storageHost topo.IStorageHost,
+	storageHost topoStg.IStorageHost,
 	storageNodeDeployment nodeStg.IDaoNodeDeployment,
 ) action.Definition {
 
@@ -43,12 +43,12 @@ func NewActionTryReuseAgentID(
 
 // ActParamTryReuseAgentID ...
 type ActParamTryReuseAgentID struct {
-	utils.NodeActionStandardParam `json:",inline"`
+	nodeUtils.NodeActionStandardParam `json:",inline"`
 }
 
 // TryReuseAgentID ...
 type TryReuseAgentID struct {
-	storageHost           topo.IStorageHost
+	storageHost           topoStg.IStorageHost
 	storageNodeDeployment nodeStg.IDaoNodeDeployment
 }
 
@@ -98,7 +98,7 @@ func (act *TryReuseAgentID) Do(ctx *action.InstanceContext) error {
 	}
 
 	// initialize standard data.
-	std := utils.NewNodeActionStandarder(act.storageNodeDeployment)
+	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment)
 	if err = std.Initialize(ctx, param.NodeActionStandardParam); err != nil {
 		return err
 	}
