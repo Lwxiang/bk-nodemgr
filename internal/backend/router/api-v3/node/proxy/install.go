@@ -95,7 +95,7 @@ func (h *handler) generateInstallNodeDeployments(
 	}
 
 	gp := gopool.NewPool()
-	nodeDeployments := make([]*types.NodeDeployment, len(req.Host))
+	nodeDeployments := make([]*types.NodeDeployment, len(req.GetHost()))
 	for i := range req.GetHost() {
 		idx := i
 		reqHost := req.GetHost()[idx]
@@ -104,6 +104,11 @@ func (h *handler) generateInstallNodeDeployments(
 			networkUnit, ok := networkUnitMap[reqHost.GetBkNetworkunitId()]
 			if !ok {
 				return fmt.Errorf("failed to find networkunit with id: %d", reqHost.GetBkNetworkunitId())
+			}
+
+			installOriginUnit, ok := networkUnitMap[reqHost.GetProxyInstallOriginUnitId()]
+			if !ok {
+				return fmt.Errorf("failed to find install origin networkunit with id: %d", reqHost.GetProxyInstallOriginUnitId())
 			}
 
 			loginCreditID := ""
@@ -125,23 +130,25 @@ func (h *handler) generateInstallNodeDeployments(
 							Addressing:    types.Addressing(reqHost.GetBkAddressing()),
 						},
 						Dynamic: &types.HostDynamic{
-							NodeRole:       types.NodeRoleProxy,
-							NodeStatus:     types.NodeStatusInit,
-							NodeGeneration: DefaultNodeGeneration,
-							NetworkUnitID:  networkUnit.ID,
-							ProxyTags:      types.StringListToProxyTagList(reqHost.GetProxyTags()),
-							LoginIP:        reqHost.GetLoginIp(),
-							LoginPort:      reqHost.GetLoginPort(),
-							LoginUser:      reqHost.GetLoginUser(),
-							LoginMode:      types.LoginMode(reqHost.GetLoginMode()),
-							LoginCreditID:  loginCreditID,
-							ExportIP:       reqHost.GetExportIp(),
-							AdvertiseIP:    reqHost.GetAdvertiseIp(),
+							NodeRole:                 types.NodeRoleProxy,
+							NodeStatus:               types.NodeStatusInit,
+							NodeGeneration:           DefaultNodeGeneration,
+							NetworkUnitID:            networkUnit.ID,
+							ProxyTags:                types.StringListToProxyTagList(reqHost.GetProxyTags()),
+							LoginIP:                  reqHost.GetLoginIp(),
+							LoginPort:                reqHost.GetLoginPort(),
+							LoginUser:                reqHost.GetLoginUser(),
+							LoginMode:                types.LoginMode(reqHost.GetLoginMode()),
+							LoginCreditID:            loginCreditID,
+							ExportIP:                 reqHost.GetExportIp(),
+							AdvertiseIP:              reqHost.GetAdvertiseIp(),
+							ProxyInstallOriginUnitID: reqHost.GetProxyInstallOriginUnitId(),
 						},
 					},
 					CurrentVersionSupports: types.DeploymentVersionSupports{},
 					InstallOptions: types.DeploymentInstallOptions{
-						ReRegister: reqHost.GetReRegister(),
+						ReRegister:    reqHost.GetReRegister(),
+						DirectInstall: installOriginUnit.IsDirect,
 					},
 					UpgradeOptions:  types.DeploymentUpgradeOptions{},
 					RestartOptions:  types.DeploymentRestartOptions{},
@@ -169,6 +176,11 @@ func (h *handler) fetchNetworkunits(ctx contextx.IContext, hosts []*protoBackend
 	networkUnitIDMap := make(map[int64]struct{})
 	for _, host := range hosts {
 		networkUnitIDMap[host.GetBkNetworkunitId()] = struct{}{}
+	}
+
+	// add proxy_install_origin_unit_id.
+	for _, host := range hosts {
+		networkUnitIDMap[host.GetProxyInstallOriginUnitId()] = struct{}{}
 	}
 
 	networkUnitList, _, err := h.storageNetworkUnit.ListNetworkUnit(ctx, types.UnlimitedPage(), &types.NetworkUnitCondition{
@@ -242,6 +254,7 @@ func (h *handler) processHostCredit(nCtx contextx.IContext, host *types.Host, pa
 		if err != nil {
 			return fmt.Errorf("failed to gen node deployment: %w", err)
 		}
+
 		return nil
 
 	case types.LoginModePassword:
@@ -264,6 +277,7 @@ func (h *handler) processHostCredit(nCtx contextx.IContext, host *types.Host, pa
 		if err != nil {
 			return fmt.Errorf("failed to gen node deployment: %w", err)
 		}
+
 		return nil
 
 	case types.LoginModePasswordVault:
