@@ -8,21 +8,5 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package manager
-
-import (
-	"fmt"
-)
-
-// registerActionDefs init action defs.
-func (mgr *Manager) registerActionDefs() error {
-	if err := mgr.registerActionDefsOnceOperation(); err != nil {
-		return fmt.Errorf("register once operation actions failed: %w", err)
-	}
-
-	if err := mgr.registerActionDefsPeriodicOperation(); err != nil {
-		return fmt.Errorf("register periodic operation actions failed: %w", err)
-	}
-
-	return nil
-}
+// Package utils use to provide some common utils for schedule actions.
+package utils

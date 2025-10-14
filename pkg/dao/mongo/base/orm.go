@@ -121,8 +121,15 @@ func (orm *Orm[P, T]) Get(nCtx contextx.IContext, filter bson.D, fields ...strin
 
 	// find one as get.
 	table := &TableBroker[P]{}
-	if err = orm.dao.GetClient().FindOne(nCtx, filter, findOptions).Decode(table); err != nil {
-		logger.G.Sys().WithErr(err).With("table", orm.dao.GetTableName()).Warn("failed to find one, failed to decode")
+	result := orm.dao.GetClient().FindOne(nCtx, filter, findOptions)
+	if err = result.Err(); err != nil {
+		logger.G.Sys().WithErr(err).With("table", orm.dao.GetTableName()).Warn("failed to find one")
+
+		return nil, err
+	}
+
+	if err = result.Decode(table); err != nil {
+		logger.G.Sys().WithErr(err).With("table", orm.dao.GetTableName()).Warn("failed to decode found document")
 
 		return nil, err
 	}

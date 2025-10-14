@@ -684,6 +684,8 @@ linters-settings:
       # Using `pluginStg` alias for `github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin`
       - pkg: github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin
         alias: pluginStg
+      - pkg: github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/workflow
+        alias: wfStg
       # Using `machinery` things.
       - pkg: github.com/RichardKnop/machinery/v2/backends/iface
         alias: backendIface
@@ -745,8 +747,6 @@ linters-settings:
         alias: daoTrigger
       - pkg: github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo
         alias: daomongo
-      - pkg: github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/schedule
-        alias: worksche
       - pkg: github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/plugin-workflow
         alias: pluginworkflow
       - pkg: github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/plugin-deployment
@@ -755,3 +755,7 @@ linters-settings:
         alias: nodeUtils
       - pkg: github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/plugin/utils
         alias: pluginUtils
+      - pkg: github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/syncdata/utils
+        alias: syncDataUtils
+      - pkg: github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/scheduled-workflow
+        alias: scheduledworkflow

@@ -32,15 +32,11 @@ const (
 )
 
 // NewActionBindAgentHostRel get a new action.
-func NewActionBindAgentHostRel(
-	bindHostAgent cmdb.IBindHostAgent,
-	storageHost topoStg.IStorageHost,
-	storageNodeDeployment nodeStg.IDaoNodeDeployment) action.Definition {
-
+func NewActionBindAgentHostRel(capability *Capability) action.Definition {
 	return &actionBindAgentHostRel{
-		IBindHostAgent:        bindHostAgent,
-		storageHost:           storageHost,
-		storageNodeDeployment: storageNodeDeployment,
+		IBindHostAgent:        capability.CMDBHandler,
+		storageHost:           capability.StorageTopo,
+		storageNodeDeployment: capability.StorageNode,
 	}
 }
 
@@ -117,7 +113,9 @@ func (act *actionBindAgentHostRel) Do(ctx *action.InstanceContext) error {
 			return err
 		}
 
-		logger.G.Sys().With("host-id", std.DeployInfo().Host.HostID, "agent-id", std.DeployInfo().Host.Dynamic.AgentID).Info("successfully bind host agent relation to cmdb")
+		logger.G.Sys().
+			With("host-id", std.DeployInfo().Host.HostID, "agent-id", std.DeployInfo().Host.Dynamic.AgentID).
+			Info("successfully bind host agent relation to cmdb")
 
 		return nil
 	})
@@ -127,7 +125,9 @@ func (act *actionBindAgentHostRel) Do(ctx *action.InstanceContext) error {
 			return err
 		}
 
-		logger.G.Sys().With("host-id", std.DeployInfo().Host.HostID, "agent-id", std.DeployInfo().Host.Dynamic.AgentID).Info("successfully bind host agent relation to db")
+		logger.G.Sys().
+			With("host-id", std.DeployInfo().Host.HostID, "agent-id", std.DeployInfo().Host.Dynamic.AgentID).
+			Info("successfully bind host agent relation to db")
 
 		return nil
 	})
@@ -136,7 +136,9 @@ func (act *actionBindAgentHostRel) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("bind host agent relation failed: %w", err)
 	}
 
-	logger.G.Sys().With("host-id", std.DeployInfo().Host.HostID, "agent-id", std.DeployInfo().Host.Dynamic.AgentID).Info("successfully bind host agent relation")
+	logger.G.Sys().
+		With("host-id", std.DeployInfo().Host.HostID, "agent-id", std.DeployInfo().Host.Dynamic.AgentID).
+		Info("successfully bind host agent relation")
 
 	return nil
 }

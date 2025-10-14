@@ -8,26 +8,19 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package manager
+package types
 
-import (
-	"fmt"
+import "time"
 
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node"
-)
-
-// registerOperExecDefs init operation execution definitions.
-func (mgr *Manager) registerOperExecDefs() error {
-	if err := mgr.registerOperExecDefNodeInstall(); err != nil {
-		return fmt.Errorf("register oper extra action def node install failed: %w", err)
-	}
-
-	return nil
-}
-
-// registerOperExecDefNodeInstall registers the operation execution definitions for node installation operations.
-func (mgr *Manager) registerOperExecDefNodeInstall() error {
-	return mgr.workflowMgr.RegisterOperExtraExecutions(
-		node.NewOperationExtraExecution(mgr.conf.Cache, mgr.conf.StorageNode),
-	)
+// ScheduledWorkflow represents the workflow of a scheduled task.
+type ScheduledWorkflow struct {
+	WorkflowID   string
+	WorkflowName string
+	TenantID     string
+	TriggerID    string
+	Enabled      bool
+	Interval     string
+	PrivateData  map[string]any
+	Operator     string
+	OperateTime  time.Time
 }

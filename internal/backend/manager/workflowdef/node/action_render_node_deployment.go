@@ -41,20 +41,13 @@ const (
 )
 
 // NewActionRenderNodeDeployment get a new action.
-func NewActionRenderNodeDeployment(
-	storageNodeDeployment nodeStg.IDaoNodeDeployment,
-	storageHost topoStg.IStorageHost,
-	storageDomainGse topoStg.IStorageDomainGse,
-	storageRelease release.IStorage,
-	storageConfigPolicy configpolicy.IStorage,
-) action.Definition {
-
+func NewActionRenderNodeDeployment(capability *Capability) action.Definition {
 	return &actionRenderNodeDeployment{
-		storageNodeDeployment: storageNodeDeployment,
-		storageHost:           storageHost,
-		storageDomainGse:      storageDomainGse,
-		storageRelease:        storageRelease,
-		storageConfigPolicy:   storageConfigPolicy,
+		storageNodeDeployment: capability.StorageNode,
+		storageHost:           capability.StorageTopo,
+		storageDomainGse:      capability.StorageTopo,
+		storageRelease:        capability.StorageRelease,
+		storageConfigPolicy:   capability.StorageConfigPolicy,
 	}
 }
 
@@ -109,6 +102,7 @@ func (act *actionRenderNodeDeployment) DelayFn() func() {
 }
 
 // Do this func define what the action will do.
+// nolint: perfsprint,funlen,gocognit
 func (act *actionRenderNodeDeployment) Do(ctx *action.InstanceContext) error {
 	param := new(ActParamRenderNodeDeployment)
 	err := conv.MapToStruct(ctx.Data.Content, param)
