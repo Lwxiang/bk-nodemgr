@@ -91,6 +91,31 @@ message PackageReleaseSetLabelsResp {
   Data data = 5;
 }
 
+// PackageReleaseSetLabelsManyReq describes the HTTP request body when set many
+// labels.
+message PackageReleaseSetLabelsManyReq {
+  message Identity {
+    int64 generation = 1;
+    Platform platform = 2;
+    string version = 3;
+  }
+  string release_type = 1;
+  repeated Identity identify = 2;
+  repeated string labels = 3;
+}
+
+// PackageReleaseSetLabelsManyResp describes the HTTP response body when set
+// many labels.
+message PackageReleaseSetLabelsManyResp {
+  int32 code = 1;
+  string message = 2;
+  string request_id = 3;
+  Error error = 4;
+
+  message Data {}
+  Data data = 5;
+}
+
 // PackageReleaseEnableReq describes the HTTP request body when enable package
 // release.
 message PackageReleaseEnableReq {
@@ -218,6 +243,15 @@ service Package {
       returns (PackageReleaseSetLabelsResp) {
     option (google.api.http) = {
       post : "/api/v3/package/release/set_labels"
+      body : "*"
+    };
+  }
+
+  // SetReleaseLabeslMany sets many release labels.
+  rpc SetReleaseLabelsMany(PackageReleaseSetLabelsManyReq)
+      returns (PackageReleaseSetLabelsManyResp) {
+    option (google.api.http) = {
+      post : "/api/v3/package/release/set_labels_many"
       body : "*"
     };
   }

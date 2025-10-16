@@ -287,6 +287,40 @@
           "Package"
         ]
       }
+    },
+    "/api/v3/package/release/set_labels_many": {
+      "post": {
+        "summary": "SetReleaseLabeslMany sets many release labels.",
+        "operationId": "Package_SetReleaseLabelsMany",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3PackageReleaseSetLabelsManyResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "PackageReleaseSetLabelsManyReq describes the HTTP request body when set many\nlabels.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3PackageReleaseSetLabelsManyReq"
+            }
+          }
+        ],
+        "tags": [
+          "Package"
+        ]
+      }
     }
   },
   "definitions": {
@@ -309,6 +343,21 @@
         },
         "cpu_arch": {
           "type": "boolean"
+        }
+      }
+    },
+    "PackageReleaseSetLabelsManyReqIdentity": {
+      "type": "object",
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "platform": {
+          "$ref": "#/definitions/v3Platform"
+        },
+        "version": {
+          "type": "string"
         }
       }
     },
@@ -725,6 +774,53 @@
       "description": "PackageReleaseSetAsDefaultResp describes the HTTP response body when set\ndefault package release."
     },
     "v3PackageReleaseSetAsDefaultRespData": {
+      "type": "object"
+    },
+    "v3PackageReleaseSetLabelsManyReq": {
+      "type": "object",
+      "properties": {
+        "release_type": {
+          "type": "string"
+        },
+        "identify": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/PackageReleaseSetLabelsManyReqIdentity"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "PackageReleaseSetLabelsManyReq describes the HTTP request body when set many\nlabels."
+    },
+    "v3PackageReleaseSetLabelsManyResp": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/v3Error"
+        },
+        "data": {
+          "$ref": "#/definitions/v3PackageReleaseSetLabelsManyRespData"
+        }
+      },
+      "description": "PackageReleaseSetLabelsManyResp describes the HTTP response body when set\nmany labels."
+    },
+    "v3PackageReleaseSetLabelsManyRespData": {
       "type": "object"
     },
     "v3PackageReleaseSetLabelsReq": {

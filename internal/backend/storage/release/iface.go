@@ -28,6 +28,7 @@ type IStorage interface {
 }
 
 // IRelease define the release interface.
+// nolint:interfacebloat
 type IRelease interface {
 	// GetRelease gets release by generation, release type, platform and version.
 	GetRelease(nCtx contextx.IContext, gen types.Generation, releaseType types.ReleaseType, plat platform.Platform,
@@ -48,6 +49,10 @@ type IRelease interface {
 	// SetReleaseLabels sets release labels.
 	SetReleaseLabels(nCtx contextx.IContext, gen types.Generation, releaseType types.ReleaseType,
 		plat platform.Platform, version string, labels []string) error
+
+	// SetReleaseLabelsMany sets many release labels.
+	SetReleaseLabelsMany(nCtx contextx.IContext, releaseType types.ReleaseType, gens []types.Generation,
+		plats []platform.Platform, versions []string, labels []string) error
 
 	// EnableRelease enables release active by generation, release type, platform and version.
 	EnableRelease(nCtx contextx.IContext, gen types.Generation, releaseType types.ReleaseType, plat platform.Platform,
