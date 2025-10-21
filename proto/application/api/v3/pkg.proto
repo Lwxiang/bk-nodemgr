@@ -386,6 +386,23 @@ message PackageReleaseDeployedHostCountResp {
   Data data = 5;
 }
 
+// PackageReleaseAgentDownloadReq is the request for download agent pkg.
+message PackageReleaseAgentDownloadReq {
+  int64 generation = 1;
+  Platform platform = 2;
+  string version = 3;
+}
+
+// PackageReleaseProxyDownloadReq is the request for download proxy pkg.
+message PackageReleaseProxyDownloadReq {
+  int64 generation = 1;
+  Platform platform = 2;
+  string version = 3;
+}
+
+// FileChunk describes the file chunk data.
+message FileChunk { bytes content = 1; }
+
 service Package {
   // UploadOriginAgent provides origin agent upload.
   rpc UploadOriginAgent(PackageUploadOriginAgentReq)
@@ -535,6 +552,22 @@ service Package {
       returns (PackageReleaseDeployedHostCountResp) {
     option (google.api.http) = {
       post : "/api/v3/package/release/deployed_host/count"
+      body : "*"
+    };
+  }
+
+  // DownloadAgent download release agent package.
+  rpc DownloadAgent(PackageReleaseAgentDownloadReq) returns (FileChunk) {
+    option (google.api.http) = {
+      post : "/api/v3/package/release/agent/download"
+      body : "*"
+    };
+  }
+
+  // DownloadProxy download release proxy package.
+  rpc DownloadProxy(PackageReleaseProxyDownloadReq) returns (FileChunk) {
+    option (google.api.http) = {
+      post : "/api/v3/package/release/proxy/download"
       body : "*"
     };
   }

@@ -422,7 +422,7 @@ func (x *PackageReleaseDeployedHostCountReq) ConvertConditionsToHostTypes() (*ty
 	}, nil
 }
 
-// CountHostsByOsType count hosts by request.
+// CountHostsByOsTypeAndArch count hosts by request.
 func (x *PackageReleaseDeployedHostCountReq) CountHostsByOsTypeAndArch(hosts []*types.Host) ([]int64, int64, error) {
 	statMap := make(map[PackageReleaseIdentifier]int64)
 	for _, host := range hosts {
