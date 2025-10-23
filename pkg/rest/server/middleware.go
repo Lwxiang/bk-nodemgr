@@ -11,7 +11,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -58,26 +57,29 @@ var _ IAuthIdentity = &RestServerAuthIdentity{}
 
 // RestServerAuthIdentity verify auth info.
 type RestServerAuthIdentity struct {
+	jwtParser restheader.IBKNodeMgrAuthorizationParser
 }
 
 // Verify verify auth info.
 func (identity *RestServerAuthIdentity) Verify(r IRequest) error {
-	nodeMgrAuthorization := restheader.BKNodeMgrAuthorizationGetter(r.GetRequest())
+	authorization := restheader.BKNodeMgrAuthorizationGetter(r.GetRequest())
 
-	authInfo := make(map[string]string, 0)
-	if err := json.Unmarshal([]byte(nodeMgrAuthorization), &authInfo); err != nil {
-		return fmt.Errorf("failed to verify rest auth indentity, auth info(%s): %w", nodeMgrAuthorization, err)
+	nodeMgrAuthorization, err := identity.jwtParser.Parse(authorization)
+	if err != nil {
+		return fmt.Errorf("failed to parse bk node mgr authorization: %v", err)
 	}
 
-	r.Data().SetLoginName(authInfo["login_name"])
-	r.Data().SetBKUsername(authInfo["bk_username"])
+	r.Data().SetLoginName(nodeMgrAuthorization.LoginName)
+	r.Data().SetBKUsername(nodeMgrAuthorization.BkUserName)
 
 	return nil
 }
 
 // NewRestServerAuthIdentity ...
-func NewRestServerAuthIdentity() *RestServerAuthIdentity {
-	return &RestServerAuthIdentity{}
+func NewRestServerAuthIdentity(jwtSecretStr string) *RestServerAuthIdentity {
+	return &RestServerAuthIdentity{
+		jwtParser: restheader.NewNodeMgrAuthorizationManager(jwtSecretStr),
+	}
 }
 
 var _ IAuthIdentity = &NodeAuthIdentity{}

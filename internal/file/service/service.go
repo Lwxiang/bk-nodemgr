@@ -113,7 +113,7 @@ func NewService(conf *config.FileService) (*Service, error) {
 func (svc *Service) initialStaticsConfigs() error {
 	svc.authIdentityMap = map[config.AuthIdentity]restserver.IAuthIdentity{
 		config.AuthIdentityNone:       restserver.NewNodeAuthIdentity(),
-		config.AuthIdentityRestServer: restserver.NewRestServerAuthIdentity(),
+		config.AuthIdentityRestServer: restserver.NewRestServerAuthIdentity(svc.conf.RestServer.JwtSecret),
 	}
 
 	return nil
@@ -449,10 +449,10 @@ func (svc *Service) registerBasicServer() error {
 			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
-		withUpload(svc.Cap),
-		withPublish(svc.Cap),
-		withTransfer(svc.Cap),
-		withDownload(svc.Cap),
+		withUpload(svc.Cap, authIdentity),
+		withPublish(svc.Cap, authIdentity),
+		withTransfer(svc.Cap, authIdentity),
+		withDownload(svc.Cap, authIdentity),
 	)
 
 	svc.servers = append(svc.servers, server)
@@ -482,7 +482,7 @@ func (svc *Service) registerDownloadServer() error {
 			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
-		withDownload(svc.Cap),
+		withDownload(svc.Cap, authIdentity),
 	)
 
 	svc.servers = append(svc.servers, server)
@@ -543,30 +543,30 @@ func withMetrics(_ *options.Capability) restserver.OptionFunc {
 }
 
 // withDownload load download.
-func withDownload(capability *options.Capability) restserver.OptionFunc {
+func withDownload(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		download.Load(rg, capability)
+		download.Load(rg, capability, authIdentity)
 	}
 }
 
 // withUpload load upload.
-func withUpload(capability *options.Capability) restserver.OptionFunc {
+func withUpload(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		upload.Load(rg, capability)
+		upload.Load(rg, capability, authIdentity)
 	}
 }
 
 // withPublish load publish.
-func withPublish(capability *options.Capability) restserver.OptionFunc {
+func withPublish(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		publish.Load(rg, capability)
+		publish.Load(rg, capability, authIdentity)
 	}
 }
 
 // withTransfer load transfer.
-func withTransfer(capability *options.Capability) restserver.OptionFunc {
+func withTransfer(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		transfer.Load(rg, capability)
+		transfer.Load(rg, capability, authIdentity)
 	}
 }
 

@@ -186,7 +186,7 @@ func (svc *Service) initialStaticsConfigs() error {
 	svc.authIdentityMap = map[config.AuthIdentity]restserver.IAuthIdentity{
 		config.AuthIdentityNone:       restserver.NewNodeAuthIdentity(),
 		config.AuthIdentityAPIGW:      apigwserver.NewBKGWJWTAuthIdentity(publickeyPem),
-		config.AuthIdentityRestServer: restserver.NewRestServerAuthIdentity(),
+		config.AuthIdentityRestServer: restserver.NewRestServerAuthIdentity(svc.conf.RestServer.JwtSecret),
 	}
 
 	return nil
@@ -333,7 +333,9 @@ func (svc *Service) newFileHandler() (file.IHandler, error) {
 		MetricOpts:           restclient.MetricOption{},
 	}
 
-	return file.New(clientCap, &file.Config{})
+	return file.New(clientCap, &file.Config{
+		RestJwtSecret: svc.conf.RestServer.JwtSecret,
+	})
 }
 
 func (svc *Service) newCreditVault() (creditvault.ICreditVault, error) {
