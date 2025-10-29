@@ -322,10 +322,33 @@ func (conf CMDB) Validate() error {
 
 // GSE the config of gse.
 type GSE struct {
-	APIGatewayClient `yaml:",inline" usage:"api-gateway config of cmdb"`
+	APIGatewayClient `yaml:",inline" usage:"api-gateway config of gse"`
 
 	PluginSlotID    int    `yaml:"pluginSlotID"`
 	PluginSlotToken string `yaml:"pluginSlotToken"`
+}
+
+// Validate validates the config.
+func (conf GSE) Validate() error {
+	if err := conf.APIGatewayClient.Validate(); err != nil {
+		return fmt.Errorf("api-gateway config of gse is invalid: %s", err)
+	}
+
+	return nil
+}
+
+// UserManager the config of user manager.
+type UserManager struct {
+	APIGatewayClient `yaml:",inline" usage:"api-gateway config of user manager"`
+}
+
+// Validate validates the config.
+func (conf UserManager) Validate() error {
+	if err := conf.APIGatewayClient.Validate(); err != nil {
+		return fmt.Errorf("api-gateway config of user manager is invalid: %s", err)
+	}
+
+	return nil
 }
 
 // CreditVault the config of credit vault.
