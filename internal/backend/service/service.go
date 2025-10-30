@@ -594,7 +594,6 @@ func (svc *Service) registerInfoServer() error {
 			IP:              svc.conf.InfoServer.BindIP,
 			Port:            svc.conf.InfoServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
 		withHealthz(svc.Cap),
@@ -614,7 +613,7 @@ func (svc *Service) registerInfoServer() error {
 func newAuthIdentity(conf config.HTTPServer) (restserver.IAuthIdentity, error) {
 	switch conf.AuthIdentity {
 	case config.AuthIdentityNone:
-		return restserver.NewNodeAuthIdentity(), nil
+		return restserver.NewNoneAuthIdentity(), nil
 	case config.AuthIdentityAPIGW:
 		publickeyPem, err := base64.StdEncoding.DecodeString(conf.JWTServerConfig.PublicKeyPem)
 		if err != nil {
@@ -650,10 +649,11 @@ func (svc *Service) registerAdminServer() error {
 			IP:              svc.conf.AdminServer.BindIP,
 			Port:            svc.conf.AdminServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
-		withAdmin(svc.Cap, authIdentity),
+		withAdmin(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity),
+		),
 	)
 
 	svc.servers = append(svc.servers, server)
@@ -685,10 +685,10 @@ func (svc *Service) registerBasicServer() error {
 			IP:              svc.conf.BasicServer.BindIP,
 			Port:            svc.conf.BasicServer.Port,
 			RequestIDSetter: apigwserver.NewBKAPIRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
-		withAPIV3(svc.Cap, authIdentity),
+		withAPIV3(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity)),
 	)
 
 	svc.servers = append(svc.servers, server)
@@ -710,7 +710,6 @@ func (svc *Service) registerCallbackServer() error {
 			IP:              svc.conf.CallbackServer.BindIP,
 			Port:            svc.conf.CallbackServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
 		withCallback(svc.Cap),
@@ -735,7 +734,6 @@ func (svc *Service) registerProxyServer() error {
 			IP:              svc.conf.ProxyServer.BindIP,
 			Port:            svc.conf.ProxyServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
 		withProxy(svc.Cap),
@@ -752,9 +750,9 @@ func (svc *Service) registerProxyServer() error {
 }
 
 // withHealthz load healthz.
-func withHealthz(capability *options.Capability) restserver.OptionFunc {
+func withHealthz(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		healthz.Load(rg, capability)
+		healthz.Load(rg, capability, middleware...)
 	}
 }
 
@@ -766,30 +764,30 @@ func withMetrics(_ *options.Capability) restserver.OptionFunc {
 }
 
 // withApiV3 load api v3.
-func withAPIV3(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
+func withAPIV3(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		backendapiv3.Load(rg, capability, authIdentity)
+		backendapiv3.Load(rg, capability, middleware...)
 	}
 }
 
 // withAdmin load admin.
-func withAdmin(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
+func withAdmin(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		admin.Load(rg, capability, authIdentity)
+		admin.Load(rg, capability, middleware...)
 	}
 }
 
 // withCallback load callback.
-func withCallback(capability *options.Capability) restserver.OptionFunc {
+func withCallback(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		callback.Load(rg, capability)
+		callback.Load(rg, capability, middleware...)
 	}
 }
 
 // withProxy load proxy.
-func withProxy(capability *options.Capability) restserver.OptionFunc {
+func withProxy(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		proxy.Load(rg, capability)
+		proxy.Load(rg, capability, middleware...)
 	}
 }
 

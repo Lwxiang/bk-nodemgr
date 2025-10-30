@@ -13,7 +13,6 @@ package service
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -43,7 +42,6 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/gopool"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/ssl"
 	apigwclient "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw/client"
-	apigwserver "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bkrepo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/gin-gonic/gin"
@@ -382,15 +380,7 @@ func (svc *Service) registerRestServer() error {
 func newAuthIdentity(conf config.HTTPServer) (restserver.IAuthIdentity, error) {
 	switch conf.AuthIdentity {
 	case config.AuthIdentityNone:
-		return restserver.NewNodeAuthIdentity(), nil
-	case config.AuthIdentityAPIGW:
-		publickeyPem, err := base64.StdEncoding.DecodeString(conf.JWTServerConfig.PublicKeyPem)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode publickey: %w", err)
-		}
-
-		return apigwserver.NewBKGWJWTAuthIdentity(publickeyPem), nil
-
+		return restserver.NewNoneAuthIdentity(), nil
 	case config.AuthIdentityRestServer:
 		return restserver.NewRestServerAuthIdentity(conf.JWTServerConfig.SymmetricKey), nil
 
@@ -408,7 +398,6 @@ func (svc *Service) registerInfoServer() error {
 			IP:              svc.conf.InfoServer.BindIP,
 			Port:            svc.conf.InfoServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
 		withHealthz(svc.Cap),
@@ -432,6 +421,11 @@ func (svc *Service) registerAdminServer() error {
 			svc.conf.AdminServer.AuthIdentity, conv.MapKeyToSlice(svc.authIdentityValidMap))
 	}
 
+	_, err := newAuthIdentity(svc.conf.AdminServer)
+	if err != nil {
+		return fmt.Errorf("failed to new auth identity: %w", err)
+	}
+
 	server := restserver.NewServer(
 		svc.ctx,
 		restserver.Options{
@@ -439,7 +433,6 @@ func (svc *Service) registerAdminServer() error {
 			IP:              svc.conf.AdminServer.BindIP,
 			Port:            svc.conf.AdminServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
 	)
@@ -473,13 +466,20 @@ func (svc *Service) registerBasicServer() error {
 			IP:              svc.conf.BasicServer.BindIP,
 			Port:            svc.conf.BasicServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
-		withUpload(svc.Cap, authIdentity),
-		withPublish(svc.Cap, authIdentity),
-		withTransfer(svc.Cap, authIdentity),
-		withDownload(svc.Cap, authIdentity),
+		withUpload(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity),
+		),
+		withPublish(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity),
+		),
+		withTransfer(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity),
+		),
+		withDownload(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity),
+		),
 	)
 
 	svc.servers = append(svc.servers, server)
@@ -511,10 +511,11 @@ func (svc *Service) registerDownloadServer() error {
 			IP:              svc.conf.DownloadServer.BindIP,
 			Port:            svc.conf.DownloadServer.Port,
 			RequestIDSetter: restserver.NewRequestIDSetter(),
-			TenantIDSetter:  restserver.NewTenantIDSetter(),
 		},
 		restserver.WithPing(),
-		withDownload(svc.Cap, authIdentity),
+		withDownload(svc.Cap,
+			restserver.MiddlewareAuth(authIdentity),
+		),
 	)
 
 	svc.servers = append(svc.servers, server)
@@ -575,30 +576,30 @@ func withMetrics(_ *options.Capability) restserver.OptionFunc {
 }
 
 // withDownload load download.
-func withDownload(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
+func withDownload(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		download.Load(rg, capability, authIdentity)
+		download.Load(rg, capability, middleware...)
 	}
 }
 
 // withUpload load upload.
-func withUpload(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
+func withUpload(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		upload.Load(rg, capability, authIdentity)
+		upload.Load(rg, capability, middleware...)
 	}
 }
 
 // withPublish load publish.
-func withPublish(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
+func withPublish(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		publish.Load(rg, capability, authIdentity)
+		publish.Load(rg, capability, middleware...)
 	}
 }
 
 // withTransfer load transfer.
-func withTransfer(capability *options.Capability, authIdentity restserver.IAuthIdentity) restserver.OptionFunc {
+func withTransfer(capability *options.Capability, middleware ...gin.HandlerFunc) restserver.OptionFunc {
 	return func(rg *gin.RouterGroup) {
-		transfer.Load(rg, capability, authIdentity)
+		transfer.Load(rg, capability, middleware...)
 	}
 }
 

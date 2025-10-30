@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
@@ -51,8 +52,10 @@ func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
 }
 
 // Load ter register the proxy router.
-func Load(rg *gin.RouterGroup, capability *options.Capability) {
+func Load(rg *gin.RouterGroup, capability *options.Capability, middlewares ...gin.HandlerFunc) {
 	h := newHandler(rg, capability)
+
+	h.rg.Use(middlewares...)
 
 	h.rg.Any("", h.generalHandler)
 	h.rg.Any("/*path", h.generalHandler)
@@ -135,8 +138,17 @@ func (h *handler) handleCallback(nCtx contextx.IContext, data *relayhandler.Serv
 		return
 	}
 
-	url := fmt.Sprintf("http://%s/%s", callbackEndpoint.GetIPV4Address(), strings.TrimLeft(msg.URL, "/"))
+	u := &url.URL{
+		Scheme: "http",
+		Host:   callbackEndpoint.GetIPV4Address(),
+		Path:   path.Join("/", strings.TrimLeft(msg.URL, "/")),
+	}
+
+	url := u.String()
+
 	logger.G.Biz(nCtx).With("agent-id", data.AgentID, "callback-url", url).Info("try to redirect request to callback")
+
+	// nolint: gosec
 	resp, err := http.Post(
 		url,
 		"application/json",
