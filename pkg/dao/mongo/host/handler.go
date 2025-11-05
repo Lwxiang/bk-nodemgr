@@ -402,6 +402,7 @@ func convertHostFromTypes(host *types.Host) *Host {
 			OuterIP:       host.Static.OuterIP,
 			OuterIPV6:     host.Static.OuterIPV6,
 			Mac:           host.Static.Mac,
+			Operator:      host.Static.Operator,
 			OSType:        host.Static.OSType,
 			OSTypeCCID:    host.Static.OSTypeCCID,
 			Arch:          host.Static.Arch,
@@ -409,6 +410,8 @@ func convertHostFromTypes(host *types.Host) *Host {
 			RegionID:      host.Static.RegionID,
 			CityID:        host.Static.CityID,
 			SyncedAgentID: host.Static.SyncedAgentID,
+			CPUNum:        host.Static.CPUNum,
+			MemCap:        host.Static.MemCap,
 		}
 	}
 
@@ -470,11 +473,14 @@ func convertHostToTypes(host *Host) *types.Host {
 			InnerIPV6:     host.Static.InnerIPV6,
 			OuterIP:       host.Static.OuterIP,
 			OuterIPV6:     host.Static.OuterIPV6,
+			Operator:      host.Static.Operator,
 			Mac:           host.Static.Mac,
 			OSTypeCCID:    host.Static.OSTypeCCID,
 			OSType:        host.Static.OSType,
 			Arch:          host.Static.Arch,
 			Addressing:    types.Addressing(host.Static.Addressing),
+			CPUNum:        host.Static.CPUNum,
+			MemCap:        host.Static.MemCap,
 			SyncedAgentID: host.Static.SyncedAgentID,
 		}
 	}

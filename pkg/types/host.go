@@ -303,11 +303,15 @@ type HostStatic struct {
 	InnerIPV6  string
 	OuterIP    string
 	OuterIPV6  string
+	Operator   string
 	Mac        string
 	OSTypeCCID string
 	OSType     string
 	Arch       string
 	Addressing Addressing
+
+	CPUNum float64
+	MemCap float64
 
 	// synced types, do not use this for processing.
 	// just use it for comparing and checking.
