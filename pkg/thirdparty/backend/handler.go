@@ -236,12 +236,6 @@ type IHandlerNodeAgent interface {
 	// @param uninstallParam the uninstall param.
 	// @return the restarting workflow-ids and error.
 	UninstallAgent(ctx contextx.IContext, uninstallParam *types.NodeAgentUninstallParam) (string, error)
-
-	// OperationRetry node agent.
-	// @param ctx contextx.IContext, contains tenant-id and username.
-	// @param retryParam the retry param.
-	// @return the error.
-	OperationRetry(ctx contextx.IContext, retryParam *types.NodeOperationRetryParam) error
 }
 
 // IHandlerNodeProxy defines the node proxy Handler.
@@ -284,6 +278,7 @@ type IHandlerNodeProxy interface {
 }
 
 // IHandlerNodeWorkflow defines the node workflow Handler.
+// nolint: interfacebloat
 type IHandlerNodeWorkflow interface {
 	// ListNodeWorkflow list node workflow within specified tenant in contextx.
 	// @param ctx contextx.IContext, contains tenant-id and username.
@@ -347,6 +342,18 @@ type IHandlerNodeWorkflow interface {
 	// @return the operation instance status list.
 	ListNodeWorkflowOperationInstanceStatus(ctx contextx.IContext,
 		condition *types.NodeWorkflowOperInstanceStatusCondition) ([]*operation.InstanceStatus, error)
+
+	// TerminateNodeWorkflowOperation terminate node operation.
+	// @param ctx contextx.IContext, contains tenant-id and username.
+	// @param param the terminate param.
+	// @return the error.
+	TerminateNodeWorkflowOperation(ctx contextx.IContext, terminateParam *types.NodeWorkflowOperationTerminateParam) error
+
+	// RetryNodeWorkflowOperation retry node operation.
+	// @param ctx contextx.IContext, contains tenant-id and username.
+	// @param retryParam the retry param.
+	// @return the error.
+	RetryNodeWorkflowOperation(ctx contextx.IContext, retryParam *types.NodeWorkflowOperationRetryParam) error
 }
 
 // IHandlerRelease defines the backend Handler for release.
@@ -1091,13 +1098,27 @@ func (h *Handler) ListNodeWorkflowOperationInstanceStatus(ctx contextx.IContext,
 	return instanceStatus, nil
 }
 
-// OperationRetry operation retry.
-func (h *Handler) OperationRetry(ctx contextx.IContext, retryParam *types.NodeOperationRetryParam) error {
+// RetryNodeWorkflowOperation retry node workflow operation.
+func (h *Handler) RetryNodeWorkflowOperation(ctx contextx.IContext, retryParam *types.NodeWorkflowOperationRetryParam) error {
 	req := &protoBackend.NodeWorkflowOperationRetryReq{}
 
 	req.ConvertOperationRetryParamFromTypes(*retryParam)
 
 	_, err := h.cli.retryOperation(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TerminateNodeWorkflowOperation terminate node operation.
+func (h *Handler) TerminateNodeWorkflowOperation(ctx contextx.IContext, terminateParam *types.NodeWorkflowOperationTerminateParam) error {
+	req := &protoBackend.NodeWorkflowOperationTerminateReq{}
+
+	req.ConvertOperationTerminateParamFromTypes(terminateParam)
+
+	_, err := h.cli.terminateOperation(ctx, req)
 	if err != nil {
 		return err
 	}

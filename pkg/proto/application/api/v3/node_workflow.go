@@ -364,6 +364,31 @@ func (x *NodeWorkflowOperationInstanceLogGetResp) ConvertResultFromTypes(result 
 }
 
 // AutoConvert auto convert.
+func (x *NodeWorkflowOperationTerminateReq) AutoConvert() {
+}
+
+// Validate convert workflow id.
+func (x *NodeWorkflowOperationTerminateReq) Validate() error {
+	if x.GetWorkflowId() == "" {
+		return errors.New("workflow_id is required")
+	}
+
+	if len(x.GetOperationIds()) == 0 {
+		return errors.New("operation_id is required")
+	}
+
+	return nil
+}
+
+// ConvertNodeWorkflowOperationTerminateParamToTypes convert terminate node operation param to types.
+func (x *NodeWorkflowOperationTerminateReq) ConvertNodeWorkflowOperationTerminateParamToTypes() *types.NodeWorkflowOperationTerminateParam {
+	return &types.NodeWorkflowOperationTerminateParam{
+		WorkflowID:   x.GetWorkflowId(),
+		OperationIDs: x.GetOperationIds(),
+	}
+}
+
+// AutoConvert auto convert.
 func (x *NodeWorkflowOperationRetryReq) AutoConvert() {
 }
 
@@ -373,7 +398,11 @@ func (x *NodeWorkflowOperationRetryReq) Validate() error {
 		return errors.New("workflow_id is required")
 	}
 
-	for _, oper := range x.GetOperationId() {
+	if len(x.GetOperationIds()) == 0 {
+		return errors.New("operation_id is required")
+	}
+
+	for _, oper := range x.GetOperationIds() {
 		if oper == "" {
 			return errors.New("operation_id can not be empty")
 		}
@@ -382,11 +411,11 @@ func (x *NodeWorkflowOperationRetryReq) Validate() error {
 	return nil
 }
 
-// ConvertRetryParamToTypes ...
-func (x *NodeWorkflowOperationRetryReq) ConvertRetryParamToTypes() *types.NodeOperationRetryParam {
-	return &types.NodeOperationRetryParam{
+// ConvertNodeWorkflowOperationRetryParamToTypes convert retry node operation param to types.
+func (x *NodeWorkflowOperationRetryReq) ConvertNodeWorkflowOperationRetryParamToTypes() *types.NodeWorkflowOperationRetryParam {
+	return &types.NodeWorkflowOperationRetryParam{
 		WorkflowID:   x.GetWorkflowId(),
-		OperationIDs: x.GetOperationId(),
+		OperationIDs: x.GetOperationIds(),
 		RetryMode:    operation.RetryMode(x.GetRetryMod()),
 	}
 }
