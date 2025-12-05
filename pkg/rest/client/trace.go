@@ -11,7 +11,9 @@
 package client
 
 const (
-	attributeHttpRequestBaseURL = "http.request.base_url"
-	attributeHttpRequestBoby    = "http.request.body"
-	attributeHttpRequestHeader  = "http.request.header"
+	attributeHTTPRequestBaseURL = "http.request.base_url"
+	attributeHTTPRequestBoby    = "http.request.body"
+	attributeHTTPRequestHeader  = "http.request.header"
+
+	attributeHTTPResponseStatusCode = "http.response.status_code"
 )
