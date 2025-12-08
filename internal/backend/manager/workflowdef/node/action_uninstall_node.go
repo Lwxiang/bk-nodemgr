@@ -115,7 +115,7 @@ func (act *actionUninstallNode) DelayFn() func() {
 // nolint: funlen,nonamedreturns
 // NOCC: golint/fnsize(func design is not suitable for splitting).
 func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
-	param := new(ActParamDetectInfoBySSH)
+	param := new(ActionParamUninstallNode)
 	err := conv.MapToStruct(ctx.Data.Content, param)
 	if err != nil {
 		return err
@@ -169,9 +169,12 @@ func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
 	// let the callback server known which action to mark and log.
 	std.DeployInfo().BlockingActionName = ActionNameWaitInstallerComplete
 
-	// preset the node status to "damaged" in the deployment table.
-	// if this action fails, the "damaged" status will not be set in the host table in the end.
-	std.DeployInfo().Host.Dynamic.NodeStatus = types.NodeStatusDamaged
+	if err := std.UpdateInstanceDataContent(ActionWaitInstallerComplete{
+		NodeActionStandardParam: param.NodeActionStandardParam,
+		EnsureAgentID:           false,
+	}); err != nil {
+		return fmt.Errorf("failed to update instance data content: %w", err)
+	}
 
 	// exec uninstall command
 	if std.DeployInfo().Host.Dynamic.NodeOsType == criteria.OSWindows {

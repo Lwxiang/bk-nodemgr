@@ -158,7 +158,12 @@ func (act *actionInstallPagentByWMI) Do(ctx *action.InstanceContext) error {
 		return err
 	}
 
-	std.InstanceData().LogI("install pagent by wmi successfully")
+	if err := std.UpdateInstanceDataContent(ActionWaitInstallerComplete{
+		NodeActionStandardParam: param.NodeActionStandardParam,
+		EnsureAgentID:           true,
+	}); err != nil {
+		return fmt.Errorf("failed to update instance data content: %w", err)
+	}
 
 	return nil
 }
