@@ -524,12 +524,19 @@ func (h *Handler) AddHostToBusinessIdle(nCtx contextx.IContext, bizID int64, hos
 	}
 
 	bizIDStr, _ := conv.ToString(bizID)
-	resp, _, err := h.getCombinedHandler(nCtx).addHostToBusinessIdleCombinedHandler.CallWithAggregationKey(nCtx, bizIDStr, reqList...)
+	resp, beginIndex, err := h.getCombinedHandler(nCtx).addHostToBusinessIdleCombinedHandler.CallWithAggregationKey(nCtx, bizIDStr, reqList...)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.BKHostIDs, nil
+	endIndex := beginIndex + len(reqList)
+	if beginIndex < 0 || endIndex > len(resp.BKHostIDs) {
+		return nil, fmt.Errorf("host ids length is not match, begin(%d), len(%d), total(%d)", beginIndex, len(reqList), len(resp.BKHostIDs))
+	}
+
+	// Note: the returned slice shares the underlying array with resp.BKHostIDs. Callers must drop their references
+	// right after short-lived usage and must NOT cache it in long-running goroutines or structs to avoid memory leaks.
+	return resp.BKHostIDs[beginIndex:endIndex], nil
 }
 
 // PushHostIdentifier push host identifier.
