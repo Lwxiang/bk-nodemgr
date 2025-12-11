@@ -107,46 +107,25 @@ func (act *actionWaitInstallerComplete) Do(ctx *action.InstanceContext) error {
 
 	instanceID := std.InstanceData().OperationInstanceID
 
-	ticker := time.NewTicker(waitReportInterval)
-	defer ticker.Stop()
+	// wait for installer result
+	rawInstallerResult, err := act.waitInstallerField(std, instanceID, installer.InstallerReportKeyStatus)
+	if err != nil {
+		return fmt.Errorf("failed to wait for installer result: %w", err)
+	}
 
-	var rawInstallerResult string
+	installerResult := installer.ProcessState(rawInstallerResult)
 
-	for {
-		select {
-		case <-ctx.Ctx.Done():
-			return nil
-
-		case <-ticker.C:
-			// if agent-id set, fetch agent id
-			if param.EnsureAgentID {
-				agentID, err := act.tryFetchValue(std, instanceID, installer.InstallerReportKeyAgentID)
-				if err != nil {
-					return err
-				}
-
-				if agentID == "" {
-					continue
-				}
-				std.DeployInfo().Host.Dynamic.AgentID = agentID
-			}
-
-			// fetch installer result
-			rawInstallerResult, err = act.tryFetchValue(std, instanceID, installer.InstallerReportKeyStatus)
-			if err != nil {
-				return err
-			}
-
-			if rawInstallerResult == "" {
-				continue
-			}
+	// ensure agent id
+	if param.EnsureAgentID && installerResult == installer.ProcessStateSuccess {
+		agentID, err := act.waitInstallerField(std, instanceID, installer.InstallerReportKeyAgentID)
+		if err != nil {
+			return fmt.Errorf("failed to wait for agent id: %w", err)
 		}
 
-		break
+		std.DeployInfo().Host.Dynamic.AgentID = agentID
 	}
 
 	// check and update action state
-	installerResult := installer.ProcessState(rawInstallerResult)
 	switch installerResult {
 	case installer.ProcessStateSuccess:
 		// reset action context
@@ -165,6 +144,33 @@ func (act *actionWaitInstallerComplete) Do(ctx *action.InstanceContext) error {
 		logger.G.Sys().With("oper-inst-id", instanceID, "state", installerResult).Warn("installer state is not supported")
 
 		return fmt.Errorf("unexpected installer state. state(%s)", installerResult)
+	}
+}
+
+func (act *actionWaitInstallerComplete) waitInstallerField(
+	std *nodeUtils.NodeActionStandarder,
+	instanceID string,
+	key string,
+) (string, error) {
+
+	ticker := time.NewTicker(waitReportInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-std.Context().Done():
+
+			return "", std.Context().Err()
+		case <-ticker.C:
+			value, err := act.tryFetchValue(std, instanceID, key)
+			if err != nil {
+				return "", err
+			}
+
+			if value != "" {
+				return value, nil
+			}
+		}
 	}
 }
 
