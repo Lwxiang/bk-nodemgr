@@ -8,69 +8,24 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package process defines the process handler.
 package process
 
 import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
-	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
+	protoApplication "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/application/api/v3"
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 )
 
-const (
-	// not max limit in process.
-	// return all data in one request.
-	maxProcessLimit = 0
-)
-
-// List defines the process list handler.
-func (h *handler) List(rCtx restserver.IContext) (interface{}, error) {
-	req := new(protoBackend.ProcessListReq)
-	if err := rCtx.BindJSON(req); err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to list processes, failed to decode request query.")
-		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
-	}
-
-	if req.GetOnlyCount() {
-		cnt, err := h.daoProcess.CountProcesses(
-			rCtx,
-			req.ConvertConditionsToTypes())
-		if err != nil {
-			logger.G.Biz(rCtx).WithErr(err).Error("failed to list processes, failed to count processes.")
-			return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
-		}
-
-		resp := new(protoBackend.ProcessListResp)
-		resp.ConvertProcessFromTypes(cnt, nil)
-
-		return resp.GetData(), nil
-	}
-
-	processes, cnt, err := h.daoProcess.ListProcesses(
-		rCtx,
-		req.ConvertPageToTypes(maxProcessLimit),
-		req.ConvertConditionsToTypes())
-	if err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to list processes.")
-		return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
-	}
-
-	resp := new(protoBackend.ProcessListResp)
-	resp.ConvertProcessFromTypes(cnt, processes)
-
-	return resp.GetData(), nil
-}
-
 // GetDistributionByHostID defines the process distribution by host id handler.
 func (h *handler) GetDistributionByHostID(rCtx restserver.IContext) (interface{}, error) {
-	req := new(protoBackend.GetProcessDistributionByHostIDReq)
+	req := new(protoApplication.GetProcessDistributionByHostIDReq)
 	if err := rCtx.BindJSON(req); err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to get process distribution by host id, failed to decode request body")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	result, err := h.daoProcess.GetProcessDistributionByHostID(
+	result, err := h.backendHandler.GetProcessDistributionByHostID(
 		rCtx,
 		req.ConvertConditionsToTypes())
 	if err != nil {
@@ -80,7 +35,7 @@ func (h *handler) GetDistributionByHostID(rCtx restserver.IContext) (interface{}
 		return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
 	}
 
-	resp := new(protoBackend.GetProcessDistributionByHostIDResp)
+	resp := new(protoApplication.GetProcessDistributionByHostIDResp)
 
 	resp.ConvertResultFromTypes(result)
 
@@ -89,13 +44,13 @@ func (h *handler) GetDistributionByHostID(rCtx restserver.IContext) (interface{}
 
 // GetDistributionByPluginName defines the process distribution by plugin name handler.
 func (h *handler) GetDistributionByPluginName(rCtx restserver.IContext) (interface{}, error) {
-	req := new(protoBackend.GetProcessDistributionByPluginNameReq)
+	req := new(protoApplication.GetProcessDistributionByPluginNameReq)
 	if err := rCtx.BindJSON(req); err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to get process distribution by plugin name, failed to decode request body")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	result, err := h.daoProcess.GetProcessDistributionByPluginName(
+	result, err := h.backendHandler.GetProcessDistributionByPluginName(
 		rCtx,
 		req.ConvertConditionsToTypes())
 	if err != nil {
@@ -105,7 +60,7 @@ func (h *handler) GetDistributionByPluginName(rCtx restserver.IContext) (interfa
 		return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
 	}
 
-	resp := new(protoBackend.GetProcessDistributionByPluginNameResp)
+	resp := new(protoApplication.GetProcessDistributionByPluginNameResp)
 
 	resp.ConvertResultFromTypes(result)
 
