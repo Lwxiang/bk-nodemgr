@@ -144,13 +144,15 @@ func (m *Manager) UploadOriginExternalPlugin(nCtx contextx.IContext, externalPlu
 
 // ExternalPluginProject represents the project.yml file.
 type ExternalPluginProject struct {
-	Name         string `yaml:"name"`
-	Version      string `yaml:"version"`
-	Description  string `yaml:"description"`
-	Scenario     string `yaml:"scenario"`
-	ConfigFile   string `yaml:"config_file"`
-	ConfigFormat string `yaml:"config_format"`
-	LaunchNode   string `yaml:"launch_node"`
+	Name          string `yaml:"name"`
+	Version       string `yaml:"version"`
+	Description   string `yaml:"description"`
+	DescriptionEn string `yaml:"description_en"`
+	Scenario      string `yaml:"scenario"`
+	ScenarioEn    string `yaml:"scenario_en"`
+	ConfigFile    string `yaml:"config_file"`
+	ConfigFormat  string `yaml:"config_format"`
+	LaunchNode    string `yaml:"launch_node"`
 
 	Control PluginV2Control `yaml:"control"`
 
@@ -198,7 +200,9 @@ func checkOriginExternalPluginPkg(file io.ReadCloser) (*types.OriginExternalPlug
 				detail.PluginPkgName = pluginProject.Name
 				detail.Version = pluginProject.Version
 				detail.Description = pluginProject.Description
+				detail.DescriptionEn = pluginProject.DescriptionEn
 				detail.Scenario = pluginProject.Scenario
+				detail.ScenarioEn = pluginProject.ScenarioEn
 				detail.ConfigFile = pluginProject.ConfigFile
 				detail.ConfigFormat = pluginProject.ConfigFormat
 				detail.LaunchNode = pluginProject.LaunchNode
@@ -403,6 +407,10 @@ func (m *Manager) PublishReleaseExternalPlugin(nCtx contextx.IContext, uploadID 
 					TemplateRendererType: types.TemplateRendererTypeJinja2,
 					ConfigTemplates:      detail.ConfigTemplates[pkg.platform.String()],
 					PluginController:     detail.Controller[pkg.platform.String()],
+					Description:          detail.Description,
+					DescriptionEn:        detail.DescriptionEn,
+					Scenario:             detail.Scenario,
+					ScenarioEn:           detail.ScenarioEn,
 				},
 			}
 

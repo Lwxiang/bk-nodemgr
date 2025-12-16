@@ -354,18 +354,20 @@ func (x *UploadOriginPluginV2Resp) ConvertResultFromTypes(generated bool, detail
 	}
 
 	data := &UploadOriginPluginV2Resp_Data{
-		UploadId:     new(string),
-		Existed:      new(bool),
-		Generated:    new(bool),
-		Name:         new(string),
-		Size:         new(int64),
-		Md5:          new(string),
-		Version:      new(string),
-		Description:  new(string),
-		Scenario:     new(string),
-		ConfigFile:   new(string),
-		ConfigFormat: new(string),
-		LaunchNode:   new(string),
+		UploadId:      new(string),
+		Existed:       new(bool),
+		Generated:     new(bool),
+		Name:          new(string),
+		Size:          new(int64),
+		Md5:           new(string),
+		Version:       new(string),
+		Description:   new(string),
+		DescriptionEn: new(string),
+		Scenario:      new(string),
+		ScenarioEn:    new(string),
+		ConfigFile:    new(string),
+		ConfigFormat:  new(string),
+		LaunchNode:    new(string),
 	}
 
 	*data.UploadId = detail.UploadID
@@ -376,7 +378,9 @@ func (x *UploadOriginPluginV2Resp) ConvertResultFromTypes(generated bool, detail
 	*data.Md5 = detail.MD5
 	*data.Version = detail.Version
 	*data.Description = detail.Description
+	*data.DescriptionEn = detail.DescriptionEn
 	*data.Scenario = detail.Scenario
+	*data.ScenarioEn = detail.ScenarioEn
 	*data.ConfigFile = detail.ConfigFile
 	*data.ConfigFormat = detail.ConfigFormat
 	*data.LaunchNode = detail.LaunchNode
@@ -419,18 +423,20 @@ func (x *UploadOriginExternalPluginV2Resp) ConvertResultFromTypes(generated bool
 	}
 
 	data := &UploadOriginExternalPluginV2Resp_Data{
-		UploadId:     new(string),
-		Existed:      new(bool),
-		Generated:    new(bool),
-		Name:         new(string),
-		Size:         new(int64),
-		Md5:          new(string),
-		Version:      new(string),
-		Description:  new(string),
-		Scenario:     new(string),
-		ConfigFile:   new(string),
-		ConfigFormat: new(string),
-		LaunchNode:   new(string),
+		UploadId:      new(string),
+		Existed:       new(bool),
+		Generated:     new(bool),
+		Name:          new(string),
+		Size:          new(int64),
+		Md5:           new(string),
+		Version:       new(string),
+		Description:   new(string),
+		DescriptionEn: new(string),
+		Scenario:      new(string),
+		ScenarioEn:    new(string),
+		ConfigFile:    new(string),
+		ConfigFormat:  new(string),
+		LaunchNode:    new(string),
 	}
 
 	*data.UploadId = detail.UploadID
@@ -441,7 +447,9 @@ func (x *UploadOriginExternalPluginV2Resp) ConvertResultFromTypes(generated bool
 	*data.Md5 = detail.MD5
 	*data.Version = detail.Version
 	*data.Description = detail.Description
+	*data.DescriptionEn = detail.DescriptionEn
 	*data.Scenario = detail.Scenario
+	*data.ScenarioEn = detail.ScenarioEn
 	*data.ConfigFile = detail.ConfigFile
 	*data.ConfigFormat = detail.ConfigFormat
 	*data.LaunchNode = detail.LaunchNode
@@ -490,6 +498,7 @@ func (x *UploadOriginPluginV3Resp) ConvertResultFromTypes(generated bool, detail
 		Name:             new(string),
 		Size:             new(int64),
 		Md5:              new(string),
+		PluginPkgName:    new(string),
 		Version:          new(string),
 		Description:      new(string),
 		DescriptionEn:    new(string),
@@ -505,6 +514,7 @@ func (x *UploadOriginPluginV3Resp) ConvertResultFromTypes(generated bool, detail
 	*data.Name = detail.FileInfo.Name
 	*data.Size = detail.Size
 	*data.Md5 = detail.MD5
+	*data.PluginPkgName = detail.PluginPkgName
 	*data.Version = detail.Version
 	*data.Description = detail.Description
 	*data.DescriptionEn = detail.DescriptionEn
