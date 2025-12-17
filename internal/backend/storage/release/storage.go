@@ -27,8 +27,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// StorageName defines the storage name.
-const StorageName = "release"
+const (
+	// StorageName defines the storage name.
+	StorageName = "release"
+
+	metricOperateionGetReleasePluginDefaultVersion = "get_release_plugin_default_version"
+)
 
 // NewStorage creates a new release storage.
 func NewStorage(client *mongo.Client, database string) (*Storage, error) {
@@ -539,6 +543,32 @@ func (s *Storage) ExistReleasePlugin(nCtx contextx.IContext, name string, gen ty
 	exist, err = s.existReleasePlugin(nCtx, name, gen, plat, version)
 
 	return exist, err
+}
+
+// GetReleasePluginDefaultVersion gets release plugin default version by name, generation and platform.
+func (s *Storage) GetReleasePluginDefaultVersion(nCtx contextx.IContext, name string, gen types.Generation, plat platfmt.Platform) (string, error) {
+	var (
+		version string
+		err     error
+	)
+
+	err = s.WrapFn(nCtx, metricOperateionGetReleasePluginDefaultVersion, func(nCtx contextx.IContext) error {
+		// record metric.
+		metric := s.metric().Start(metricOperateionGetReleasePluginDefaultVersion)
+		defer metric.End(err)
+
+		version, err = s.getReleasePluginDefaultVersion(nCtx, name, gen, plat)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }
 
 // CountPackageEvent counts package events.
