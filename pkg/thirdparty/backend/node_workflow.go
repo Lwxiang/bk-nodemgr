@@ -58,16 +58,16 @@ type IHandlerNodeWorkflow interface {
 
 	// ListNodeWorkflowOperationInstance list node workflow operation instance.
 	// @param ctx contextx.IContext, contains tenant-id and username.
-	// @param operationID the operation id.
+	// @param condition the filter conditions.
 	// @return the operation instance list with page and the total count with filter.
-	ListNodeWorkflowOperationInstance(ctx contextx.IContext, operationID ...string) (
+	ListNodeWorkflowOperationInstance(ctx contextx.IContext, condition *types.OperInstDataCondition) (
 		[]*operation.InstanceBriefData, int64, error)
 
 	// CountNodeWorkflowOperationInstance count node workflow operation instance.
 	// @param ctx contextx.IContext, contains tenant-id and username.
 	// @param operationID the operation id.
 	// @return the operation instance count with filter.
-	CountNodeWorkflowOperationInstance(ctx contextx.IContext, operationID ...string) (int64, error)
+	CountNodeWorkflowOperationInstance(ctx contextx.IContext, condition *types.OperInstDataCondition) (int64, error)
 
 	// GetNodeWorkflowOperationInstanceLog distinct node workflow by conditions.
 	// @param ctx contextx.IContext, contains tenant-id and username.
@@ -94,6 +94,13 @@ type IHandlerNodeWorkflow interface {
 	// @param retryParam the retry param.
 	// @return the error.
 	RetryNodeWorkflowOperation(ctx contextx.IContext, retryParam *types.NodeWorkflowOperationRetryParam) error
+
+	// GetNodeWorkflowOperationManualInfo get workflow operation manual info.
+	// @param ctx contextx.IContext, contains tenant-id and username.
+	// @param workflowID the workflow id.
+	// @param operationID the operation id.
+	// @return the manual info.
+	GetNodeWorkflowOperationManualInfo(ctx contextx.IContext, workflowID, operationID string) (*types.NodeWorkflowOperationManualInfo, error)
 }
 
 // ListNodeWorkflow list node workflow within specified tenant in contextx.
@@ -194,12 +201,12 @@ func (h *Handler) CountNodeWorkflowOperation(ctx contextx.IContext,
 
 // ListNodeWorkflowOperationInstance list workflow operation instance.
 func (h *Handler) ListNodeWorkflowOperationInstance(
-	ctx contextx.IContext, operationID ...string) ([]*operation.InstanceBriefData, int64, error) {
+	ctx contextx.IContext, condition *types.OperInstDataCondition) ([]*operation.InstanceBriefData, int64, error) {
 
 	req := &protoBackend.NodeWorkflowOperationInstanceListReq{
-		OnlyCount:   false,
-		OperationId: operationID,
+		OnlyCount: false,
 	}
+	req.ConvertConditionsFromTypes(condition)
 
 	resp, err := h.cli.listNodeWorkflowOperationInstance(ctx, req)
 	if err != nil {
@@ -212,11 +219,11 @@ func (h *Handler) ListNodeWorkflowOperationInstance(
 }
 
 // CountNodeWorkflowOperationInstance count workflow operation instance.
-func (h *Handler) CountNodeWorkflowOperationInstance(ctx contextx.IContext, operationID ...string) (int64, error) {
+func (h *Handler) CountNodeWorkflowOperationInstance(ctx contextx.IContext, condition *types.OperInstDataCondition) (int64, error) {
 	req := &protoBackend.NodeWorkflowOperationInstanceListReq{
-		OnlyCount:   true,
-		OperationId: operationID,
+		OnlyCount: true,
 	}
+	req.ConvertConditionsFromTypes(condition)
 
 	resp, err := h.cli.listNodeWorkflowOperationInstance(ctx, req)
 	if err != nil {
@@ -292,4 +299,21 @@ func (h *Handler) TerminateNodeWorkflowOperation(ctx contextx.IContext, terminat
 	}
 
 	return nil
+}
+
+// GetNodeWorkflowOperationManualInfo get workflow operation manual info.
+func (h *Handler) GetNodeWorkflowOperationManualInfo(ctx contextx.IContext, workflowID, operationID string) (
+	*types.NodeWorkflowOperationManualInfo, error) {
+
+	req := &protoBackend.NodeWorkflowOperationManualInfoGetReq{
+		WorkflowId:  workflowID,
+		OperationId: operationID,
+	}
+
+	resp, err := h.cli.getNodeWorkflowManualInfo(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.ConvertManualInfoToTypes(), nil
 }
