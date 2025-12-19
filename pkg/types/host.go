@@ -25,6 +25,12 @@ const (
 
 	// AddressingStatic means the addressing type is static.
 	AddressingStatic Addressing = "static"
+
+	// IPSeparator means the ip separator.
+	IPSeparator = ","
+
+	// AreaIPSeparator means the separator between area-id and ip.
+	AreaIPSeparator = ":"
 )
 
 // Validate validates the addressing type.
@@ -375,3 +381,11 @@ const (
 	// NodeRoleProxy means this node is a proxy.
 	NodeRoleProxy NodeRole = "proxy"
 )
+
+// HostFieldSelection represents field selection options for host queries.
+type HostFieldSelection struct {
+	HostID        bool
+	NetworkAreaID bool
+	InnerIPList   bool
+	InnerIPV6List bool
+}
