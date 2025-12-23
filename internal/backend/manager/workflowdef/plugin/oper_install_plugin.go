@@ -52,7 +52,7 @@ func (oper *operInstallPlugin) ActionDefNames() []string {
 		ActionNameRenderPluginConfig,
 		ActionNameTransferPluginPkgToNode,
 		ActionNameInstallPlugin,
-		ActionNameWaitInstallerComplete,
+		ActionNameWaitPluginInstallerComplete,
 		ActionNameTrusteeshipProcessToGse,
 		ActionNameUpdateProcess,
 	}
@@ -64,12 +64,16 @@ func (oper *operInstallPlugin) DefaultParameters() operation.Param {
 		Timeout:     10 * time.Minute, // nolint: mnd
 		InitContent: conv.StructToMapIgnoreError(oper.param),
 		RetryStartPoint: map[string]bool{
-			ActionNameVerifyPluginAvailability: true,
-			ActionNameRenderPluginDeployment:   true,
-			ActionNameTransferPluginPkgToNode:  true,
-			ActionNameInstallPlugin:            true,
-			ActionNameWaitInstallerComplete:    false,
-			ActionNameTrusteeshipProcessToGse:  true,
+			ActionNameUpsertProcess:                      true,
+			ActionNameVerifyPluginAvailability:           true,
+			ActionNameRenderPluginDeployment:             true,
+			ActionNameEnsureAndUpdatePluginConfigDetails: true,
+			ActionNameRenderPluginConfig:                 true,
+			ActionNameTransferPluginPkgToNode:            true,
+			ActionNameInstallPlugin:                      true,
+			ActionNameWaitPluginInstallerComplete:        false,
+			ActionNameTrusteeshipProcessToGse:            true,
+			ActionNameUpdateProcess:                      true,
 		},
 	}
 }
