@@ -150,6 +150,62 @@ func (x *NodeWorkflowStatisticsResp) ConvertNodeWorkflowsFromTypes(result []*Nod
 	}
 }
 
+// ConvertNodeWorkflowsFromDistribution converts node workflows from distribution and trigger mapping.
+func (x *NodeWorkflowStatisticsResp) ConvertNodeWorkflowsFromDistribution(
+	workflowIDs []string,
+	distribution map[string]map[string]int64,
+	triggerToWorkflowMap map[string]string) error {
+
+	result := make(map[string]*WorkflowStatisticsInfo, len(workflowIDs))
+	for _, workflowID := range workflowIDs {
+		info := newEmptyNodeWorkflowOperationStatus()
+		*info.WorkflowId = workflowID
+		result[workflowID] = info
+	}
+
+	for triggerID, stateMap := range distribution {
+		workflowID, exists := triggerToWorkflowMap[triggerID]
+		if !exists {
+			continue
+		}
+
+		info, exists := result[workflowID]
+		if !exists {
+			continue
+		}
+
+		for stateStr, count := range stateMap {
+			state := types.NodeWorkflowOperationState(stateStr)
+			if err := state.Validate(); err != nil {
+				return err
+			}
+
+			*info.TotalCount += count
+			switch state {
+			case types.NodeWorkflowOperationStateInit:
+				*info.InitCount += count
+			case types.NodeWorkflowOperationStateRunning:
+				*info.RunningCount += count
+			case types.NodeWorkflowOperationStateLaunched:
+				*info.LaunchedCount += count
+			case types.NodeWorkflowOperationStateSuccess:
+				*info.SuccessCount += count
+			case types.NodeWorkflowOperationStateFailed:
+				*info.FailedCount += count
+			case types.NodeWorkflowOperationStateTimeout:
+				*info.TimeoutCount += count
+			case types.NodeWorkflowOperationStateTerminated:
+				*info.TerminatedCount += count
+			}
+		}
+	}
+
+	x.Data = &NodeWorkflowStatisticsResp_Data{
+		Items: conv.MapValueToSlice(result),
+	}
+	return nil
+}
+
 // Validate check body.
 func (x *NodeWorkflowDistinctReq) Validate() error {
 	return nil

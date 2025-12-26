@@ -14,6 +14,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operation"
 )
@@ -135,6 +136,63 @@ func (x *PluginWorkflowStatisticsResp) ConvertPluginWorkflowsFromTypes(result []
 	x.Data = &PluginWorkflowStatisticsResp_Data{
 		Items: items,
 	}
+}
+
+// ConvertPluginWorkflowsFromDistribution converts plugin workflows from distribution and trigger mapping.
+func (x *PluginWorkflowStatisticsResp) ConvertPluginWorkflowsFromDistribution(
+	workflowIDs []string,
+	distribution map[string]map[string]int64,
+	triggerToWorkflowMap map[string]string) error {
+
+	result := make(map[string]*WorkflowStatisticsInfo, len(workflowIDs))
+	for _, workflowID := range workflowIDs {
+		info := newEmptyPluginWorkflowOperationStatus()
+		*info.WorkflowId = workflowID
+		result[workflowID] = info
+	}
+
+	for triggerID, stateMap := range distribution {
+		workflowID, exists := triggerToWorkflowMap[triggerID]
+		if !exists {
+			continue
+		}
+
+		info, exists := result[workflowID]
+		if !exists {
+			continue
+		}
+
+		for stateStr, count := range stateMap {
+			state := types.PluginWorkflowOperationState(stateStr)
+			if err := state.Validate(); err != nil {
+				return err
+			}
+
+			*info.TotalCount += count
+			switch state {
+			case types.PluginWorkflowOperationStateInit:
+				*info.InitCount += count
+			case types.PluginWorkflowOperationStateRunning:
+				*info.RunningCount += count
+			case types.PluginWorkflowOperationStateLaunched:
+				*info.LaunchedCount += count
+			case types.PluginWorkflowOperationStateSuccess:
+				*info.SuccessCount += count
+			case types.PluginWorkflowOperationStateFailed:
+				*info.FailedCount += count
+			case types.PluginWorkflowOperationStateTimeout:
+				*info.TimeoutCount += count
+			case types.PluginWorkflowOperationStateTerminated:
+				*info.TerminatedCount += count
+			}
+		}
+	}
+
+	x.Data = &PluginWorkflowStatisticsResp_Data{
+		Items: conv.MapValueToSlice(result),
+	}
+
+	return nil
 }
 
 // Validate check body.
