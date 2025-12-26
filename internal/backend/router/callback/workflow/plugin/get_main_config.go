@@ -47,6 +47,7 @@ func (h *handler) GetMainConfig(rCtx restserver.IContext) (*restserver.FileRespo
 
 		data = io.NopCloser(strings.NewReader(config.Content))
 		size = int64(len(config.Content))
+		fileName = config.Name
 		logger.G.Biz(rCtx).With("file", config.Name, "size", size).Info("got main config")
 
 		break
