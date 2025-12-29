@@ -37,7 +37,7 @@ type handler struct {
 func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, error) {
 	req := new(protoFile.DownloadAgentReq)
 	if err := rCtx.BindJSON(req); err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("bind json failed", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("bind json failed")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
@@ -77,7 +77,7 @@ func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, err
 		Size:        info.Size,
 		FilePath:    filepath.Join(".", info.Name),
 		FileName:    info.Name,
-		ContentType: "application/octet-stream",
+		ContentType: restserver.MIMETypeBin,
 	}
 
 	return resp, nil
@@ -87,7 +87,7 @@ func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, err
 func (h *handler) Proxy(rCtx restserver.IContext) (*restserver.FileResponse, error) {
 	req := new(protoFile.DownloadProxyReq)
 	if err := rCtx.BindJSON(req); err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("bind json failed", err)
+		logger.G.Biz(rCtx).WithErr(err).Error("bind json failed")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
@@ -127,7 +127,7 @@ func (h *handler) Proxy(rCtx restserver.IContext) (*restserver.FileResponse, err
 		Size:        info.Size,
 		FilePath:    filepath.Join(".", info.Name),
 		FileName:    info.Name,
-		ContentType: "application/octet-stream",
+		ContentType: restserver.MIMETypeBin,
 	}
 
 	return resp, nil
@@ -181,7 +181,7 @@ func (h *handler) Installer(rCtx restserver.IContext) (*restserver.FileResponse,
 		Size:        info.Size,
 		FilePath:    filepath.Join(".", info.Name),
 		FileName:    info.Name,
-		ContentType: "application/octet-stream",
+		ContentType: restserver.MIMETypeBin,
 	}
 
 	return resp, nil

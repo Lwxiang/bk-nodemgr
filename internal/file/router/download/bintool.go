@@ -8,14 +8,12 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package download ...
 package download
 
 import (
 	"fmt"
 	"path/filepath"
 
-	platfmt "github.com/TencentBlueKing/bk-nodemgr/pkg/format/platform"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	protoFile "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/file/api/v3"
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
@@ -23,32 +21,16 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
-// Agent download agent package.
-func (h *handler) Agent(rCtx restserver.IContext) (*restserver.FileResponse, error) {
-	req := new(protoFile.DownloadAgentReq)
+// BinTool download bintool package.
+func (h *handler) BinTool(rCtx restserver.IContext) (*restserver.FileResponse, error) {
+	req := new(protoFile.DownloadBinToolReq)
 	if err := rCtx.BindJSON(req); err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("bind json failed")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	os, err := platfmt.NormalizeOS(req.GetOsType())
-	if err != nil {
-		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("normalize os failed: %w", err))
-	}
-
-	arch, err := platfmt.NormalizeArch(req.GetCpuArch())
-	if err != nil {
-		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("normalize arch failed: %w", err))
-	}
-
-	file, _, err := h.manager.EnsureNodeToLocal(rCtx,
-		types.ReleaseTypeAgent,
-		types.Generation(req.GetGeneration()),
-		platfmt.Platform{
-			OS:   os,
-			Arch: arch,
-		}, req.GetVersion())
+	file, _, err := h.manager.EnsureBinToolToLocal(rCtx, types.Generation(req.GetGeneration()))
 	if err != nil {
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, fmt.Errorf("get file failed: %w", err))
 	}
