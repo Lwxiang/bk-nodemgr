@@ -14,6 +14,7 @@ package options
 import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/periodictask"
+	cipherStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/cipher"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/configpolicy"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/credit"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/deploypolicy"
@@ -80,6 +81,9 @@ type Capability struct {
 
 	// StorageTenant tenant storage.
 	StorageTenant tenant.IStorage
+
+	// StorageCipher cipher storage.
+	StorageCipher cipherStg.IStorage
 
 	// CmdbHandler cmdb handler.
 	CmdbHandler cmdb.IHandler
@@ -162,6 +166,10 @@ func (capability *Capability) Start(ctx contextx.IContext) error {
 	}
 
 	if err := capability.StorageTenant.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := capability.StorageCipher.Start(ctx); err != nil {
 		return err
 	}
 
