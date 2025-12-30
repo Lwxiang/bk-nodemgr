@@ -14,6 +14,7 @@ package deploypolicy
 
 import (
 	"errors"
+	"time"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/basestorage"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
@@ -82,6 +83,7 @@ const (
 	metricDeleteDeployPolicy              = "delete_deploy_policy"
 	metricExistDeployPolicy               = "exist_deploy_policy"
 	metricDiscoverPoliciesBySpecifyPlugin = "discover_policies_by_specify_plugin"
+	metricUpdateDeployPoliciesExecutedAt  = "update_deploy_policies_executed_at"
 )
 
 // CreateDeployPolicy create deploy policy.
@@ -97,7 +99,7 @@ func (s *Storage) CreateDeployPolicy(nCtx contextx.IContext, deployPolicy *types
 		return err
 	})
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	return deployPolicyID, nil
@@ -153,9 +155,7 @@ func (s *Storage) UpdateDeployPolicyFields(nCtx contextx.IContext, fields types.
 	)
 
 	err = s.WrapFn(nCtx, metricUpdateDeployPolicyFields, func(nCtx contextx.IContext) error {
-		err = s.updateDeployPolicyFields(nCtx, fields, deployPolicy...)
-
-		return err
+		return s.updateDeployPolicyFields(nCtx, fields, deployPolicy...)
 	})
 	if err != nil {
 		return err
@@ -201,6 +201,8 @@ func (s *Storage) ExistDeployPolicy(nCtx contextx.IContext, condition *types.Dep
 	return exist, nil
 }
 
+// ==================== IDomainDeployPolicyMgr Functions ====================
+
 // DiscoverPoliciesBySpecifyPlugin discover policies by specify plugin.
 func (s *Storage) DiscoverPoliciesBySpecifyPlugin(nCtx contextx.IContext, param *types.SpecifyPluginParam) ([]*types.DeployPolicy, error) {
 	var (
@@ -218,4 +220,22 @@ func (s *Storage) DiscoverPoliciesBySpecifyPlugin(nCtx contextx.IContext, param 
 	}
 
 	return policies, nil
+}
+
+// UpdateDeployPoliciesExecutedAt update deploy policies executed at.
+func (s *Storage) UpdateDeployPoliciesExecutedAt(nCtx contextx.IContext, deployPolicyIDs []int64, executedAt time.Time) error {
+	var (
+		err error
+	)
+
+	err = s.WrapFn(nCtx, metricUpdateDeployPoliciesExecutedAt, func(nCtx contextx.IContext) error {
+		err = s.updateDeployPoliciesExecutedAt(nCtx, deployPolicyIDs, executedAt)
+
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

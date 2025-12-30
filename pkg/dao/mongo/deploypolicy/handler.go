@@ -47,6 +47,9 @@ type IHandler interface {
 
 	// Exist check a deploy policy exist by conditions.
 	Exist(nCtx contextx.IContext, opts ...OptFn) (bool, error)
+
+	// UpdateExecutedAt update deploy policies executed at.
+	UpdateExecutedAt(nCtx contextx.IContext, filterOpts []OptFn, executedAt time.Time) error
 }
 
 var _ IHandler = &Handler{}
@@ -104,8 +107,8 @@ func (h *Handler) Create(nCtx contextx.IContext, deployPolicy *types.DeployPolic
 	}
 	data.DeployPolicyID = deployPolicyID
 	data.Operator = nCtx.BKUsername()
-	data.LifeCycle.CreateAt = time.Now()
-	data.LifeCycle.UpdateAt = time.Now()
+	data.LifeCycle.CreatedAt = time.Now()
+	data.LifeCycle.UpdatedAt = time.Now()
 
 	if err := h.tenantDao(nCtx.TenantID()).Create(nCtx, data); err != nil {
 		return -1, fmt.Errorf("failed to create deploy policy, err: %w", err)
@@ -245,9 +248,9 @@ func convScopeFromTypes(scope *types.Scope) *Scope {
 
 func convDeployPolicyLifeCycleFromTypes(deployPolicyLifeCycle types.DeployPolicyLifeCycle) LifeCycle {
 	return LifeCycle{
-		CreateAt:  deployPolicyLifeCycle.CreateAt,
-		UpdateAt:  deployPolicyLifeCycle.UpdateAt,
-		ExecuteAt: deployPolicyLifeCycle.ExecuteAt,
+		CreatedAt:  deployPolicyLifeCycle.CreatedAt,
+		UpdatedAt:  deployPolicyLifeCycle.UpdatedAt,
+		ExecutedAt: deployPolicyLifeCycle.ExecutedAt,
 	}
 }
 
@@ -371,9 +374,9 @@ func convScopeToTypes(data *Scope) *types.Scope {
 
 func convDeployPolicyLifeCycleToTypes(data LifeCycle) types.DeployPolicyLifeCycle {
 	return types.DeployPolicyLifeCycle{
-		CreateAt:  data.CreateAt,
-		UpdateAt:  data.UpdateAt,
-		ExecuteAt: data.ExecuteAt,
+		CreatedAt:  data.CreatedAt,
+		UpdatedAt:  data.UpdatedAt,
+		ExecutedAt: data.ExecutedAt,
 	}
 }
 
@@ -462,7 +465,7 @@ func convSpecToTypes(data *Spec) (*types.DeploySpec, error) {
 // Delete delete deploy policy.
 func (h *Handler) Delete(nCtx contextx.IContext, deployPolicyID int64) error {
 	if err := nCtx.CheckTenantID(); err != nil {
-		return fmt.Errorf("failed to check tenant id: %v", err)
+		return fmt.Errorf("failed to check tenant id: %w", err)
 	}
 
 	filter := base.AliveFilter()
@@ -536,7 +539,7 @@ func (h *Handler) UpdateFields(nCtx contextx.IContext, fields types.DeployPolicy
 		}
 
 		updates[FieldKeyOperator] = nCtx.BKUsername()
-		updates[FieldKeyLifeCycleUpdateAt] = time.Now()
+		updates[FieldKeyLifeCycleUpdatedAt] = time.Now()
 
 		docs = append(docs, &base.DocumentFieldUpdate{
 			Filter: func() bson.D {
@@ -585,4 +588,40 @@ func generateDeployPolicyUpdates(fields types.DeployPolicyFields, deployPolicy *
 	}
 
 	return updates, nil
+}
+
+// UpdateExecutedAt update deploy policies executed at.
+func (h *Handler) UpdateExecutedAt(nCtx contextx.IContext, opts []OptFn, executedAt time.Time) error {
+	if err := nCtx.CheckTenantID(); err != nil {
+		return fmt.Errorf("failed to check tenant id: %w", err)
+	}
+
+	// Validate executedAt is set
+	if executedAt.IsZero() {
+		return base.ErrInvalidParam(fmt.Errorf("executed at time is required"))
+	}
+
+	tenantID := nCtx.TenantID()
+
+	// Parse filter options
+	filter := base.AliveFilter()
+	for _, opt := range opts {
+		filter = opt(filter)
+	}
+
+	// Build update document
+	docs := []*base.DocumentFieldUpdate{
+		{
+			Filter: filter,
+			Fields: map[string]any{
+				FieldKeyLifeCycleExecutedAt: executedAt,
+			},
+		},
+	}
+
+	if err := h.tenantDao(tenantID).UpdateFieldsBulk(nCtx, docs); err != nil {
+		return fmt.Errorf("failed to update deploy policies executed at: %w", err)
+	}
+
+	return nil
 }
