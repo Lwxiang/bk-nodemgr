@@ -48,8 +48,8 @@ type IHandler interface {
 	// Exist check a deploy policy exist by conditions.
 	Exist(nCtx contextx.IContext, opts ...OptFn) (bool, error)
 
-	// UpdateExecutedAt update deploy policies executed at.
-	UpdateExecutedAt(nCtx contextx.IContext, filterOpts []OptFn, executedAt time.Time) error
+	// RefreshExecuteInfo refresh deploy policies execute info.
+	RefreshExecuteInfo(nCtx contextx.IContext, deployPolicy ...*types.DeployPolicy) error
 }
 
 var _ IHandler = &Handler{}
@@ -592,37 +592,47 @@ func generateDeployPolicyUpdates(fields types.DeployPolicyFields, deployPolicy *
 	return updates, nil
 }
 
-// UpdateExecutedAt update deploy policies executed at.
-func (h *Handler) UpdateExecutedAt(nCtx contextx.IContext, opts []OptFn, executedAt time.Time) error {
+// RefreshExecuteInfo refresh deploy policies execute info.
+func (h *Handler) RefreshExecuteInfo(nCtx contextx.IContext, deployPolicy ...*types.DeployPolicy) error {
 	if err := nCtx.CheckTenantID(); err != nil {
 		return fmt.Errorf("failed to check tenant id: %w", err)
 	}
 
-	// Validate executedAt is set
-	if executedAt.IsZero() {
-		return base.ErrInvalidParam(fmt.Errorf("executed at time is required"))
+	if len(deployPolicy) == 0 {
+		return base.ErrInvalidParam(fmt.Errorf("deploy policy list is empty"))
 	}
 
 	tenantID := nCtx.TenantID()
 
-	// Parse filter options
-	filter := base.AliveFilter()
-	for _, opt := range opts {
-		filter = opt(filter)
+	docs := make([]*base.DocumentFieldUpdate, 0, len(deployPolicy))
+	for _, policy := range deployPolicy {
+		if policy == nil {
+			return base.ErrInvalidItemInParamList()
+		}
+
+		updates := map[string]any{
+			FieldKeyLifeCycleExecutedAt: policy.LifeCycle.ExecutedAt,
+			FieldKeyDsuID:               policy.DsuID,
+			FieldKeyLifeCycleUpdatedAt:  time.Now(),
+		}
+
+		docs = append(docs, &base.DocumentFieldUpdate{
+			Filter: func() bson.D {
+				filter := base.AliveFilter()
+				filter = WithDeployPolicyID(policy.DeployPolicyID)(filter)
+
+				return filter
+			}(),
+			Fields: updates,
+		})
 	}
 
-	// Build update document
-	docs := []*base.DocumentFieldUpdate{
-		{
-			Filter: filter,
-			Fields: map[string]any{
-				FieldKeyLifeCycleExecutedAt: executedAt,
-			},
-		},
+	if len(docs) == 0 {
+		return base.ErrInvalidParam(fmt.Errorf("no valid updates to apply"))
 	}
 
 	if err := h.tenantDao(tenantID).UpdateFieldsBulk(nCtx, docs); err != nil {
-		return fmt.Errorf("failed to update deploy policies executed at: %w", err)
+		return fmt.Errorf("failed to update deploy policies executed at and dsuid: %w", err)
 	}
 
 	return nil
