@@ -80,8 +80,9 @@ type IHandlerPluginWorkflow interface {
 	// ListPluginWorkflowOperationInstanceStatusDistribution lists the latest operation instance status distribution by trigger id.
 	// @param nCtx contextx.IContext, contains tenant-id.
 	// @param triggerIDs the trigger ids.
-	// @return the latest operation instance status distribution: map[trigger-id]map[state]count and the error.
-	ListPluginWorkflowOperationInstanceStatusDistribution(nCtx contextx.IContext, triggerIDs []string) (map[string]map[string]int64, error)
+	// @return the latest operation instance status distribution: map[trigger-id]*InstanceStatusDistribution and the error.
+	ListPluginWorkflowOperationInstanceStatusDistribution(nCtx contextx.IContext, triggerIDs []string) (
+		map[string]*operation.InstanceStatusDistribution, error)
 
 	// RetryPluginWorkflowOperation retry plugin operation.
 	// @param nCtx contextx.IContext, contains tenant-id and username.
@@ -259,7 +260,7 @@ func (h *Handler) GetPluginWorkflowOperationInstanceLog(nCtx contextx.IContext, 
 
 // ListPluginWorkflowOperationInstanceStatusDistribution lists the latest operation instance status distribution by trigger id.
 func (h *Handler) ListPluginWorkflowOperationInstanceStatusDistribution(nCtx contextx.IContext, triggerIDs []string) (
-	map[string]map[string]int64, error) {
+	map[string]*operation.InstanceStatusDistribution, error) {
 
 	req := &protoBackend.PluginWorkflowOperationInstanceStatusDistributionListReq{
 		TriggerId: triggerIDs,
