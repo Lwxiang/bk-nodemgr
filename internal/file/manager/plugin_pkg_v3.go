@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -258,7 +259,9 @@ func checkOriginPluginV3Pkg(file io.ReadCloser) (*types.OriginPluginV3PkgDetail,
 					multiPlatConfigTplSourceContent[plat.String()] = make(map[string]string)
 				}
 
-				sourcePath := tool.JoinPath(plat.OS, path[2:]...)
+				// Notice: The plugin package is read and processed on the Linux system
+				// so the sourcePath here should also be processed using the Linux separator.
+				sourcePath := filepath.Join(path[2:]...)
 				multiPlatConfigTplSourceContent[plat.String()][sourcePath] = string(content)
 
 				return nil
@@ -273,9 +276,11 @@ func checkOriginPluginV3Pkg(file io.ReadCloser) (*types.OriginPluginV3PkgDetail,
 
 	for platStr, templates := range multiPlatConfigTplSourceContent {
 		for idx, tpl := range detail.ConfigTemplates[platStr] {
-			if sourceContent, ok := templates[tpl.SourcePath]; ok {
-				detail.ConfigTemplates[platStr][idx].SourceContent = sourceContent
+			sourceContent, ok := templates[tpl.SourcePath]
+			if !ok {
+				continue
 			}
+			detail.ConfigTemplates[platStr][idx].SourceContent = sourceContent
 		}
 	}
 

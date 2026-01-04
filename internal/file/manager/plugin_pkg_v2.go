@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -254,7 +255,9 @@ func checkOriginPluginV2Pkg(file io.ReadCloser) (*types.OriginPluginV2PkgDetail,
 					multiPlatConfigTplSourceContent[plat.String()] = make(map[string]string)
 				}
 
-				sourcePath := tool.JoinPath(plat.OS, path[2:]...)
+				// Notice: The plugin package is read and processed on the Linux system
+				// so the sourcePath here should also be processed using the Linux separator.
+				sourcePath := filepath.Join(path[2:]...)
 				multiPlatConfigTplSourceContent[plat.String()][sourcePath] = string(content)
 
 				return nil
@@ -267,18 +270,13 @@ func checkOriginPluginV2Pkg(file io.ReadCloser) (*types.OriginPluginV2PkgDetail,
 		return nil, err
 	}
 
-	for platStr, configTemplates := range detail.ConfigTemplates {
-		configTplSourceContent := multiPlatConfigTplSourceContent[platStr]
-		if multiPlatConfigTplSourceContent[platStr] == nil {
-			continue
-		}
-
-		for idx, configTemplate := range configTemplates {
-			if configTplSourceContent[configTemplate.SourcePath] == "" {
+	for platStr, templates := range multiPlatConfigTplSourceContent {
+		for idx, tpl := range detail.ConfigTemplates[platStr] {
+			sourceContent, ok := templates[tpl.SourcePath]
+			if !ok {
 				continue
 			}
-
-			configTemplates[idx].SourceContent = configTplSourceContent[configTemplate.SourcePath]
+			detail.ConfigTemplates[platStr][idx].SourceContent = sourceContent
 		}
 	}
 
