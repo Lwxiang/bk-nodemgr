@@ -8,18 +8,17 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package pluginuninstaller
+// Package pluginupgrader provides the step to upgrade plugin.
+package pluginupgrader
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/plugin"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/pluginhandler"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/logger"
 )
 
-// Step uninstall plugin.
+// Step upgrade plugin.
 type Step struct {
 	args StepArgs
 }
@@ -27,6 +26,9 @@ type Step struct {
 // StepArgs define args for step.
 type StepArgs struct {
 	PluginHandler pluginhandler.IPluginHandler
+
+	PkgPath      string
+	SrcConfigDir string
 }
 
 // NewStep new a step.
@@ -34,17 +36,41 @@ func NewStep(args StepArgs) *Step {
 	return &Step{args: args}
 }
 
-// Run run the step to uninstall plugin.
+// Run run the step to upgrade plugin.
 func (step *Step) Run(ctx context.Context) error {
-	logger.Info(plugin.StepUninstallPlugin, "start to uninstall plugin")
-
+	// 1. purge existing file-system.
 	if err := step.args.PluginHandler.FS().Purge(ctx); err != nil {
-		logger.Errorf(plugin.StepUninstallPlugin, "failed to purge file-system: %v", err)
+		logger.Errorf(plugin.StepUpgradePlugin, "failed to purge file-system: %v", err)
 
-		return fmt.Errorf("failed to purge file-system: %w", err)
+		return err
+	}
+	logger.Info(plugin.StepUpgradePlugin, "purged existing file-system")
+
+	// 2. init file-system architecture.
+	if err := step.args.PluginHandler.FS().Init(); err != nil {
+		logger.Errorf(plugin.StepUpgradePlugin, "failed to init file-system: %v", err)
+
+		return err
+	}
+	logger.Info(plugin.StepUpgradePlugin, "inited file-system")
+
+	// 3. unpack release package file into inited file-system.
+	if err := step.args.PluginHandler.FS().UnpackReleasePackage(ctx, step.args.PkgPath, false); err != nil {
+		logger.Errorf(plugin.StepUpgradePlugin, "failed to unpack release pkg: %v", err)
+
+		return err
 	}
 
-	logger.Info(plugin.StepUninstallPlugin, "uninstalled plugin")
+	logger.Info(plugin.StepUpgradePlugin, "unpacked release pkg")
+
+	// 4. copy config files to inited file-system.
+	if err := step.args.PluginHandler.FS().CopyConfigDir(ctx, step.args.SrcConfigDir); err != nil {
+		logger.Errorf(plugin.StepUpgradePlugin, "failed to copy config dir: %v", err)
+
+		return err
+	}
+
+	logger.Info(plugin.StepUpgradePlugin, "upgrade plugin")
 
 	return nil
 }

@@ -38,24 +38,20 @@ func (args StepArgs) String() string {
 	return fmt.Sprintf("pkg-path(%s), src-config-dir(%s)", args.PkgPath, args.SrcConfigDir)
 }
 
-// StepResult result for step.
-type StepResult struct {
-}
-
 // NewStep new a step.
 func NewStep(args StepArgs) *Step {
 	return &Step{args: args}
 }
 
 // Run run the step to install plugin.
-func (step *Step) Run(ctx context.Context) (*StepResult, error) {
+func (step *Step) Run(ctx context.Context) error {
 	logger.Infof(plugin.StepInstallPlugin, "start to install plugin. %s", step.args.String())
 
 	// 1. init file-system architecture.
 	if err := step.args.PluginHandler.FS().Init(); err != nil {
 		logger.Errorf(plugin.StepInstallPlugin, "failed to init file-system: %v", err)
 
-		return nil, err
+		return err
 	}
 	logger.Info(plugin.StepInstallPlugin, "inited file-system")
 
@@ -63,7 +59,7 @@ func (step *Step) Run(ctx context.Context) (*StepResult, error) {
 	if err := step.args.PluginHandler.FS().UnpackReleasePackage(ctx, step.args.PkgPath, false); err != nil {
 		logger.Errorf(plugin.StepInstallPlugin, "failed to unpack release pkg: %v", err)
 
-		return nil, err
+		return err
 	}
 
 	logger.Info(plugin.StepInstallPlugin, "unpacked release pkg")
@@ -72,11 +68,11 @@ func (step *Step) Run(ctx context.Context) (*StepResult, error) {
 	if err := step.args.PluginHandler.FS().CopyConfigDir(ctx, step.args.SrcConfigDir); err != nil {
 		logger.Errorf(plugin.StepInstallPlugin, "failed to copy config dir: %v", err)
 
-		return nil, err
+		return err
 	}
 	logger.Info(plugin.StepInstallPlugin, "copied config dir")
 
 	logger.Info(plugin.StepInstallPlugin, "installed node")
 
-	return &StepResult{}, nil
+	return nil
 }

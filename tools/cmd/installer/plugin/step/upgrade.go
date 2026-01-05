@@ -12,31 +12,35 @@ package step
 
 import (
 	"fmt"
-
+	pluginflag "github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/plugin/flag"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/plugin/handler"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/plugin/persistent"
-	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/plugin/pluginuninstaller"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/installer/plugin/pluginupgrader"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/internal/pluginhandler"
-
 	"github.com/spf13/cobra"
 )
 
-// NewUninstall creates a new uninstall step command.
-func NewUninstall() *cobra.Command {
+// NewUpgrade creates a new upgrade step command.
+func NewUpgrade() *cobra.Command {
 	var (
+		// required flags.
+		pkgPath string
+
 		// pre-run.
-		pluginHandler pluginhandler.IPluginHandler
+		pluginHandler  pluginhandler.IPluginHandler
+		persistentVars *persistent.Variables
 	)
 
 	stepCmd := &cobra.Command{
-		Use:   "uninstall",
-		Short: "Uninstall plugin",
-		Long:  "Uninstall plugin",
+		Use:   "upgrade",
+		Short: "Upgrade plugin",
+		Long:  "Upgrade plugin",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			vars, err := persistent.GetVariables(cmd)
 			if err != nil {
 				return err
 			}
+			persistentVars = vars
 
 			pluginHandler, err = handler.NewPluginHandler(vars.DeployDir, vars.PluginGroup, vars.PluginName)
 			if err != nil {
@@ -47,19 +51,26 @@ func NewUninstall() *cobra.Command {
 		},
 
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			step := pluginuninstaller.NewStep(pluginuninstaller.StepArgs{
+			step := pluginupgrader.NewStep(pluginupgrader.StepArgs{
 				PluginHandler: pluginHandler,
+				PkgPath:       pkgPath,
+				SrcConfigDir:  persistentVars.ConfigDir,
 			})
 
 			if err := step.Run(cmd.Context()); err != nil {
 				return err
 			}
 
-			fmt.Println("successfully uninstalled")
+			fmt.Println("successfully upgraded")
 
 			return nil
 		},
 	}
+	/*
+	 * required flags.
+	 */
+	stepCmd.Flags().StringVar(&pkgPath, pluginflag.PkgFile, "", "path to release package file to install")
+	_ = stepCmd.MarkFlagRequired(pluginflag.PkgFile)
 
 	return stepCmd
 }
