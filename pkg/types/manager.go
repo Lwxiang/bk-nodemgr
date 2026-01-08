@@ -89,6 +89,14 @@ type InstallPluginParam struct {
 	PluginDeployments []*PluginDeployment
 }
 
+// UpgradePluginParam define the param of LaunchUpgradePlugin.
+type UpgradePluginParam struct {
+	Type              PluginWorkflowType
+	HostIDs           []int64
+	Operator          string
+	PluginDeployments []*PluginDeployment
+}
+
 // ApplyPluginSubConfigParam define the param of LaunchApplyPluginSubConfig.
 type ApplyPluginSubConfigParam struct {
 	Type              PluginWorkflowType

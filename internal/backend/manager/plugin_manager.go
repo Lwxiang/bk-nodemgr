@@ -67,8 +67,8 @@ func (mgr *Manager) LaunchInstallPlugin(nCtx contextx.IContext, param types.Inst
 	return workflowID, nil
 }
 
-func (mgr *Manager) createInstallPluginOper(nCtx contextx.IContext, operator string, triggerCtl workflow.ITriggerCtl, deploy *types.PluginDeployment,
-) error {
+func (mgr *Manager) createInstallPluginOper(
+	nCtx contextx.IContext, operator string, triggerCtl workflow.ITriggerCtl, deploy *types.PluginDeployment) error {
 
 	if err := mgr.conf.StoragePlugin.CreatePluginDeployment(nCtx, deploy); err != nil {
 		logger.G.Biz(nCtx).Error("failed to create plugin deployment. trigger-id(%s), plugin-token(%s), err(%v)",
@@ -96,13 +96,98 @@ func (mgr *Manager) createInstallPluginOper(nCtx contextx.IContext, operator str
 		With("trigger-id", triggerCtl.GetTriggerID()).
 		With("operation-id", operCtl.GetOperationID()).
 		With("plugin-token", deploy.Token).
-		Error("launched install plugin task.")
+		Info("launched install plugin task.")
 
 	return nil
 }
 
 func (mgr *Manager) getPluginInstallOperationDef(deploy *types.PluginDeployment, operator string) operation.Definition {
 	return plugin.NewOperInstallPlugin(plugin.OperParamInstallPlugin{
+		PluginActionStandardParam: pluginUtils.PluginActionStandardParam{
+			Token:    deploy.Token,
+			TenantID: deploy.Info.Process.TenantID,
+			Operator: operator,
+		},
+	})
+}
+
+// LaunchUpgradePlugin launch a task to upgrade plugin. returns the workflow-id.
+func (mgr *Manager) LaunchUpgradePlugin(nCtx contextx.IContext, param types.UpgradePluginParam) (string, error) {
+	triggerCtl, err := mgr.workflowMgr.CreateTrigger(nCtx, trigger.CategoryOnce, trigger.NewMetadataOnce())
+	if err != nil {
+		return "", err
+	}
+
+	workflowID := identifier.GenWorkflowID()
+	if err = mgr.conf.StoragePlugin.CreatePluginWorkflow(nCtx, &types.PluginWorkflow{
+		TenantID:    nCtx.TenantID(),
+		WorkflowID:  workflowID,
+		TriggerID:   triggerCtl.GetTriggerID(),
+		Type:        param.Type,
+		HostIDs:     param.HostIDs,
+		Operator:    param.Operator,
+		OperateTime: time.Now(),
+		Status:      types.PluginWorkflowStatusRunning,
+	}); err != nil {
+		return "", err
+	}
+
+	gp := gopool.NewPool()
+	for _, pluginDeploy := range param.PluginDeployments {
+		deploy := pluginDeploy
+
+		gp.Go(func() error {
+			return mgr.createUpgradePluginOper(nCtx, param.Operator, triggerCtl, deploy)
+		})
+	}
+
+	if err := gp.Wait(); err != nil {
+		return "", fmt.Errorf("failed to launch upgrade plugin task. err: %w", err)
+	}
+
+	if err = triggerCtl.ActivateTrigger(nCtx); err != nil {
+		return "", err
+	}
+
+	return workflowID, nil
+}
+
+func (mgr *Manager) createUpgradePluginOper(
+	nCtx contextx.IContext, operator string, triggerCtl workflow.ITriggerCtl, deploy *types.PluginDeployment) error {
+
+	if err := mgr.conf.StoragePlugin.CreatePluginDeployment(nCtx, deploy); err != nil {
+		logger.G.Biz(nCtx).Error("failed to create plugin deployment. trigger-id(%s), plugin-token(%s), err(%v)",
+			triggerCtl.GetTriggerID(), deploy.Token, err)
+
+		return err
+	}
+
+	operationDef := mgr.getPluginUpgradeOperationDef(deploy, operator)
+
+	operationParam := operationDef.DefaultParameters()
+
+	operCtl, err := triggerCtl.CreateOperation(nCtx, operationDef, operationParam)
+	if err != nil {
+		logger.G.Biz(nCtx).WithErr(err).
+			With("trigger-id", triggerCtl.GetTriggerID()).
+			With("operation-id", operCtl.GetOperationID()).
+			With("plugin-token", deploy.Token).
+			Error("failed to launch upgrade plugin task.")
+
+		return err
+	}
+
+	logger.G.Biz(nCtx).
+		With("trigger-id", triggerCtl.GetTriggerID()).
+		With("operation-id", operCtl.GetOperationID()).
+		With("plugin-token", deploy.Token).
+		Info("launched upgrade plugin task.")
+
+	return nil
+}
+
+func (mgr *Manager) getPluginUpgradeOperationDef(deploy *types.PluginDeployment, operator string) operation.Definition {
+	return plugin.NewOperUpgradePlugin(plugin.OperParamUpgradePlugin{
 		PluginActionStandardParam: pluginUtils.PluginActionStandardParam{
 			Token:    deploy.Token,
 			TenantID: deploy.Info.Process.TenantID,
@@ -168,7 +253,7 @@ func (mgr *Manager) LaunchApplyPluginSubConfig(nCtx contextx.IContext, param typ
 				With("trigger-id", triggerCtl.GetTriggerID()).
 				With("operation-id", operCtl.GetOperationID()).
 				With("plugin-token", deploy.Token).
-				Error("launched install plugin task.")
+				Info("launched install plugin task.")
 
 			return nil
 		})
