@@ -12,6 +12,7 @@
 package periodictask
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -54,25 +55,6 @@ func (pt *PeriodicTask) CleanTrigger(nCtx contextx.IContext) error {
 	return nil
 }
 
-// triggerList defines the trigger list.
-// make it sortable and sorted with updated time from old to new.
-type triggerList []*trigger.Trigger
-
-// Len returns the length of the trigger list.
-func (l triggerList) Len() int {
-	return len(l)
-}
-
-// Less compares the updated time of the trigger.
-func (l triggerList) Less(i, j int) bool {
-	return l[i].UpdatedAt.Before(l[j].UpdatedAt)
-}
-
-// Swap swaps the elements with indexes i and j.
-func (l triggerList) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
-}
-
 // operInstList defines the operation instance list.
 // make it sortable and sorted with creation time from old to new.
 type operInstList []*operation.InstanceBriefData
@@ -92,223 +74,236 @@ func (l operInstList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// lastResortOnceCleanPolicy is the clean policy for the lastResort cleanup of once triggers.
+func lastResortOnceCleanPolicy() trigger.MetadataCleanPolicy {
+	return trigger.MetadataCleanPolicy{
+		MaxDays: 90, // nolint: mnd
+	}
+}
+
 // nolint: gocognit
 func (pt *PeriodicTask) cleanOnceTrigger(nCtx contextx.IContext) error {
-	executor := pageexecutor.NewPageExecutor[*trigger.Trigger](triggerListMaxPage, 1*time.Hour)
-	fn := func(nCtx contextx.IContext, p types.Page) ([]*trigger.Trigger, error) {
+	executor := pageexecutor.NewPageExecutor[string](triggerListMaxPage, 1*time.Hour)
+
+	fn := func(nCtx contextx.IContext, p types.Page) ([]string, error) {
 		triggers, _, err := pt.conf.StgWorkflow.ListTrigger(nCtx, p, trigger.CategoryOnce)
-		return triggers, err
-	}
-
-	results, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
-	if err != nil {
-		return err
-	}
-
-	cleanQueue := make(map[string]triggerList)
-
-	deletingTriggerIDs := make([]string, 0)
-	for _, trig := range results.Items {
-		if trig.Active {
-			continue
+		if err != nil {
+			return nil, fmt.Errorf("failed to list triggers: %w", err)
 		}
 
-		meta, ok := trig.Metadata.(*trigger.MetadataOnce)
-		if !ok || meta == nil {
-			continue
-		}
+		needDeletingTriggerIDs := make([]string, 0)
+		for _, trig := range triggers {
+			if trig.Active {
+				continue
+			}
 
-		// if the trigger's last updated time is too long ago, delete it.
-		// nolint: mnd
-		if meta.CleanPolicy.MaxDays > 0 && int(time.Since(trig.UpdatedAt).Hours()/24) > meta.CleanPolicy.MaxDays {
-			deletingTriggerIDs = append(deletingTriggerIDs, trig.TriggerID)
-
-			continue
-		}
-
-		// add trigger into the clean queue.
-		if _, ok := cleanQueue[meta.CleanPolicy.Namespace]; !ok {
-			cleanQueue[meta.CleanPolicy.Namespace] = make(triggerList, 0)
-		}
-		cleanQueue[meta.CleanPolicy.Namespace] = append(cleanQueue[meta.CleanPolicy.Namespace], trig)
-	}
-
-	for _, triggerList := range cleanQueue {
-		sort.Sort(sort.Reverse(triggerList))
-
-		for i, trig := range triggerList {
 			meta, ok := trig.Metadata.(*trigger.MetadataOnce)
 			if !ok || meta == nil {
 				continue
 			}
 
-			if meta.CleanPolicy.MaxNum > 0 && i >= meta.CleanPolicy.MaxNum {
-				deletingTriggerIDs = append(deletingTriggerIDs, trig.TriggerID)
+			cleanPolicy := lastResortOnceCleanPolicy()
+
+			if meta.CleanPolicy.MaxDays > 0 {
+				cleanPolicy = meta.CleanPolicy
+			}
+
+			// if the trigger's last updated time is too long ago, delete it.
+			// nolint: mnd
+			if time.Since(trig.UpdatedAt).Hours()/24 > cleanPolicy.MaxDays {
+				needDeletingTriggerIDs = append(needDeletingTriggerIDs, trig.TriggerID)
 			}
 		}
+
+		if len(needDeletingTriggerIDs) > 0 {
+			if err = pt.conf.StgWorkflow.DeleteOperationInstancesByTriggerID(nCtx, needDeletingTriggerIDs...); err != nil {
+				logger.G.Sys().WithErr(err).With("trigger-count", len(needDeletingTriggerIDs)).
+					Warn("failed to delete operation instances of once triggers")
+
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
+			if err = pt.conf.StgWorkflow.DeleteOperationsByTriggerID(nCtx, needDeletingTriggerIDs...); err != nil {
+				logger.G.Sys().WithErr(err).With("trigger-count", len(needDeletingTriggerIDs)).
+					Warn("failed to delete operations of once triggers")
+
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
+			if err = pt.conf.StgWorkflow.DeleteTriggers(nCtx, needDeletingTriggerIDs...); err != nil {
+				logger.G.Sys().WithErr(err).With("trigger-count", len(needDeletingTriggerIDs)).
+					Warn("failed to delete once triggers")
+
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
+			logger.G.Sys().
+				With("trigger-count", len(needDeletingTriggerIDs)).
+				Info("successfully deleted once triggers, operations and operation instances")
+		}
+
+		return needDeletingTriggerIDs, nil
 	}
 
-	if len(deletingTriggerIDs) > 0 {
-		if err = pt.conf.StgWorkflow.DeleteTriggers(nCtx, deletingTriggerIDs...); err != nil {
-			logger.G.Sys().WithErr(err).With("count", len(deletingTriggerIDs)).Warn("failed to delete once triggers")
-
-			return err
-		}
-
-		if err = pt.conf.StgWorkflow.DeleteOperationsByTriggerID(nCtx, deletingTriggerIDs...); err != nil {
-			logger.G.Sys().WithErr(err).With("count", len(deletingTriggerIDs)).Warn("failed to delete operations of once triggers")
-
-			return err
-		}
-
-		if err = pt.conf.StgWorkflow.DeleteOperationInstancesByTriggerID(nCtx, deletingTriggerIDs...); err != nil {
-			logger.G.Sys().WithErr(err).With("count", len(deletingTriggerIDs)).Warn("failed to delete operations of once triggers")
-
-			return err
-		}
-
-		logger.G.Sys().
-			With("trigger-count", len(deletingTriggerIDs)).
-			Info("successfully deleted once triggers, operations and operation instances")
+	result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
+	if err != nil {
+		return fmt.Errorf("failed to clean once trigger: %w", err)
 	}
+
+	logger.G.Sys().With("total-deleted-trigger-count", result.Total).Info("successfully cleaned once triggers")
 
 	return nil
 }
 
+// lastResortOrderedCleanPolicy is the clean policy for the lastResort cleanup of ordered triggers.
+func lastResortOrderedCleanPolicy() trigger.MetadataCleanPolicy {
+	return trigger.MetadataCleanPolicy{
+		MaxDays: 90, // nolint: mnd
+	}
+}
+
 // nolint: gocognit
 func (pt *PeriodicTask) cleanOrderedTrigger(nCtx contextx.IContext) error {
-	executor := pageexecutor.NewPageExecutor[*trigger.Trigger](triggerListMaxPage, 1*time.Hour)
-	fn := func(nCtx contextx.IContext, p types.Page) ([]*trigger.Trigger, error) {
+	executor := pageexecutor.NewPageExecutor[string](triggerListMaxPage, 1*time.Hour)
+
+	fn := func(nCtx contextx.IContext, p types.Page) ([]string, error) {
 		triggers, _, err := pt.conf.StgWorkflow.ListTrigger(nCtx, p, trigger.CategoryOrdered)
-		return triggers, err
-	}
-
-	results, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
-	if err != nil {
-		return err
-	}
-
-	cleanQueue := make(map[string]triggerList)
-
-	deletingTriggerIDs := make([]string, 0)
-	for _, trig := range results.Items {
-		if trig.Active {
-			continue
+		if err != nil {
+			return nil, fmt.Errorf("failed to list triggers: %w", err)
 		}
 
-		meta, ok := trig.Metadata.(*trigger.MetadataOrdered)
-		if !ok || meta == nil {
-			continue
-		}
+		needDeletingTriggerIDs := make([]string, 0)
+		for _, trig := range triggers {
+			if trig.Active {
+				continue
+			}
 
-		// if the trigger's last updated time is too long ago, delete it.
-		// nolint: mnd
-		if meta.CleanPolicy.MaxDays > 0 && int(time.Since(trig.UpdatedAt).Hours()/24) > meta.CleanPolicy.MaxDays {
-			deletingTriggerIDs = append(deletingTriggerIDs, trig.TriggerID)
-
-			continue
-		}
-
-		// add trigger into the clean queue.
-		if _, ok := cleanQueue[meta.CleanPolicy.Namespace]; !ok {
-			cleanQueue[meta.CleanPolicy.Namespace] = make(triggerList, 0)
-		}
-		cleanQueue[meta.CleanPolicy.Namespace] = append(cleanQueue[meta.CleanPolicy.Namespace], trig)
-	}
-
-	for _, triggerList := range cleanQueue {
-		sort.Sort(sort.Reverse(triggerList))
-
-		for i, trig := range triggerList {
 			meta, ok := trig.Metadata.(*trigger.MetadataOrdered)
 			if !ok || meta == nil {
 				continue
 			}
 
-			if meta.CleanPolicy.MaxNum > 0 && i >= meta.CleanPolicy.MaxNum {
-				deletingTriggerIDs = append(deletingTriggerIDs, trig.TriggerID)
+			cleanPolicy := lastResortOrderedCleanPolicy()
+
+			if meta.CleanPolicy.MaxDays > 0 {
+				cleanPolicy = meta.CleanPolicy
+			}
+
+			// if the trigger's last updated time is too long ago, delete it.
+			// nolint: mnd
+			if time.Since(trig.UpdatedAt).Hours()/24 > cleanPolicy.MaxDays {
+				needDeletingTriggerIDs = append(needDeletingTriggerIDs, trig.TriggerID)
 			}
 		}
+
+		if len(needDeletingTriggerIDs) > 0 {
+			if err = pt.conf.StgWorkflow.DeleteOperationInstancesByTriggerID(nCtx, needDeletingTriggerIDs...); err != nil {
+				logger.G.Sys().WithErr(err).With("trigger-count", len(needDeletingTriggerIDs)).
+					Warn("failed to delete operation instances of ordered triggers")
+
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
+			if err = pt.conf.StgWorkflow.DeleteOperationsByTriggerID(nCtx, needDeletingTriggerIDs...); err != nil {
+				logger.G.Sys().WithErr(err).With("trigger-count", len(needDeletingTriggerIDs)).
+					Warn("failed to delete operations of ordered triggers")
+
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
+			if err = pt.conf.StgWorkflow.DeleteTriggers(nCtx, needDeletingTriggerIDs...); err != nil {
+				logger.G.Sys().WithErr(err).With("trigger-count", len(needDeletingTriggerIDs)).
+					Warn("failed to delete ordered triggers")
+
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
+			logger.G.Sys().
+				With("trigger-count", len(needDeletingTriggerIDs)).
+				Info("successfully deleted ordered triggers, operations and operation instances")
+		}
+
+		return needDeletingTriggerIDs, nil
 	}
 
-	if len(deletingTriggerIDs) > 0 {
-		if err = pt.conf.StgWorkflow.DeleteTriggers(nCtx, deletingTriggerIDs...); err != nil {
-			logger.G.Sys().WithErr(err).With("trigger-count", len(deletingTriggerIDs)).Warn("failed to delete ordered triggers")
-
-			return err
-		}
-
-		if err = pt.conf.StgWorkflow.DeleteOperationsByTriggerID(nCtx, deletingTriggerIDs...); err != nil {
-			logger.G.Sys().WithErr(err).With("trigger-count", len(deletingTriggerIDs)).Warn("failed to delete operations of ordered triggers")
-
-			return err
-		}
-
-		if err = pt.conf.StgWorkflow.DeleteOperationInstancesByTriggerID(nCtx, deletingTriggerIDs...); err != nil {
-			logger.G.Sys().WithErr(err).With("trigger-count", len(deletingTriggerIDs)).Warn("failed to delete oper-instances of ordered triggers")
-
-			return err
-		}
-
-		logger.G.Sys().
-			With("trigger-count", len(deletingTriggerIDs)).
-			Info("successfully deleted ordered triggers, operations and operation instances")
+	result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
+	if err != nil {
+		return fmt.Errorf("failed to clean ordered trigger: %w", err)
 	}
+
+	logger.G.Sys().With("total-deleted-trigger-count", result.Total).Info("successfully cleaned ordered triggers")
 
 	return nil
 }
 
+// nolint: gocognit
 func (pt *PeriodicTask) cleanPeriodicTrigger(nCtx contextx.IContext) error {
-	executor := pageexecutor.NewPageExecutor[*trigger.Trigger](triggerListMaxPage, 1*time.Hour)
-	fn := func(nCtx contextx.IContext, p types.Page) ([]*trigger.Trigger, error) {
+	executor := pageexecutor.NewPageExecutor[string](triggerListMaxPage, 1*time.Hour)
+
+	fn := func(nCtx contextx.IContext, p types.Page) ([]string, error) {
 		triggers, _, err := pt.conf.StgWorkflow.ListTrigger(nCtx, p, trigger.CategoryPeriodic)
-		return triggers, err
-	}
-
-	results, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
-	if err != nil {
-		return err
-	}
-
-	deletingOperInstIDs := make([]string, 0)
-	for _, trig := range results.Items {
-		meta, ok := trig.Metadata.(*trigger.MetadataPeriodic)
-		if !ok || meta == nil {
-			continue
-		}
-
-		operInsts, _, err := pt.conf.StgWorkflow.ListOperInstanceBriefWithoutActionInstByTriggerID(nCtx, types.UnlimitedPage(), trig.TriggerID)
 		if err != nil {
-			logger.G.Sys().WithErr(err).With("trigger_id", trig.TriggerID).Info("failed to list oper instance")
-
-			continue
+			return nil, fmt.Errorf("failed to list triggers: %w", err)
 		}
 
-		if meta.CleanPolicy.MaxOperInstNum <= 0 || len(operInsts) <= meta.CleanPolicy.MaxOperInstNum {
-			continue
+		needDeletingOperInstIDs := make([]string, 0)
+		for _, trig := range triggers {
+			meta, ok := trig.Metadata.(*trigger.MetadataPeriodic)
+			if !ok || meta == nil {
+				continue
+			}
+
+			operInsts, _, err := pt.conf.StgWorkflow.ListOperInstanceBriefWithoutActionInstByTriggerID(nCtx, types.UnlimitedPage(), trig.TriggerID)
+			if err != nil {
+				logger.G.Sys().WithErr(err).With("trigger_id", trig.TriggerID).
+					Warn("failed to list oper instance")
+
+				continue
+			}
+
+			if meta.CleanPolicy.MaxOperInstNum <= 0 || len(operInsts) <= meta.CleanPolicy.MaxOperInstNum {
+				continue
+			}
+
+			// sorted by updated_at desc.
+			sort.Sort(sort.Reverse(operInstList(operInsts)))
+			for i := meta.CleanPolicy.MaxOperInstNum; i < len(operInsts); i++ {
+				needDeletingOperInstIDs = append(needDeletingOperInstIDs, operInsts[i].Metadata.OperationInstanceID)
+			}
 		}
 
-		// sorted by updated_at desc.
-		sort.Sort(sort.Reverse(operInstList(operInsts)))
-		for i := meta.CleanPolicy.MaxOperInstNum; i < len(operInsts); i++ {
-			deletingOperInstIDs = append(deletingOperInstIDs, operInsts[i].Metadata.OperationInstanceID)
-		}
-	}
+		if len(needDeletingOperInstIDs) > 0 {
+			if err = pt.conf.StgWorkflow.DeleteOperationInstances(nCtx, needDeletingOperInstIDs...); err != nil {
+				logger.G.Sys().
+					WithErr(err).
+					With("oper-inst-count", len(needDeletingOperInstIDs)).
+					Warn("failed to delete overflow operation instances in periodic trigger")
 
-	if len(deletingOperInstIDs) > 0 {
-		if err = pt.conf.StgWorkflow.DeleteOperationInstances(nCtx, deletingOperInstIDs...); err != nil {
+				// Log error but continue processing subsequent pages, return empty list to let PageExecutor continue
+				return []string{}, nil
+			}
+
 			logger.G.Sys().
-				WithErr(err).
-				With("oper-inst-count", len(deletingOperInstIDs)).
-				Info("failed to delete overflow operation instances in periodic trigger")
-
-			return err
+				With("oper-inst-count", len(needDeletingOperInstIDs)).
+				Info("successfully deleted overflow operation instances in periodic trigger")
 		}
 
-		logger.G.Sys().
-			With("oper-inst-count", len(deletingOperInstIDs)).
-			Info("successfully deleted overflow operation instances in periodic trigger")
+		return needDeletingOperInstIDs, nil
 	}
+
+	result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
+	if err != nil {
+		return fmt.Errorf("failed to clean periodic trigger: %w", err)
+	}
+
+	logger.G.Sys().With("total-deleted-oper-inst-count", result.Total).
+		Info("successfully cleaned periodic triggers")
 
 	return nil
 }
