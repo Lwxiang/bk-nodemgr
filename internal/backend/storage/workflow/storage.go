@@ -514,6 +514,32 @@ func (s *Storage) CountOperation(
 	return num, nil
 }
 
+// DistinctOperation distincts operation fields by conditions.
+func (s *Storage) DistinctOperation(
+	nCtx contextx.IContext,
+	selector types.WorkflowOperationDistinctSelector,
+	conditions ...*types.OperationCondition) (*types.WorkflowOperationDistinctResult, error) {
+
+	var (
+		result *types.WorkflowOperationDistinctResult
+		err    error
+	)
+
+	err = s.WrapFn(nCtx, "distinct_operation", func(nCtx contextx.IContext) error {
+		result, err = s.distinctOperation(nCtx, selector, conditions...)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // ListOperationByOperationID lists operation by operation id.
 func (s *Storage) ListOperationByOperationID(
 	nCtx contextx.IContext, operationID ...string) (
