@@ -204,25 +204,140 @@ func fillConfigDetails(pluginRelease *types.ReleasePlugin, pluginConf *types.Plu
 }
 
 // ContextPluginInfo plugin info for render context.
+// Use PascalCase to cure the struct field names to be compatible with Go template rendering.
 type ContextPluginInfo struct {
-	Name          string
-	LogPath       string
-	DataPath      string
-	PidPath       string
-	SetupPath     string
-	HostIDPath    string
-	PluginIPC     string
-	DataIPC       string
-	AgentDir      string
-	GroupID       string
-	SubConfigPath string
-	IsMultiTenant bool
+	Name          string `json:"Name"`
+	LogPath       string `json:"LogPath"`
+	DataPath      string `json:"DataPath"`
+	PidPath       string `json:"PidPath"`
+	SetupPath     string `json:"SetupPath"`
+	HostIDPath    string `json:"HostIDPath"`
+	PluginIPC     string `json:"PluginIPC"`
+	DataIPC       string `json:"DataIPC"`
+	AgentDir      string `json:"AgentDir"`
+	GroupID       string `json:"GroupID"`
+	SubConfigPath string `json:"SubConfigPath"`
+	IsMultiTenant bool   `json:"IsMultiTenant"`
 }
 
 // ContextPreDefinitionConstants pre-definition constants for render context.
+// Use PascalCase to cure the struct field names to be compatible with Go template rendering.
 type ContextPreDefinitionConstants struct {
-	Global map[string]any
-	Unique map[string]any
+	Global map[string]any `json:"Global"`
+	Unique map[string]any `json:"Unique"`
+}
+
+// ContextNodeInfoStatic node info static for render context.
+// Use PascalCase to cure the struct field names to be compatible with Go template rendering.
+type ContextNodeInfoStatic struct {
+	BizID         int64    `json:"BizID"`
+	NetworkAreaID int64    `json:"NetworkAreaID"`
+	RegionID      string   `json:"RegionID"`
+	CityID        string   `json:"CityID"`
+	HostName      string   `json:"HostName"`
+	DeptName      string   `json:"DeptName"`
+	InnerIPList   []string `json:"InnerIPList"`
+	InnerIPV6List []string `json:"InnerIPV6List"`
+	OuterIPList   []string `json:"OuterIPList"`
+	OuterIPV6List []string `json:"OuterIPV6List"`
+	Operator      string   `json:"Operator"`
+	Mac           string   `json:"Mac"`
+	OSTypeCCID    string   `json:"OSTypeCCID"`
+	OSType        string   `json:"OSType"`
+	Arch          string   `json:"Arch"`
+	Addressing    string   `json:"Addressing"`
+	CPUNum        float64  `json:"CPUNum"`
+	MemCap        float64  `json:"MemCap"`
+}
+
+// ContextNodeInfoDynamic node info dynamic for render context.
+// Use PascalCase to cure the struct field names to be compatible with Go template rendering.
+type ContextNodeInfoDynamic struct {
+	NodeRole                 string   `json:"NodeRole"`
+	NodeStatus               string   `json:"NodeStatus"`
+	NodeVersion              string   `json:"NodeVersion"`
+	NodeGeneration           int64    `json:"NodeGeneration"`
+	NodeCPUArch              string   `json:"NodeCPUArch"`
+	NodeOsType               string   `json:"NodeOsType"`
+	AgentID                  string   `json:"AgentID"`
+	NetworkUnitID            int64    `json:"NetworkUnitID"`
+	LoginUser                string   `json:"LoginUser"`
+	ExportIP                 string   `json:"ExportIP"`
+	ExportIPV6               string   `json:"ExportIPV6"`
+	AdvertiseIP              string   `json:"AdvertiseIP"`
+	AdvertiseIPV6            string   `json:"AdvertiseIPV6"`
+	ProxyAccessDisabled      bool     `json:"ProxyAccessDisabled"`
+	ProxyTags                []string `json:"ProxyTags"`
+	ProxyClusterPort         int64    `json:"ProxyClusterPort"`
+	ProxyDataPort            int64    `json:"ProxyDataPort"`
+	ProxyFilePort            int64    `json:"ProxyFilePort"`
+	RelayDownloadPort        int64    `json:"RelayDownloadPort"`
+	RelayCallbackPort        int64    `json:"RelayCallbackPort"`
+	ProxyInstallOriginUnitID int64    `json:"ProxyInstallOriginUnitID"`
+}
+
+// ContextNodeInfo node info for render context.
+// Use PascalCase to cure the struct field names to be compatible with Go template rendering.
+type ContextNodeInfo struct {
+	HostID   int64                  `json:"HostID"`
+	TenantID string                 `json:"TenantID"`
+	Static   ContextNodeInfoStatic  `json:"Static"`
+	Dynamic  ContextNodeInfoDynamic `json:"Dynamic"`
+}
+
+func convertHostTypeToContextNodeInfo(hostInfo *types.Host) ContextNodeInfo {
+	proxyTags := make([]string, 0, len(hostInfo.Dynamic.ProxyTags))
+	for _, tag := range hostInfo.Dynamic.ProxyTags {
+		proxyTags = append(proxyTags, string(tag))
+	}
+
+	return ContextNodeInfo{
+		HostID:   hostInfo.HostID,
+		TenantID: hostInfo.TenantID,
+		Static: ContextNodeInfoStatic{
+			BizID:         hostInfo.Static.BizID,
+			NetworkAreaID: hostInfo.Static.NetworkAreaID,
+			RegionID:      hostInfo.Static.RegionID,
+			CityID:        hostInfo.Static.CityID,
+			HostName:      hostInfo.Static.HostName,
+			DeptName:      hostInfo.Static.DeptName,
+			InnerIPList:   hostInfo.Static.InnerIPList,
+			InnerIPV6List: hostInfo.Static.InnerIPV6List,
+			OuterIPList:   hostInfo.Static.OuterIPList,
+			OuterIPV6List: hostInfo.Static.OuterIPV6List,
+			Operator:      hostInfo.Static.Operator,
+			Mac:           hostInfo.Static.Mac,
+			OSTypeCCID:    hostInfo.Static.OSTypeCCID,
+			OSType:        hostInfo.Static.OSType,
+			Arch:          hostInfo.Static.Arch,
+			Addressing:    string(hostInfo.Static.Addressing),
+			CPUNum:        hostInfo.Static.CPUNum,
+			MemCap:        hostInfo.Static.MemCap,
+		},
+		Dynamic: ContextNodeInfoDynamic{
+			NodeRole:                 string(hostInfo.Dynamic.NodeRole),
+			NodeStatus:               string(hostInfo.Dynamic.NodeStatus),
+			NodeVersion:              hostInfo.Dynamic.NodeVersion,
+			NodeGeneration:           int64(hostInfo.Dynamic.NodeGeneration),
+			NodeCPUArch:              hostInfo.Dynamic.NodeCPUArch.String(),
+			NodeOsType:               hostInfo.Dynamic.NodeOsType.String(),
+			AgentID:                  hostInfo.Static.SyncedAgentID,
+			NetworkUnitID:            hostInfo.Dynamic.NetworkUnitID,
+			LoginUser:                hostInfo.Dynamic.LoginUser,
+			ExportIP:                 hostInfo.Dynamic.ExportIP,
+			ExportIPV6:               hostInfo.Dynamic.ExportIPV6,
+			AdvertiseIP:              hostInfo.Dynamic.AdvertiseIP,
+			AdvertiseIPV6:            hostInfo.Dynamic.AdvertiseIPV6,
+			ProxyAccessDisabled:      hostInfo.Dynamic.ProxyAccessDisabled,
+			ProxyTags:                proxyTags,
+			ProxyClusterPort:         hostInfo.Dynamic.ProxyClusterPort,
+			ProxyDataPort:            hostInfo.Dynamic.ProxyDataPort,
+			ProxyFilePort:            hostInfo.Dynamic.ProxyFilePort,
+			RelayDownloadPort:        hostInfo.Dynamic.RelayDownloadPort,
+			RelayCallbackPort:        hostInfo.Dynamic.RelayCallbackPort,
+			ProxyInstallOriginUnitID: hostInfo.Dynamic.ProxyInstallOriginUnitID,
+		},
+	}
 }
 
 const (
@@ -255,9 +370,11 @@ func (act *actionEnsureAndUpdatePluginConfigDetails) generateGoTemplateSystemCon
 		Global: act.pluginDeployConstant.GetCommonConstants(keyGlobal),
 	}
 
+	nodeInfo := convertHostTypeToContextNodeInfo(hostInfo)
+
 	renderContext := map[string]any{
 		keyPluginInfo:             conv.StructToMapIgnoreError(pluginInfo),
-		keyNodeInfo:               conv.StructToMapIgnoreError(*hostInfo),
+		keyNodeInfo:               conv.StructToMapIgnoreError(nodeInfo),
 		keyPreDefinitionConstants: conv.StructToMapIgnoreError(preDefinitionConstants),
 	}
 
