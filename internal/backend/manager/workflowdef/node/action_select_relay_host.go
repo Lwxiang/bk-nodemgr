@@ -94,7 +94,7 @@ func (act *actionSelectRelayHost) Do(ctx *action.InstanceContext) error {
 	}
 
 	// initialize standard data.
-	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment)
+	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment, act.storageHost)
 	if err = std.Initialize(ctx, param.NodeActionStandardParam); err != nil {
 		return err
 	}
@@ -171,10 +171,19 @@ func (act *actionSelectRelayHost) selectDedicatedInstallerHost(
 		return relayHost.Static.InnerIPList[0]
 	}()
 
+	innerIPV6 := func() string {
+		if len(relayHost.Static.InnerIPV6List) == 0 {
+			return ""
+		}
+
+		return relayHost.Static.InnerIPV6List[0]
+	}()
+
 	return types.RelayInfo{
 		HostID:          relayHost.HostID,
 		AgentID:         relayHost.Dynamic.AgentID,
 		InnerIP:         innerIP,
+		InnerIPV6:       innerIPV6,
 		DownloadSvcPort: relayHost.Dynamic.RelayDownloadPort,
 		CallbackSvcPort: relayHost.Dynamic.RelayCallbackPort,
 	}, nil
