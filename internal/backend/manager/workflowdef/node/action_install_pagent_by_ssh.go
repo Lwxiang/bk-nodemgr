@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"path"
 	"strings"
 	"time"
@@ -35,6 +34,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/sshx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
 )
@@ -149,11 +149,25 @@ func (act *actionInstallPagentBySSH) Do(ctx *action.InstanceContext) error {
 		return err
 	}
 
+	relayInfos, err := std.GetRelayInfos()
+	if err != nil {
+		return fmt.Errorf("failed to get relay infos: %w", err)
+	}
+	if len(relayInfos) == 0 {
+		return fmt.Errorf("no relay info selected")
+	}
+
+	// get relay service URLs for install command
+	downloadURLs, callbackURLs, err := std.BuildServiceURLByRelayInfo(relayInfos)
+	if err != nil {
+		return fmt.Errorf("failed to get relay service URLs: %w", err)
+	}
+
 	// build install command.
-	installCmd := act.buildInstallCmd(std, installerPath, deployConstant)
+	installCmd := act.buildInstallCmd(std, installerPath, deployConstant, downloadURLs, callbackURLs)
 
 	// notify relay to install pagent by ssh.
-	if err := act.notifyRelayToInstall(std, cMethod, cKey, toolName, installCmd); err != nil {
+	if err := act.notifyRelayToInstall(std, cMethod, cKey, toolName, installCmd, relayInfos); err != nil {
 		return err
 	}
 
@@ -172,11 +186,9 @@ func (act *actionInstallPagentBySSH) Do(ctx *action.InstanceContext) error {
 	return nil
 }
 
-func (act *actionInstallPagentBySSH) notifyRelayToInstall(
-	std *nodeUtils.NodeActionStandarder,
-	cMethod sshx.AuthMethod, cKey,
-	toolsName, installCmd string,
-) error {
+func (act *actionInstallPagentBySSH) notifyRelayToInstall(std *nodeUtils.NodeActionStandarder,
+	cMethod sshx.AuthMethod, cKey, toolsName, installCmd string,
+	relayInfos []*types.RelayInfo) error {
 
 	event := protoRelay.InstallPagentBySSHReq{
 		ActionName:       std.InstanceData().Name,
@@ -195,21 +207,61 @@ func (act *actionInstallPagentBySSH) notifyRelayToInstall(
 		return fmt.Errorf("marshal event failed: %w", err)
 	}
 
-	errCh := act.proxyMessager.PushToClient(std.Context(),
-		protoRelay.ServerPushEventTypeInstallBySSH, data, std.DeployInfo().RelayInfo.AgentID)
+	// Try each relay sequentially until one succeeds
+	return act.notifyRelayToInstallMultiRelay(std, data, relayInfos)
+}
 
+// notifyRelayToInstallSingle sends install request to a single relay.
+func (act *actionInstallPagentBySSH) notifyRelayToInstallSingle(
+	std *nodeUtils.NodeActionStandarder, data []byte, relayInfo *types.RelayInfo) error {
+
+	if relayInfo == nil || relayInfo.AgentID == "" {
+		return fmt.Errorf("relay info has no agent id")
+	}
+
+	errCh := act.proxyMessager.PushToClient(std.Context(),
+		protoRelay.ServerPushEventTypeInstallBySSH, data, relayInfo.AgentID)
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return fmt.Errorf("notify relay to install failed: %w", err)
+			return fmt.Errorf("notify relay to install failed. agent-id(%s): %w", relayInfo.AgentID, err)
 		}
+
+		return nil
 	case <-std.Context().Done():
-		return std.Context().Err()
+		return fmt.Errorf("context cancelled. agent-id(%s): %w", relayInfo.AgentID, std.Context().Err())
+	case <-time.After(queryClientTimeout):
+		return fmt.Errorf("wait client timed out. agent-id(%s)", relayInfo.AgentID)
+	}
+}
+
+// notifyRelayToInstallMultiRelay tries each relay sequentially until one succeeds.
+func (act *actionInstallPagentBySSH) notifyRelayToInstallMultiRelay(
+	std *nodeUtils.NodeActionStandarder, data []byte, relayInfos []*types.RelayInfo) error {
+
+	var lastErr error
+	for i, relayInfo := range relayInfos {
+		if relayInfo == nil || relayInfo.AgentID == "" {
+			std.InstanceData().LogW(fmt.Sprintf("relay info at index %d has no agent id, trying next", i))
+			continue
+		}
+
+		std.InstanceData().LogI(fmt.Sprintf("attempting to send install request to relay, index(%d/%d), agent-id(%s)",
+			i+1, len(relayInfos), relayInfo.AgentID))
+
+		err := act.notifyRelayToInstallSingle(std, data, relayInfo)
+		if err == nil {
+			std.InstanceData().LogI(fmt.Sprintf("notify relay to install pagent successfully, agent-id(%s)", relayInfo.AgentID))
+			return nil
+		}
+
+		std.InstanceData().LogW(fmt.Sprintf("failed to send install request to relay, index(%d/%d), agent-id(%s): %v",
+			i+1, len(relayInfos), relayInfo.AgentID, err))
+		lastErr = err
 	}
 
-	std.InstanceData().LogI("notify relay to install pagent successfully")
-
-	return nil
+	// All relays failed
+	return fmt.Errorf("failed to send install request to all relay(s). count(%d): %w", len(relayInfos), lastErr)
 }
 
 // nolint: gocognit
@@ -296,7 +348,9 @@ func (act *actionInstallPagentBySSH) setupInstallationTools(std *nodeUtils.NodeA
 
 func (act *actionInstallPagentBySSH) buildInstallCmd(
 	std *nodeUtils.NodeActionStandarder,
-	installerPath string, deployConstant deployconstant.NodeDeployConf) string {
+	installerPath string,
+	deployConstant deployconstant.NodeDeployConf,
+	downloadURLs, callbackURLs string) string {
 
 	installParams := &InstallParams{
 		NodeVersion:     std.DeployInfo().Host.Dynamic.NodeVersion,
@@ -307,8 +361,8 @@ func (act *actionInstallPagentBySSH) buildInstallCmd(
 		OperInstID:      std.InstanceData().OperationInstanceID,
 		BaseWorkDir:     deployConstant.BaseWorkDir,
 		BaseDeployDir:   deployConstant.BaseDeployDir,
-		DownloadSvrAddr: buildURL(std.DeployInfo().RelayInfo.InnerIP, std.DeployInfo().RelayInfo.DownloadSvcPort),
-		CallbackSvrAddr: buildURL(std.DeployInfo().RelayInfo.InnerIP, std.DeployInfo().RelayInfo.CallbackSvcPort),
+		DownloadSvrAddr: downloadURLs,
+		CallbackSvrAddr: callbackURLs,
 	}
 
 	if !std.DeployInfo().InstallOptions.ReRegister && std.DeployInfo().Host.Dynamic.AgentID != "" {
@@ -345,8 +399,4 @@ func (act *actionInstallPagentBySSH) buildInstallCmd(
 	std.InstanceData().LogI(fmt.Sprintf("build install cmd: %v", result))
 
 	return result
-}
-
-func buildURL(ip string, port int64) string {
-	return fmt.Sprintf("http://%s", net.JoinHostPort(ip, fmt.Sprintf("%d", port)))
 }
