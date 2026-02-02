@@ -37,6 +37,12 @@ func NewAppConfig(endpoints []string, appCode string, appSecret string) AppConfi
 	}
 }
 
+// GetAppCode returns the app code for API gateway authentication.
+// This is primarily used by notice handler to obtain the platform parameter.
+func (conf *AppConfig) GetAppCode() string {
+	return conf.appCode
+}
+
 // Validate api gateway runtime.
 func (conf *AppConfig) Validate() error {
 	if len(conf.endpoints) == 0 {
