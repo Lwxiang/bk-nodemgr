@@ -12,16 +12,36 @@ package types
 
 import "time"
 
+// AnnounceType represents the type of announcement.
+type AnnounceType string
+
+const (
+	// AnnounceTypeEvent represents activity/event notification.
+	AnnounceTypeEvent AnnounceType = "event"
+	// AnnounceTypeAnnounce represents platform announcement.
+	AnnounceTypeAnnounce AnnounceType = "announce"
+)
+
+// AnnouncementContent represents announcement content in a specific language.
+type AnnouncementContent struct {
+	// Content is the announcement content text.
+	Content string
+	// Language is the language code (e.g., "zh-cn", "en").
+	Language string
+}
+
 // Announcement represents a platform announcement from notice center.
 type Announcement struct {
 	// ID is the unique identifier of the announcement.
 	ID int64
 	// Title is the announcement title.
 	Title string
-	// Content is the announcement content.
+	// ContentList contains announcement content in multiple languages.
+	ContentList []AnnouncementContent
+	// Content is the default announcement content (for backward compatibility).
 	Content string
-	// AnnounceType is the type of announcement (e.g., "maintenance", "update").
-	AnnounceType string
+	// AnnounceType is the type of announcement.
+	AnnounceType AnnounceType
 	// StartTime is when the announcement becomes active.
 	StartTime time.Time
 	// EndTime is when the announcement expires.

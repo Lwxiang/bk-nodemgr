@@ -13,6 +13,7 @@ package v3
 import (
 	"time"
 
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
@@ -22,11 +23,20 @@ func ConvertAnnouncementFromTypes(announcement *types.Announcement) *Announcemen
 		return nil
 	}
 
+	// Convert content list using conv.SliceToSlice
+	contentList := conv.SliceToSlice(announcement.ContentList, func(content types.AnnouncementContent) *AnnouncementContent {
+		return &AnnouncementContent{
+			Content:  content.Content,
+			Language: content.Language,
+		}
+	})
+
 	return &Announcement{
 		Id:           announcement.ID,
 		Title:        announcement.Title,
+		ContentList:  contentList,
 		Content:      announcement.Content,
-		AnnounceType: announcement.AnnounceType,
+		AnnounceType: string(announcement.AnnounceType),
 		StartTime:    announcement.StartTime.Format(time.RFC3339),
 		EndTime:      announcement.EndTime.Format(time.RFC3339),
 	}
