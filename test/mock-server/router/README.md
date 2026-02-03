@@ -16,7 +16,7 @@ router/
 │   ├── helper.go      # CMDB 专属响应格式
 │   ├── types.go       # Config、常量、错误码
 │   ├── storage.go     # 存储
-│   └── business.go    # 业务处理
+│   └── handler.go     # 业务处理
 └── healthz/           # 服务健康检查
 ```
 
@@ -79,6 +79,7 @@ router/
 3. 使用 `common.BindJSON` 进行请求绑定，使用 `common.RespondJSON` 发送响应
 4. 同一组件内的响应格式需保持一致
 5. 所有组件路由必须遵循 `${mock-server-name}/xxxx` 前缀格式
+6. **禁止使用 `pkg/types`** 中的业务类型，类型定义应在组件内独立维护
 
 ## 参考实现
 
