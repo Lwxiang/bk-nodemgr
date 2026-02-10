@@ -193,3 +193,13 @@ func (act *actionGenOperSyncAlivePluginProcessInfo) executeOper(
 
 	return nil
 }
+
+// DisplayNameZh returns the Chinese display name of the action.
+func (act *actionGenOperSyncAlivePluginProcessInfo) DisplayNameZh() string {
+	return "生成同步存活插件进程信息任务"
+}
+
+// DisplayNameEn returns the English display name of the action.
+func (act *actionGenOperSyncAlivePluginProcessInfo) DisplayNameEn() string {
+	return "Generate Sync Alive Plugin Process Info Operation"
+}

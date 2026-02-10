@@ -57,6 +57,16 @@ func (act *actionVersionCompatCheck) Name() string {
 	return ActionNameVersionCompatCheck
 }
 
+// DisplayNameZh returns the Chinese display name of the action.
+func (act *actionVersionCompatCheck) DisplayNameZh() string {
+	return "版本兼容性检查"
+}
+
+// DisplayNameEn returns the English display name of the action.
+func (act *actionVersionCompatCheck) DisplayNameEn() string {
+	return "Version Compatibility Check"
+}
+
 // Version returns the version of the action.
 func (act *actionVersionCompatCheck) Version() string {
 	return "v1.0.0" // nolint: goconst

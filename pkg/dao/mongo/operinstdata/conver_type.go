@@ -84,13 +84,15 @@ func ConvActInstLifeCycleFromDB(lifeCycle *LifeCycle) *action.Lifecycle {
 // ConvActionInstDataToDB convert action inst data to db.
 func ConvActionInstDataToDB(actionInstData *action.InstanceData) (*ActionInstData, error) {
 	data := &ActionInstData{
-		TriggerID:   actionInstData.TriggerID,
-		OperInstID:  actionInstData.OperationInstanceID,
-		OperationID: actionInstData.OperationID,
-		OperDefName: actionInstData.OperationDefName,
-		Name:        actionInstData.Name,
-		Index:       actionInstData.Index,
-		TotalIndex:  actionInstData.TotalIndex,
+		TriggerID:     actionInstData.TriggerID,
+		OperInstID:    actionInstData.OperationInstanceID,
+		OperationID:   actionInstData.OperationID,
+		OperDefName:   actionInstData.OperationDefName,
+		Name:          actionInstData.Name,
+		DisplayNameZh: actionInstData.DisplayNameZh,
+		DisplayNameEn: actionInstData.DisplayNameEn,
+		Index:         actionInstData.Index,
+		TotalIndex:    actionInstData.TotalIndex,
 
 		PrivateData: make(map[string]any, len(actionInstData.PrivateData)),
 
@@ -167,9 +169,10 @@ func convMessageToDB(msgs []common.Message) []Message {
 	dbData := make([]Message, len(msgs))
 	for idx, msg := range msgs {
 		dbData[idx] = Message{
-			Time:  msg.Time,
-			Text:  msg.Text,
-			Level: msg.Level,
+			Time:   msg.Time,
+			TextZh: msg.TextZh,
+			TextEn: msg.TextEn,
+			Level:  msg.Level,
 		}
 	}
 
@@ -181,9 +184,10 @@ func convMessageFromDB(msgs []Message) []common.Message {
 	data := make([]common.Message, len(msgs))
 	for idx, msg := range msgs {
 		data[idx] = common.Message{
-			Time:  msg.Time,
-			Text:  msg.Text,
-			Level: msg.Level,
+			Time:   msg.Time,
+			TextZh: msg.TextZh,
+			TextEn: msg.TextEn,
+			Level:  msg.Level,
 		}
 	}
 

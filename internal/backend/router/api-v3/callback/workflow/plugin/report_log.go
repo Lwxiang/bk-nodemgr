@@ -40,13 +40,15 @@ func (h *handler) ReportLog(rCtx restserver.IContext) (interface{}, error) {
 
 	logs := make([]common.Message, len(req.GetLogs()))
 	for idx, log := range req.GetLogs() {
+		text := fmt.Sprintf("%s\t:%s\t:%s\t",
+			time.Unix(log.GetTimestamp(), 0).Format("2006-01-02 15:04:05"),
+			log.GetStep(),
+			log.GetLog())
 		logs[idx] = common.Message{
-			Time: time.Now(),
-			Text: fmt.Sprintf("%s\t:%s\t:%s\t",
-				time.Unix(log.GetTimestamp(), 0).Format("2006-01-02 15:04:05"),
-				log.GetStep(),
-				log.GetLog()),
-			Level: log.GetLevel(),
+			Time:   time.Now(),
+			TextZh: text,
+			TextEn: text,
+			Level:  log.GetLevel(),
 		}
 	}
 

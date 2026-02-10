@@ -15,7 +15,8 @@ import "time"
 
 // Message describes the single message in action instance.
 type Message struct {
-	Time  time.Time
-	Text  string
-	Level string
+	Time   time.Time
+	TextZh string // Chinese content
+	TextEn string // English content
+	Level  string
 }

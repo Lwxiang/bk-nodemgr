@@ -337,12 +337,12 @@ func convertPluginWorkOperConditionsFromTypes(condition *types.ApplicationPlugin
 
 	if condition.ExactInclude != nil {
 		exactCond = &PluginWorkflowOperationExactConditions{
-		BkHostId:      condition.ExactInclude.HostID,
-		PluginName:    condition.ExactExclude.PluginName,
-		PluginVersion: condition.ExactInclude.PluginVersion,
-		State: conv.SliceToSlice(condition.ExactInclude.State, func(s operation.State) string {
-			return string(s)
-		}),
+			BkHostId:      condition.ExactInclude.HostID,
+			PluginName:    condition.ExactExclude.PluginName,
+			PluginVersion: condition.ExactInclude.PluginVersion,
+			State: conv.SliceToSlice(condition.ExactInclude.State, func(s operation.State) string {
+				return string(s)
+			}),
 		}
 	}
 
@@ -553,15 +553,18 @@ func (x *PluginWorkflowOperationInstanceLogGetResp) ConvertResultFromTypes(resul
 		messages := make([]*WorkflowActionMessage_Message, 0, len(v.Messages))
 		for _, msg := range v.Messages {
 			messages = append(messages, &WorkflowActionMessage_Message{
-				Time:  msg.Time.UnixMilli(),
-				Text:  msg.Text,
-				Level: msg.Level,
+				Time:   msg.Time.UnixMilli(),
+				TextZh: msg.TextZh,
+				TextEn: msg.TextEn,
+				Level:  msg.Level,
 			})
 		}
 
 		operInstLogs[actionID] = &WorkflowActionData{
-			LifeCycle: lifecycle,
-			Message:   &WorkflowActionMessage{Logs: messages},
+			DisplayNameZh: v.DisplayNameZh,
+			DisplayNameEn: v.DisplayNameEn,
+			LifeCycle:     lifecycle,
+			Message:       &WorkflowActionMessage{Logs: messages},
 		}
 	}
 

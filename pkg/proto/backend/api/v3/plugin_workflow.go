@@ -311,12 +311,12 @@ func convertPluginWorkOperConditionsFromTypes(condition *types.ApplicationPlugin
 
 	if condition.ExactInclude != nil {
 		exactCond = &PluginWorkflowOperationListReq_ExactConditions{
-		BkHostId:      condition.ExactInclude.HostID,
-		PluginName:    condition.ExactInclude.PluginName,
-		PluginVersion: condition.ExactInclude.PluginVersion,
-		State: conv.SliceToSlice(condition.ExactInclude.State, func(s operation.State) string {
-			return string(s)
-		}),
+			BkHostId:      condition.ExactInclude.HostID,
+			PluginName:    condition.ExactInclude.PluginName,
+			PluginVersion: condition.ExactInclude.PluginVersion,
+			State: conv.SliceToSlice(condition.ExactInclude.State, func(s operation.State) string {
+				return string(s)
+			}),
 		}
 	}
 
@@ -630,15 +630,18 @@ func (x *PluginWorkflowOperationInstanceLogGetResp) ConvertResultFromTypes(resul
 		messages := make([]*WorkflowActionMessage_Message, 0, len(v.Messages))
 		for _, msg := range v.Messages {
 			messages = append(messages, &WorkflowActionMessage_Message{
-				Time:  msg.Time.UnixMilli(),
-				Text:  msg.Text,
-				Level: msg.Level,
+				Time:   msg.Time.UnixMilli(),
+				TextZh: msg.TextZh,
+				TextEn: msg.TextEn,
+				Level:  msg.Level,
 			})
 		}
 
 		operInstLogs[actionID] = &WorkflowActionData{
-			LifeCycle: lifecycle,
-			Message:   &WorkflowActionMessage{Logs: messages},
+			DisplayNameZh: v.DisplayNameZh,
+			DisplayNameEn: v.DisplayNameEn,
+			LifeCycle:     lifecycle,
+			Message:       &WorkflowActionMessage{Logs: messages},
 		}
 	}
 
@@ -665,6 +668,8 @@ func (x *PluginWorkflowOperationInstanceLogGetResp) ConvertWorkflowOperationInst
 		}
 
 		instance := &action.InstanceData{
+			DisplayNameZh: actionData.GetDisplayNameZh(),
+			DisplayNameEn: actionData.GetDisplayNameEn(),
 			Lifecycle: &action.Lifecycle{
 				State:     action.State(actionData.GetLifeCycle().GetState()),
 				CreatedAt: time.UnixMilli(actionData.GetLifeCycle().GetCreateTime()),
@@ -680,9 +685,10 @@ func (x *PluginWorkflowOperationInstanceLogGetResp) ConvertWorkflowOperationInst
 					continue
 				}
 				instance.Messages = append(instance.Messages, common.Message{
-					Time:  time.UnixMilli(msg.GetTime()),
-					Text:  msg.GetText(),
-					Level: msg.GetLevel(),
+					Time:   time.UnixMilli(msg.GetTime()),
+					TextZh: msg.GetTextZh(),
+					TextEn: msg.GetTextEn(),
+					Level:  msg.GetLevel(),
 				})
 			}
 		}

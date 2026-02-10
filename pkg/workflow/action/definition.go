@@ -28,6 +28,12 @@ type Definition interface {
 	// Name returns the name of the action.
 	Name() string
 
+	// DisplayNameZh returns the Chinese display name of the action.
+	DisplayNameZh() string
+
+	// DisplayNameEn returns the English display name of the action.
+	DisplayNameEn() string
+
 	// Version returns the version of the action.
 	Version() string
 

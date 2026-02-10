@@ -37,6 +37,8 @@ type InstanceData struct {
 	OperationInstanceID string
 
 	Name          string
+	DisplayNameZh string // Chinese display name
+	DisplayNameEn string // English display name
 	Index         int
 	TotalIndex    int
 	Messages      []common.Message
@@ -62,47 +64,69 @@ func (data *InstanceData) Info() string {
 		data.OperationID, data.Index, data.Name)
 }
 
-// LogI logs messages.
-func (data *InstanceData) LogI(messages ...string) {
-	data.MessagesMutex.Lock()
-	defer data.MessagesMutex.Unlock()
-
-	for _, message := range messages {
-		data.Messages = append(data.Messages, common.Message{
-			Time:  time.Now(),
-			Text:  message,
-			Level: "INFO",
-		})
-	}
+// LogBuilder is a chainable log builder for bilingual logging.
+type LogBuilder struct {
+	data  *InstanceData
+	zhMsg string
+	enMsg string
+	zhSet bool
+	enSet bool
 }
 
-// LogW logs error messages.
-func (data *InstanceData) LogW(messages ...string) {
-	data.MessagesMutex.Lock()
-	defer data.MessagesMutex.Unlock()
-
-	for _, message := range messages {
-		data.Messages = append(data.Messages, common.Message{
-			Time:  time.Now(),
-			Text:  message,
-			Level: "WARN",
-		})
-	}
+// Log returns a new LogBuilder for chainable bilingual logging.
+func (data *InstanceData) Log() *LogBuilder {
+	return &LogBuilder{data: data}
 }
 
-// LogE logs error messages.
-func (data *InstanceData) LogE(messages ...string) {
-	data.MessagesMutex.Lock()
-	defer data.MessagesMutex.Unlock()
+// Zh sets the Chinese log message.
+func (builder *LogBuilder) Zh(format string, args ...any) *LogBuilder {
+	builder.zhMsg = fmt.Sprintf(format, args...)
+	builder.zhSet = true
 
-	for _, message := range messages {
-		data.Messages = append(data.Messages, common.Message{
-			Time:  time.Now(),
-			Text:  message,
-			Level: "ERROR",
-		})
-	}
+	return builder
 }
+
+// En sets the English log message.
+func (builder *LogBuilder) En(format string, args ...any) *LogBuilder {
+	builder.enMsg = fmt.Sprintf(format, args...)
+	builder.enSet = true
+
+	return builder
+}
+
+// log is the internal method that handles auto-fill logic and appends the message.
+func (builder *LogBuilder) log(level string) {
+	zhMsg, enMsg := builder.zhMsg, builder.enMsg
+
+	// Auto-fill rules based on flags
+	switch {
+	case builder.zhSet && !builder.enSet:
+		enMsg = zhMsg
+	case !builder.zhSet && builder.enSet:
+		zhMsg = enMsg
+	case !builder.zhSet && !builder.enSet:
+		zhMsg, enMsg = level, level
+	}
+
+	builder.data.MessagesMutex.Lock()
+	defer builder.data.MessagesMutex.Unlock()
+
+	builder.data.Messages = append(builder.data.Messages, common.Message{
+		Time:   time.Now(),
+		TextZh: zhMsg,
+		TextEn: enMsg,
+		Level:  level,
+	})
+}
+
+// Info logs at INFO level.
+func (builder *LogBuilder) Info() { builder.log("INFO") }
+
+// Warn logs at WARN level.
+func (builder *LogBuilder) Warn() { builder.log("WARN") }
+
+// Error logs at ERROR level.
+func (builder *LogBuilder) Error() { builder.log("ERROR") }
 
 // IsFirst checks if the action instance is the first one.
 func (data *InstanceData) IsFirst() bool {

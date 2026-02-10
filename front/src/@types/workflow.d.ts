@@ -40,8 +40,9 @@ export interface WorkflowActionMessage {
 
 export interface WorkflowActionMessageMessage {
   time: number;
-  text: string;
   level: string;
+  text_zh: string;   // 中文日志内容
+  text_en: string;   // 英文日志内容
 }
 
 // WorkflowActionInstBriefData describes the workflow action instance brief
@@ -55,6 +56,8 @@ export interface WorkflowActionInstBriefData {
 export interface WorkflowActionData {
   life_cycle: WorkflowLifeCycle;
   message: WorkflowActionMessage;
+  display_name_zh: string;  // 新增：中文显示名称
+  display_name_en: string;  // 新增：英文显示名称
 }
 
 // WorkflowOperInstBriefData describes the brief data of operation instance.

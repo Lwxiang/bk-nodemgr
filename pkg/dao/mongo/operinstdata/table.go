@@ -24,17 +24,19 @@ var _ base.IData = &OperInstData{}
 
 // ActionInstData represents a action data.
 type ActionInstData struct {
-	TriggerID   string         `json:"trigger_id" bson:"trigger_id"`
-	OperInstID  string         `json:"oper_inst_id" bson:"oper_inst_id"`
-	OperationID string         `json:"operation_id" bson:"operation_id"`
-	OperDefName string         `json:"oper_def_name" bson:"oper_def_name"`
-	Name        string         `json:"name" bson:"name"`
-	Index       int            `json:"index" bson:"index"`
-	TotalIndex  int            `json:"total_index" bson:"total_index"`
-	Lifecycle   *LifeCycle     `json:"life_cycle" bson:"life_cycle"`
-	Messages    []Message      `json:"messages" bson:"messages"`
-	Content     string         `json:"content" bson:"content"`
-	PrivateData map[string]any `json:"private_data" bson:"private_data"`
+	TriggerID     string         `json:"trigger_id" bson:"trigger_id"`
+	OperInstID    string         `json:"oper_inst_id" bson:"oper_inst_id"`
+	OperationID   string         `json:"operation_id" bson:"operation_id"`
+	OperDefName   string         `json:"oper_def_name" bson:"oper_def_name"`
+	Name          string         `json:"name" bson:"name"`
+	DisplayNameZh string         `json:"display_name_zh" bson:"display_name_zh"` // Chinese display name
+	DisplayNameEn string         `json:"display_name_en" bson:"display_name_en"` // English display name
+	Index         int            `json:"index" bson:"index"`
+	TotalIndex    int            `json:"total_index" bson:"total_index"`
+	Lifecycle     *LifeCycle     `json:"life_cycle" bson:"life_cycle"`
+	Messages      []Message      `json:"messages" bson:"messages"`
+	Content       string         `json:"content" bson:"content"`
+	PrivateData   map[string]any `json:"private_data" bson:"private_data"`
 }
 
 // ActionInstBriefData represents a action brief data.
@@ -45,9 +47,10 @@ type ActionInstBriefData struct {
 
 // Message represents a message.
 type Message struct {
-	Time  time.Time `json:"time" bson:"time"`
-	Text  string    `json:"text" bson:"text"`
-	Level string    `json:"level" bson:"level"`
+	Time   time.Time `json:"time" bson:"time"`
+	TextZh string    `json:"text_zh" bson:"text_zh"` // Chinese content
+	TextEn string    `json:"text_en" bson:"text_en"` // English content
+	Level  string    `json:"level" bson:"level"`
 }
 
 // OperInstData represents a operation instance data.

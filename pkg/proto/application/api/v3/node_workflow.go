@@ -393,15 +393,18 @@ func (x *NodeWorkflowOperationInstanceLogGetResp) ConvertResultFromTypes(result 
 		messages := make([]*WorkflowActionMessage_Message, len(v.Messages))
 		for idx, msg := range v.Messages {
 			messages[idx] = &WorkflowActionMessage_Message{
-				Time:  msg.Time.UnixMilli(),
-				Text:  msg.Text,
-				Level: msg.Level,
+				Time:   msg.Time.UnixMilli(),
+				TextZh: msg.TextZh,
+				TextEn: msg.TextEn,
+				Level:  msg.Level,
 			}
 		}
 
 		operInstLogs[actionID] = &WorkflowActionData{
-			LifeCycle: lifecycle,
-			Message:   &WorkflowActionMessage{Logs: messages},
+			DisplayNameZh: v.DisplayNameZh,
+			DisplayNameEn: v.DisplayNameEn,
+			LifeCycle:     lifecycle,
+			Message:       &WorkflowActionMessage{Logs: messages},
 		}
 	}
 

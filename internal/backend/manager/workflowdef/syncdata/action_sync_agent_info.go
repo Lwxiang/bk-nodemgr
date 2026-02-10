@@ -158,3 +158,9 @@ func (act *actionSyncAgentInfo) Do(ctx *action.InstanceContext) error {
 
 	return nil
 }
+
+// DisplayNameZh returns the Chinese display name of the action.
+func (act *actionSyncAgentInfo) DisplayNameZh() string { return "同步 Agent 信息" }
+
+// DisplayNameEn returns the English display name of the action.
+func (act *actionSyncAgentInfo) DisplayNameEn() string { return "Sync Agent Info" }

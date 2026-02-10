@@ -192,3 +192,9 @@ func aggregateHostsAndProcesses(hosts []*types.Host, processes []*types.Process)
 
 	return agentIDHostIDMap, pluginNameAgentIDList
 }
+
+// DisplayNameZh returns the Chinese display name of the action.
+func (act *actionSyncAlivePluginProcessInfo) DisplayNameZh() string { return "同步存活插件进程信息" }
+
+// DisplayNameEn returns the English display name of the action.
+func (act *actionSyncAlivePluginProcessInfo) DisplayNameEn() string { return "Sync Alive Plugin Process Info" }

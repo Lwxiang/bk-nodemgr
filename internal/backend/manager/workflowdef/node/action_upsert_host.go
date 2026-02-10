@@ -56,6 +56,16 @@ func (act *actionUpsertHostToCMDB) Name() string {
 	return ActionNameUpsertHostToCMDB
 }
 
+// DisplayNameZh returns the Chinese display name of the action.
+func (act *actionUpsertHostToCMDB) DisplayNameZh() string {
+	return "创建或更新主机到 CMDB"
+}
+
+// DisplayNameEn returns the English display name of the action.
+func (act *actionUpsertHostToCMDB) DisplayNameEn() string {
+	return "Upsert Host to CMDB"
+}
+
 // Version returns the version of the action.
 func (act *actionUpsertHostToCMDB) Version() string {
 	return "v1.0.0" // nolint: goconst

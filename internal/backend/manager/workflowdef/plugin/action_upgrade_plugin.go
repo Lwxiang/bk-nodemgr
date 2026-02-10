@@ -151,7 +151,10 @@ func (act *actionUpgradePlugin) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("build script failed: %w", err)
 	}
 
-	std.InstanceData().LogI(fmt.Sprintf("upgrade script: \n%s\n", upgradeScriptContext))
+	std.InstanceData().Log().
+		Zh("升级脚本: \n%s\n", upgradeScriptContext).
+		En("upgrade script: \n%s\n", upgradeScriptContext).
+		Info()
 
 	taskID, err := act.gseHandler.ExecuteScript(nCtx,
 		upgradeScriptType,
@@ -166,7 +169,10 @@ func (act *actionUpgradePlugin) Do(ctx *action.InstanceContext) error {
 		return err
 	}
 
-	std.InstanceData().LogI("upgrade plugin task-id: " + taskID)
+	std.InstanceData().Log().
+		Zh("升级插件任务ID: %s", taskID).
+		En("upgrade plugin task-id: %s", taskID).
+		Info()
 
 	return nil
 }
@@ -271,4 +277,14 @@ func (act *actionUpgradePlugin) buildWindowsUpgradeScript(param *pluginUpgradePa
 	)
 
 	return types.ScriptTypeBat, scriptContent, nil
+}
+
+// DisplayNameZh returns the Chinese display name of the action.
+func (act *actionUpgradePlugin) DisplayNameZh() string {
+	return "升级插件"
+}
+
+// DisplayNameEn returns the English display name of the action.
+func (act *actionUpgradePlugin) DisplayNameEn() string {
+	return "Upgrade Plugin"
 }
