@@ -1527,6 +1527,42 @@ apigwSync:
         resource_names:
           - "resource_name_1"
 
+initPackageJob:
+  enabled: false
+  # If true, create init-packages Job only on `helm install`.
+  # Set to false if you want it to also run on `helm upgrade` (when config/image changes, a new Job name will be generated).
+  installOnly: true
+  # Auto-clean completed Job after N seconds; set empty to disable.
+  ttlSecondsAfterFinished: 86400
+  # bk_username and login_name are needed by generate jwt token
+  bkUsername: ""
+  loginName: ""
+  ## If any gseCert fields are provided, the init-packages Job will decode them
+  ## and write files into /bk-nodemgr/file/packages/cert before uploading.
+  gseCert:
+    ## CA content for certificates (base64)
+    ca: ""
+    ## Server-side certificate (base64)
+    cert: ""
+    ## Server-side private key (base64)
+    key: ""
+    ## Certificate password key file content, used to decrypt the certificate password
+    certEncryptKey: ""
+    ## API client certificate
+    ##
+    apiClient:
+      ## API client certificate (base64), used for other services to call GSE
+      cert: ""
+      ## API client private key (base64), used for other services to call GSE
+      key: ""
+    ## Agent certificate
+    ##
+    agent:
+      ## Agent certificate (base64), used for the agent communication chain
+      cert: ""
+      ## Agent private key (base64), used for the agent communication chain
+      key: ""
+
 ## ServiceMonitor configuration
 ##
 serviceMonitor:
