@@ -14,7 +14,6 @@ package globalsettings
 import (
 	"errors"
 
-	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/basestorage"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/globalsettings"
@@ -26,6 +25,13 @@ import (
 const (
 	// StorageName defines the storage name.
 	StorageName = "global_settings"
+
+	metricOperationListGlobalSettings   = "list"
+	metricOperationCountGlobalSettings  = "count"
+	metricOperationExistGlobalSettings  = "exist"
+	metricOperationGetGlobalSettings    = "get"
+	metricOperationUpsertGlobalSettings = "upsert"
+	metricOperationDeleteGlobalSettings = "delete"
 )
 
 // NewStorage creates a new global settings storage handler.
@@ -78,16 +84,18 @@ func (s *Storage) check() error {
 func (s *Storage) ListGlobalSettings(nCtx contextx.IContext, page types.Page, condition *types.GlobalSettingsCondition) (
 	[]*types.GlobalSettings, int64, error) {
 
-	var results []*types.GlobalSettings
-	var num int64
-	var err error
+	var (
+		results []*types.GlobalSettings
+		num     int64
+	)
 
-	// record metric.
-	metric := s.metric().Start("list")
-	defer metric.End(err)
+	err := s.WrapFn(nCtx, metricOperationListGlobalSettings, func(nCtx contextx.IContext) error {
+		var err error
+		results, num, err = s.daoGlobalSettings.List(nCtx, page, convertGlobalSettingsConditionsToOptions(condition)...)
 
-	opts := convertGlobalSettingsConditionsToOptions(condition)
-	if results, num, err = s.daoGlobalSettings.List(nCtx, page, opts...); err != nil {
+		return err
+	})
+	if err != nil {
 		return nil, 0, err
 	}
 
@@ -97,46 +105,48 @@ func (s *Storage) ListGlobalSettings(nCtx contextx.IContext, page types.Page, co
 // CountGlobalSettings counts global settings by condition.
 func (s *Storage) CountGlobalSettings(nCtx contextx.IContext, condition *types.GlobalSettingsCondition) (int64, error) {
 	var num int64
-	var err error
 
-	// record metric.
-	metric := s.metric().Start("count")
-	defer metric.End(err)
+	err := s.WrapFn(nCtx, metricOperationCountGlobalSettings, func(nCtx contextx.IContext) error {
+		var err error
+		num, err = s.daoGlobalSettings.Count(nCtx, convertGlobalSettingsConditionsToOptions(condition)...)
 
-	opts := convertGlobalSettingsConditionsToOptions(condition)
-	if num, err = s.daoGlobalSettings.Count(nCtx, opts...); err != nil {
-		return 0, nil
+		return err
+	})
+	if err != nil {
+		return 0, err
 	}
 
-	return num, err
+	return num, nil
 }
 
 // ExistGlobalSettings checks if global settings exist by condition.
 func (s *Storage) ExistGlobalSettings(nCtx contextx.IContext, key string) (bool, error) {
 	var exist bool
-	var err error
 
-	// record metric.
-	metric := s.metric().Start("exist")
-	defer metric.End(err)
+	err := s.WrapFn(nCtx, metricOperationExistGlobalSettings, func(nCtx contextx.IContext) error {
+		var err error
+		exist, err = s.daoGlobalSettings.Exist(nCtx, key)
 
-	if exist, err = s.daoGlobalSettings.Exist(nCtx, key); err != nil {
+		return err
+	})
+	if err != nil {
 		return false, err
 	}
 
-	return exist, err
+	return exist, nil
 }
 
 // GetGlobalSetting gets a global settings by setting name.
 func (s *Storage) GetGlobalSetting(nCtx contextx.IContext, name string) (string, error) {
 	var setting *types.GlobalSettings
-	var err error
 
-	// record metric.
-	metric := s.metric().Start("get")
-	defer metric.End(err)
+	err := s.WrapFn(nCtx, metricOperationGetGlobalSettings, func(nCtx contextx.IContext) error {
+		var err error
+		setting, err = s.daoGlobalSettings.Get(nCtx, name)
 
-	if setting, err = s.daoGlobalSettings.Get(nCtx, name); err != nil {
+		return err
+	})
+	if err != nil {
 		return "", err
 	}
 
@@ -145,36 +155,22 @@ func (s *Storage) GetGlobalSetting(nCtx contextx.IContext, name string) (string,
 
 // UpsertGlobalSettings upserts many global settings.
 func (s *Storage) UpsertGlobalSettings(nCtx contextx.IContext, settings ...*types.GlobalSettings) error {
-	var err error
+	return s.WrapFn(nCtx, metricOperationUpsertGlobalSettings, func(nCtx contextx.IContext) error {
+		var err error
+		err = s.daoGlobalSettings.Upsert(nCtx, settings...)
 
-	// record metric.
-	metric := s.metric().Start("upsert")
-	defer metric.End(err)
-
-	if err = s.daoGlobalSettings.Upsert(nCtx, settings...); err != nil {
 		return err
-	}
-
-	return nil
+	})
 }
 
 // DeleteGlobalSettings deletes many global settings.
 func (s *Storage) DeleteGlobalSettings(nCtx contextx.IContext, settingName ...string) error {
-	var err error
+	return s.WrapFn(nCtx, metricOperationDeleteGlobalSettings, func(nCtx contextx.IContext) error {
+		var err error
+		err = s.daoGlobalSettings.Delete(nCtx, settingName...)
 
-	// record metric.
-	metric := s.metric().Start("delete")
-	defer metric.End(err)
-
-	if err = s.daoGlobalSettings.Delete(nCtx, settingName...); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (s *Storage) metric() *storage.MetricData {
-	return storage.Metric(StorageName)
+	})
 }
 
 // convertGlobalSettingsConditionsToOptions converts global settings conditions to options.
