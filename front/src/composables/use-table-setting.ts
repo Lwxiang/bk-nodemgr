@@ -17,13 +17,24 @@ export default function useTableSetting(
     checked?: string[];
     disabled?: string[];
     size?: string;
+    knownFields?: string[];
   } = savedSettingsStr ? JSON.parse(savedSettingsStr) : {};
 
   // 2. 初始化 settings，优先使用用户保存的值，其次使用传入的默认值
+  //    通过 knownFields 追踪用户已知字段，仅自动添加真正的新增字段
+  //    迁移兼容：旧格式无 knownFields 时，视当前默认字段为已知，避免重置用户偏好
+  const savedKnownFields = savedSettings.knownFields
+    ?? (savedSettings.checked ? checked : []);
+  const newFields = savedSettings.checked
+    ? checked.filter(field => !savedKnownFields.includes(field))
+    : [];
+  const mergedChecked = savedSettings.checked
+    ? [...new Set([...savedSettings.checked, ...newFields])]
+    : checked;
   const settings = reactive({
-    checked: savedSettings.checked ?? checked,     // 优先用用户保存的 checked
-    disabled: savedSettings.disabled ?? disabled,   // 优先用用户保存的 disabled
-    size: savedSettings.size ?? 'medium',          // 优先用用户保存的 size
+    checked: mergedChecked,
+    disabled: savedSettings.disabled ?? disabled,
+    size: savedSettings.size ?? 'medium',
   });
 
   const isShowSetting = ref(true);
@@ -49,6 +60,7 @@ export default function useTableSetting(
           checked: newVal.checked,
           disabled: newVal.disabled,
           size: newVal.size,
+          knownFields: [...new Set([...checked, ...newVal.checked])],
         }),
       );
     },
