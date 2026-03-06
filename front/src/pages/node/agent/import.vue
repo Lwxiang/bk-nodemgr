@@ -222,9 +222,14 @@ const tableSetting = reactive({
     'login_mode',
     'credit',
   ],
-  disabled: ['os_type', 'login_port', 'login_user', 'login_mode', 'credit'],
+  disabled: ['os_type', 'login_port', 'login_user', 'login_mode', 'credit', 'bk_networkunit_id'],
   size: 'medium',
 });
+
+const normalizeNetworkUnitId = (id: unknown) => {
+  if (id === '' || id === null || id === undefined) return '';
+  return Number(id) === -1 ? '' : String(id);
+};
 
 const loading = ref(false);
 // 显示侧边栏安装策略
@@ -319,7 +324,10 @@ const handlePreview = async () => {
         // 如果没有输入值，直接赋值
         item[targetKey] = item.credit;
       }
-      item.bk_networkunit_id = Number(item.bk_networkunit_id);
+      // Keep historical semantics: empty network unit should remain -1 instead of 0.
+      item.bk_networkunit_id = item.bk_networkunit_id === ''
+        ? -1
+        : Number(item.bk_networkunit_id);
     });
     if (isShow.value) {
       previewData.data.target_version = systemData.value
@@ -402,7 +410,7 @@ onMounted(async () => {
       ...host.state,
       ...host.info,
       ...host,
-      bk_networkunit_id: String(host.info.bk_networkunit_id),
+      bk_networkunit_id: normalizeNetworkUnitId(host.info.bk_networkunit_id),
       bk_host_innerip: host.info.bk_host_innerip_list?.join(','),
       bk_host_innerip_v6: host.info.bk_host_innerip_v6_list?.join(','),
     }));
@@ -412,7 +420,7 @@ onMounted(async () => {
     formData.info = nodeManageStore.agentEditParams.tableData.map(({ info, state, ...rest }) => ({
       target_version: state?.node_version,
       ...rest,
-      bk_networkunit_id: String(info.bk_networkunit_id),
+      bk_networkunit_id: normalizeNetworkUnitId(info.bk_networkunit_id),
       bk_host_innerip: info.bk_host_innerip_list?.[0],
       bk_host_innerip_v6: info.bk_host_innerip_v6_list?.[0],
     }));

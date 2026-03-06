@@ -103,7 +103,7 @@
           @click="handleConfirm"
         >
           <span>
-            {{ $t("action.reinstallProxy") }}
+            {{ $t("topoManager.installProxy.button.install") }}
           </span>
           <span
             class="mx-[8px] px-[6px] bg-[#e1ecff] rounded-[8px] text-[#3a84ff] text-[12px] h-[16px] leading-[16px]"
@@ -116,6 +116,11 @@
         </Button>
       </div>
     </template>
+    <proxy-preview
+      v-model:is-show="isShowPreview"
+      :data="previewData"
+      @close="isShow = false"
+    ></proxy-preview>
     <choose-version-dialog
       v-model:is-show="isShowDialog"
       :data="dialogData"
@@ -126,19 +131,17 @@
 </template>
 
 <script lang="ts" setup>
-import { Button, Cascader, Form, InfoBox, Input, Loading, Message, Sideslider } from 'bkui-vue';
+import { Button, Cascader, Form, InfoBox, Input, Loading, Sideslider } from 'bkui-vue';
 import { AngleDoubleDownLine } from 'bkui-vue/lib/icon';
 import { cloneDeep, isEqual } from 'lodash';
 import type { PropType } from 'vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
 import { Table, TableColumn } from '@blueking/table';
 
-import SelectItemGroup from './components/select-item-group.vue';
+import ProxyPreview from './preview.vue';
 
-import { NodeProxyService } from '@/api/modules/node_proxy';
 import { PackageService } from '@/api/modules/pkg';
 import { TopoService } from '@/api/modules/topo';
 import { encryptionTool } from '@/common/crypto';
@@ -160,11 +163,12 @@ const props = defineProps({
     default: () => ({}),
   },
 });
-const router = useRouter();
 const { t } = useI18n();
 const settings = reactive({
   fields: [
     { field: 'bk_biz_id', title: t('installProxy.business') },
+    { field: 'bk_networkarea_name', title: t('platform.nodeMan.bk_cloud_name') },
+    { field: 'bk_networkunit_id', title: t('platform.nodeMan.bk_cloud_unit') },
     { field: 'bk_host_innerip', title: t('installProxy.innerIPv4') },
     { field: 'bk_host_innerip_v6', title: t('installProxy.innerIPv6') },
     { field: 'os_type', title: t('installProxy.os') },
@@ -182,6 +186,8 @@ const settings = reactive({
   ],
   checked: [
     'bk_biz_id',
+    'bk_networkarea_name',
+    'bk_networkunit_id',
     'bk_host_innerip',
     'bk_host_innerip_v6',
     'os_type',
@@ -191,7 +197,7 @@ const settings = reactive({
     'login_mode',
     'credit',
   ],
-  disabled: ['os_type', 'login_port', 'login_user', 'login_mode', 'credit'],
+  disabled: ['os_type', 'login_port', 'login_user', 'login_mode', 'credit', 'bk_networkunit_id'],
   size: 'medium',
 });
 const initData = {
@@ -200,7 +206,10 @@ const initData = {
   bk_host_id: '',
   bk_host_innerip: '',
   bk_host_innerip_v6: '',
+  bk_networkarea_id: '',
+  bk_networkarea_name: '',
   bk_networkunit_id: '',
+  bk_networkunit_name: '',
   export_ip: '',
   advertise_ip: '',
   login_ip: '',
@@ -338,6 +347,8 @@ const systemValidate = async () => {
   const result = await Promise.all(validate);
   return result.every(item => item);
 };
+const isShowPreview = ref(false);
+const previewData = ref<any>({});
 const proxy_tags = ['dedicated_installer', 'cluster_tunnel', 'file_tunnel', 'data_tunnel'];
 const handleConfirm = async () => {
   const result = await Promise.all([
@@ -383,8 +394,7 @@ const handleConfirm = async () => {
           version: item.version,
         }));
     }
-    const params = {
-      host: form.info.map((item: any) => {
+    const hosts = form.info.map((item: any) => {
         const {
           bk_host_id,
           dedicated_installer,
@@ -393,35 +403,22 @@ const handleConfirm = async () => {
           data_tunnel,
           ...rest
         } = item;
+        const bkNetworkUnitId = Number(rest.bk_networkunit_id);
         return {
           ...rest,
+          bk_networkunit_id: bkNetworkUnitId,
           os_type: 'linux',
           login_port: Number(rest.login_port),
-          proxy_install_origin_unit_id: getinstallOriginUnitId(rest.bk_networkunit_id),
+          proxy_install_origin_unit_id: getinstallOriginUnitId(bkNetworkUnitId),
           ...(bk_host_id !== null && bk_host_id !== '' ? { bk_host_id } : {}),
         };
-      }),
+    });
+    previewData.value = {
+      hosts,
       target_version: form.target_version,
       is_manual: form.method === 'manual',
     };
-    const res = await NodeProxyService.NodeProxyInstall(params).catch((err) => {
-      console.log(err);
-    });
-    if (!res) return;
-    Message({
-      theme: 'success',
-      message: t('installProxy.reinstallInitiated'),
-    });
-    isShow.value = false;
-    if (res.workflow_id) {
-      router.push({
-        name: 'taskDetail',
-        params: { taskId: res.workflow_id },
-        query: {
-          active: 'node',
-        },
-      });
-    }
+    isShowPreview.value = true;
   } else {
     scrollToFirstErrorByClassNames();
   }
@@ -447,6 +444,11 @@ const assign = (data1: any, data2: any, data3?: any) => {
   Object.keys(data1).forEach((key) => {
     data1[key] = data2[key] ?? data3?.[key] ?? data1[key];
   });
+};
+
+const normalizeNetworkUnitId = (id: unknown) => {
+  if (id === '' || id === null || id === undefined) return '';
+  return Number(id) === -1 ? '' : String(id);
 };
 
 const handleChange = (value: string) => {
@@ -489,54 +491,61 @@ const loading = ref(false);
 
 watch(() => isShow.value, async () => {
   if (isShow.value && props.data.length) {
-    // 使用TopoService.HostList接口进行切片查询获取数据
-    if (props.isCrossPageSelection) {
-      // 跨页全选模式：使用HostList接口分页获取所有数据
-      const allHosts = [];
-      const pageSize = 1000; // 每页大小
-      let offset = 0;
-      let hasMore = true;
-      loading.value = true;
+    loading.value = true;
+    try {
+      // 先拉取网络单元，避免 Select 在无选项时回显原始 unit-id
+      await getNetworkUnitList();
 
-      while (hasMore) {
-        const hostListData = await TopoService.HostList({
-          page: { offset, limit: pageSize },
-          only_count: false,
-          ...props.params,
-        }).catch(() => ({ total: 0, items: [] }));
+      // 使用TopoService.HostList接口进行切片查询获取数据
+      if (props.isCrossPageSelection) {
+        // 跨页全选模式：使用HostList接口分页获取所有数据
+        const allHosts = [];
+        const pageSize = 1000; // 每页大小
+        let offset = 0;
+        let hasMore = true;
 
-        if (hostListData.items && hostListData.items.length > 0) {
-          allHosts.push(...hostListData.items);
-          offset += pageSize;
+        while (hasMore) {
+          const hostListData = await TopoService.HostList({
+            page: { offset, limit: pageSize },
+            only_count: false,
+            ...props.params,
+          }).catch(() => ({ total: 0, items: [] }));
 
-          // 如果返回的数据少于pageSize，说明没有更多数据了
-          if (hostListData.items.length < pageSize) {
+          if (hostListData.items && hostListData.items.length > 0) {
+            allHosts.push(...hostListData.items);
+            offset += pageSize;
+
+            // 如果返回的数据少于pageSize，说明没有更多数据了
+            if (hostListData.items.length < pageSize) {
+              hasMore = false;
+            }
+          } else {
             hasMore = false;
           }
-        } else {
-          hasMore = false;
         }
-      }
 
-      form.info = allHosts.map((host: any) => ({
-        ...host.state,
-        ...host.info,
-        ...host,
-        bk_host_innerip: host.info.bk_host_innerip_list?.join(','),
-        bk_host_innerip_v6: host.info.bk_host_innerip_v6_list?.join(','),
-      }));
+        form.info = allHosts.map((host: any) => ({
+          ...host.state,
+          ...host.info,
+          ...host,
+          bk_networkunit_id: normalizeNetworkUnitId(host.info?.bk_networkunit_id),
+          bk_host_innerip: host.info.bk_host_innerip_list?.join(','),
+          bk_host_innerip_v6: host.info.bk_host_innerip_v6_list?.join(','),
+        }));
+      } else {
+        // 本页选择模式：使用原有数据
+        form.info = props.data.map((item: Host) => {
+          const data = cloneDeep(initData);
+          assign(data, item, item.info);
+          data.bk_networkunit_id = normalizeNetworkUnitId(data.bk_networkunit_id);
+          return data;
+        });
+      }
+      await getVersions();
+      originData.value = cloneDeep(form);
+    } finally {
       loading.value = false;
-    } else {
-      // 本页选择模式：使用原有数据
-      form.info = props.data.map((item: Host) => {
-        const data = cloneDeep(initData);
-        assign(data, item, item.info);
-        return data;
-      });
     }
-    await getVersions();
-    await getNetworkUnitList();
-    originData.value = cloneDeep(form);
   }
 });
 onMounted(() => {

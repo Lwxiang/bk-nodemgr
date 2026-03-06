@@ -82,9 +82,14 @@
           :min-width="150"
           :visible="settings.checked.includes('bk_networkunit_id')"
         >
+          <template #header>
+            <span class="mr-[5px]">{{ $t('components.installTable.networkUnit') }}</span>
+            <span class="mx-[3px] text-[#FF5656]">*</span>
+          </template>
           <template #default="{ row, rowIndex }">
             <ValidateCell :error="getError(rowIndex, 'bk_networkunit_id')">
               <Select
+                v-if="!networkUnitLoading"
                 v-model="row.bk_networkunit_id"
                 auto-focus
                 filterable
@@ -105,10 +110,18 @@
                   :key="option.bk_networkunit_id"
                   :id="String(option.bk_networkunit_id)"
                   :name="option.bk_networkunit_name"
+                  :disabled="option.is_direct"
+                  v-bk-tooltips="{
+                    content: $t('topoManager.installProxy.form.tip'),
+                    disabled: !option.is_direct,
+                    boundary: 'parent',
+                    placement: 'left',
+                  }"
                 >
                   [{{ option.bk_networkunit_id }}] {{ option.bk_networkunit_name }}
                 </Select.Option>
               </Select>
+              <div v-else class="h-[32px] w-full rounded-[2px] bg-[#F5F7FA]"></div>
             </ValidateCell>
           </template>
         </VxeColumn>
@@ -992,6 +1005,7 @@ const handleFieldBlur = (rowIndex: number, field: string, value: any) => {
     'login_mode',
     'export_ip',
   ];
+  requiredFields.push('bk_networkunit_id');
   if (props.isReinstall) requiredFields.push('bk_biz_id');
 
   if (requiredFields.includes(field) && !value && value !== 0) {
@@ -1048,6 +1062,10 @@ const tableValidate = async () => {
       && !row.bk_biz_id
     ) {
       setError(i, 'bk_biz_id',  t('validate.required'));
+      rowValid = false;
+    }
+    if (!row.bk_networkunit_id) {
+      setError(i, 'bk_networkunit_id', t('validate.required'));
       rowValid = false;
     }
     // 2.2 IP
@@ -1174,23 +1192,29 @@ const tableValidate = async () => {
 const networkUnitList = ref<any[]>([]);
 // 分组映射：{bk_networkarea_id: [网络单元对象数组]}
 const networkUnitGroupMap = ref<Record<number, any[]>>({});
+const networkUnitLoading = ref(false);
 
 const getNetworkUnitList = async () => {
-  const res = await TopoService.NetworkUnitList({
-    exact_include_conditions: {
-      bk_networkarea_id: tableData.value?.map((item: any) => Number(item.bk_networkarea_id)) || [],
-    },
-  }).catch((err: any) => {
-    console.log(err);
-    return {
-      total: 0,
-      items: [],
-    };
-  });
-  networkUnitList.value = res.items;
+  networkUnitLoading.value = true;
+  try {
+    const res = await TopoService.NetworkUnitList({
+      exact_include_conditions: {
+        bk_networkarea_id: tableData.value?.map((item: any) => Number(item.bk_networkarea_id)) || [],
+      },
+    }).catch((err: any) => {
+      console.log(err);
+      return {
+        total: 0,
+        items: [],
+      };
+    });
+    networkUnitList.value = res.items;
 
-  // 使用Lodash的groupBy函数进行分组
-  networkUnitGroupMap.value = groupBy(res.items, 'bk_networkarea_id');
+    // 使用Lodash的groupBy函数进行分组
+    networkUnitGroupMap.value = groupBy(res.items, 'bk_networkarea_id');
+  } finally {
+    networkUnitLoading.value = false;
+  }
 };
 
 // 根据网络区域ID获取对应的网络单元列表
@@ -1198,13 +1222,8 @@ const getNetworkUnitsByAreaId = (bkNetworkAreaId: number) => {
   return networkUnitGroupMap.value[bkNetworkAreaId] || [];
 };
 
-// 获取所有可用的网络区域ID列表
-const getNetworkAreaIds = () => {
-  return Object.keys(networkUnitGroupMap.value).map(id => Number(id));
-};
-
 // 处理管控单元变更，获取对应的名称
-const handleNetworkUnitChange = (val: string, row: any, rowIndex: number) => {
+const handleNetworkUnitChange = (val: string, row: any, _rowIndex: number) => {
   if (!val) return;
 
   // 在所有网络单元中查找对应的名称
@@ -1237,10 +1256,21 @@ defineExpose({ tableValidate, showSetting });
 
 onMounted(async () => {
   await getHostDistinct();
-  if (props.isReinstall) {
-    await getNetworkUnitList();
-  }
 });
+
+watch(
+  () => tableData.value?.map((item: any) => Number(item.bk_networkarea_id)).join(',') || '',
+  async (val: string) => {
+    if (!props.isReinstall) return;
+    if (!val) {
+      networkUnitList.value = [];
+      networkUnitGroupMap.value = {};
+      return;
+    }
+    await getNetworkUnitList();
+  },
+  { immediate: true },
+);
 
 watch(() => type.value, () => {
   clearAllErrors();
