@@ -23,57 +23,61 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/iamv3"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/gin-gonic/gin"
 )
 
 // mockIAMHandler is a mock implementation of iamv3.IHandler for testing.
+// It mirrors the real Handler's IsBasicAuthAllowed semantics: username must be
+// "bk_iam" and password must match the system token, per iam-go-sdk convention.
 type mockIAMHandler struct {
-	allowedUsername string
-	allowedPassword string
+	token string
 }
 
+var _ iamv3.IHandler = (*mockIAMHandler)(nil)
+
 func (m *mockIAMHandler) IsBasicAuthAllowed(_ contextx.IContext, username, password string) error {
-	if username == m.allowedUsername && password == m.allowedPassword {
-		return nil
+	if username != "bk_iam" {
+		return fmt.Errorf("invalid credentials")
 	}
 
-	return fmt.Errorf("invalid credentials")
+	if password != m.token {
+		return fmt.Errorf("invalid credentials")
+	}
+
+	return nil
 }
 
 // Implement other IHandler methods as no-ops for the mock.
-func (m *mockIAMHandler) IsAllowed(_ contextx.IContext, _ iamv3.Request) (bool, error) {
+func (m *mockIAMHandler) IsAllowed(_ contextx.IContext, _ types.IAMCheckRequest) (bool, error) {
 	return false, nil
 }
 
-func (m *mockIAMHandler) IsAllowedWithCache(_ contextx.IContext, _ iamv3.Request, _ time.Duration) (bool, error) {
+func (m *mockIAMHandler) IsAllowedWithCache(_ contextx.IContext, _ types.IAMCheckRequest, _ time.Duration) (bool, error) {
 	return false, nil
 }
 
-func (m *mockIAMHandler) BatchIsAllowed(_ contextx.IContext, _ iamv3.Request,
-	_ []iamv3.Resources) (map[string]bool, error) {
+func (m *mockIAMHandler) BatchIsAllowed(_ contextx.IContext, _ types.IAMCheckRequest,
+	_ [][]types.IAMResource) (map[string]bool, error) {
 	return nil, nil
 }
 
 func (m *mockIAMHandler) ResourceMultiActionsAllowed(_ contextx.IContext,
-	_ iamv3.MultiActionRequest) (map[string]bool, error) {
+	_ types.IAMMultiActionCheckRequest) (map[string]bool, error) {
 	return nil, nil
 }
 
 func (m *mockIAMHandler) BatchResourceMultiActionsAllowed(_ contextx.IContext,
-	_ iamv3.MultiActionRequest, _ []iamv3.Resources) (map[string]map[string]bool, error) {
+	_ types.IAMMultiActionCheckRequest, _ [][]types.IAMResource) (map[string]map[string]bool, error) {
 	return nil, nil
 }
 
 func (m *mockIAMHandler) GetToken(_ contextx.IContext) (string, error) {
-	return m.allowedPassword, nil
+	return m.token, nil
 }
 
-func (m *mockIAMHandler) GetApplyURL(_ contextx.IContext, _ iamv3.Application) (string, error) {
+func (m *mockIAMHandler) GetApplyURL(_ contextx.IContext, _ types.IAMApplyRequest) (string, error) {
 	return "", nil
-}
-
-func (m *mockIAMHandler) GenPermissionApplyData(_ iamv3.ApplicationActionListForApply) (map[string]interface{}, error) {
-	return nil, nil
 }
 
 func setupTestRouter(mockHandler *mockIAMHandler) *gin.Engine {
@@ -99,14 +103,13 @@ func basicAuth(username, password string) string {
 // TestRouteRegistration verifies that the IAM routes are registered correctly.
 func TestRouteRegistration(t *testing.T) {
 	mockHandler := &mockIAMHandler{
-		allowedUsername: "test_system",
-		allowedPassword: "test_token",
+		token: "test_token",
 	}
 	router := setupTestRouter(mockHandler)
 
 	// Check that the route exists by making a request (authentication will be checked separately)
 	req := httptest.NewRequest(http.MethodPost, "/api/v3/iam/v3/resource", nil)
-	req.Header.Set("Authorization", basicAuth("test_system", "test_token"))
+	req.Header.Set("Authorization", basicAuth("bk_iam", "test_token"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -122,8 +125,7 @@ func TestRouteRegistration(t *testing.T) {
 // TestBasicAuthMiddleware_NoCredentials tests that requests without credentials are rejected.
 func TestBasicAuthMiddleware_NoCredentials(t *testing.T) {
 	mockHandler := &mockIAMHandler{
-		allowedUsername: "test_system",
-		allowedPassword: "test_token",
+		token: "test_token",
 	}
 	router := setupTestRouter(mockHandler)
 
@@ -146,8 +148,7 @@ func TestBasicAuthMiddleware_NoCredentials(t *testing.T) {
 // TestBasicAuthMiddleware_InvalidCredentials tests that invalid credentials are rejected.
 func TestBasicAuthMiddleware_InvalidCredentials(t *testing.T) {
 	mockHandler := &mockIAMHandler{
-		allowedUsername: "test_system",
-		allowedPassword: "test_token",
+		token: "test_token",
 	}
 	router := setupTestRouter(mockHandler)
 
@@ -166,38 +167,41 @@ func TestBasicAuthMiddleware_InvalidCredentials(t *testing.T) {
 // TestBasicAuthMiddleware_ValidCredentials tests that valid credentials are accepted.
 func TestBasicAuthMiddleware_ValidCredentials(t *testing.T) {
 	mockHandler := &mockIAMHandler{
-		allowedUsername: "test_system",
-		allowedPassword: "test_token",
+		token: "test_token",
 	}
-	router := setupTestRouter(mockHandler)
 
-	// Make a request with valid credentials but empty body
-	// The dispatcher will return 400 for bad request, but not 401
-	req := httptest.NewRequest(http.MethodPost, "/api/v3/iam/v3/resource", nil)
-	req.Header.Set("Authorization", basicAuth("test_system", "test_token"))
-	req.Header.Set("Content-Type", "application/json")
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	h := &handler{
+		capability: &options.Capability{IAMV3Handler: mockHandler},
+	}
+	router.Use(h.basicAuthMiddleware())
+	router.POST("/ping", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ping", nil)
+	req.Header.Set("Authorization", basicAuth("bk_iam", "test_token"))
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
-	// Should not be 401 (auth succeeded, but request body is invalid)
-	if w.Code == http.StatusUnauthorized {
-		t.Errorf("Expected authentication to succeed with valid credentials, got 401")
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200 OK for valid credentials, got %d. Body: %s", w.Code, w.Body.String())
 	}
 }
 
 // TestResourceCallback_UnregisteredProvider tests that unregistered resource types return 404.
 func TestResourceCallback_UnregisteredProvider(t *testing.T) {
 	mockHandler := &mockIAMHandler{
-		allowedUsername: "test_system",
-		allowedPassword: "test_token",
+		token: "test_token",
 	}
 	router := setupTestRouter(mockHandler)
 
 	// Send a valid callback request for an unregistered resource type
 	body := `{"type": "unregistered_type", "method": "list_instance"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v3/iam/v3/resource", strings.NewReader(body))
-	req.Header.Set("Authorization", basicAuth("test_system", "test_token"))
+	req.Header.Set("Authorization", basicAuth("bk_iam", "test_token"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
