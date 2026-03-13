@@ -31,7 +31,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/wmix"
+
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
 )
@@ -42,10 +42,6 @@ const (
 
 	// queryClientTimeoutWMI defines the query client timeout for WMI action.
 	queryClientTimeoutWMI = 30 * time.Second
-
-	// relayInfoCountForRetryWMI defines the count of relay info for retry in WMI action.
-	// Default is 3 for high availability. Adjust based on business requirements.
-	relayInfoCountForRetryWMI = 3
 
 	// waitForRelayReportTimeoutWMI defines the timeout for waiting relay report in WMI action.
 	waitForRelayReportTimeoutWMI = 30 * time.Second
@@ -156,13 +152,13 @@ func (act *actionPagentDetectInfoByWMI) Do(ctx *action.InstanceContext) error {
 
 	// get wmi credit.
 	credit := nodeUtils.NewCreditHandler(act.storageHostCredit, act.passwordVault)
-	cMethod, cKey, err := credit.GetWMICredit(std)
+	_, cKey, err := credit.GetWMICredit(std)
 	if err != nil {
 		return fmt.Errorf("failed to get wmi credit: %w", err)
 	}
 
 	// send detect info request to relay.
-	if err := act.notifyRelayTodetect(std, cMethod, cKey); err != nil {
+	if err := act.notifyRelayToDetect(std, cKey); err != nil {
 		return err
 	}
 
@@ -241,8 +237,8 @@ func (act *actionPagentDetectInfoByWMI) Do(ctx *action.InstanceContext) error {
 	return nil
 }
 
-func (act *actionPagentDetectInfoByWMI) notifyRelayTodetect(
-	std *nodeUtils.NodeActionStandarder, cMethod wmix.AuthMethod, cKey string) error {
+func (act *actionPagentDetectInfoByWMI) notifyRelayToDetect(
+	std *nodeUtils.NodeActionStandarder, cKey string) error {
 
 	detectInfoEvent := protoRelay.DetectInfoByWMIReq{
 		ActionName: std.InstanceData().Name,
@@ -250,7 +246,7 @@ func (act *actionPagentDetectInfoByWMI) notifyRelayTodetect(
 		IP:         std.DeployInfo().Host.Dynamic.LoginIP,
 		Port:       std.DeployInfo().Host.Dynamic.LoginPort,
 		User:       std.DeployInfo().Host.Dynamic.LoginUser,
-		LoginMode:  string(cMethod),
+		LoginMode:  string(std.DeployInfo().Host.Dynamic.LoginMode),
 		Password:   cKey,
 	}
 
