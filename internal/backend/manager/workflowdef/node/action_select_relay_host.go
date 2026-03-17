@@ -181,27 +181,20 @@ func (act *actionSelectRelayHost) selectDedicatedInstallerHost(
 	// nolint: gosec
 	relayHost := dedicatedHosts[rand.Intn(len(dedicatedHosts))]
 
-	innerIP := func() string {
-		if len(relayHost.Static.InnerIPList) == 0 {
-			return ""
-		}
+	if relayHost.Dynamic.AdvertiseIP == "" && relayHost.Dynamic.AdvertiseIPV6 == "" {
+		std.InstanceData().Log().
+			Zh("代理主机的服务IP与服务IPv6为空").
+			En("proxy host advertise ip and advertise ipv6 are both empty").
+			Error()
 
-		return relayHost.Static.InnerIPList[0]
-	}()
-
-	innerIPV6 := func() string {
-		if len(relayHost.Static.InnerIPV6List) == 0 {
-			return ""
-		}
-
-		return relayHost.Static.InnerIPV6List[0]
-	}()
+		return types.RelayInfo{}, errors.New("proxy host advertise ip and advertise ipv6 are both empty")
+	}
 
 	return types.RelayInfo{
 		HostID:          relayHost.HostID,
 		AgentID:         relayHost.Dynamic.AgentID,
-		InnerIP:         innerIP,
-		InnerIPV6:       innerIPV6,
+		AdvertiseIP:     relayHost.Dynamic.AdvertiseIP,
+		AdvertiseIPV6:   relayHost.Dynamic.AdvertiseIPV6,
 		DownloadSvcPort: relayHost.Dynamic.RelayDownloadPort,
 		CallbackSvcPort: relayHost.Dynamic.RelayCallbackPort,
 	}, nil
