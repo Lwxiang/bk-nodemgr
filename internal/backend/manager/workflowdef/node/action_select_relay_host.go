@@ -160,11 +160,17 @@ func (act *actionSelectRelayHost) selectDedicatedInstallerHost(
 
 	dedicatedHosts := make([]*types.Host, 0, num)
 	for _, host := range hosts {
-		for _, tag := range host.Dynamic.ProxyTags {
-			if tag == types.ProxyTagDedicatedInstaller {
-				dedicatedHosts = append(dedicatedHosts, host)
-				break
+		if host.Dynamic.ProxySupportInstaller() {
+			if err := act.validateRelayHost(host); err != nil {
+				std.InstanceData().Log().
+					Zh("专用安装主机缺少 relay 配置信息，已忽略。host-id(%d): %v", host.HostID, err).
+					En("dedicated installer host missing relay config and skipped. host-id(%d): %v", host.HostID, err).
+					Warn()
+
+				continue
 			}
+
+			dedicatedHosts = append(dedicatedHosts, host)
 		}
 	}
 
@@ -181,15 +187,6 @@ func (act *actionSelectRelayHost) selectDedicatedInstallerHost(
 	// nolint: gosec
 	relayHost := dedicatedHosts[rand.Intn(len(dedicatedHosts))]
 
-	if relayHost.Dynamic.AdvertiseIP == "" && relayHost.Dynamic.AdvertiseIPV6 == "" {
-		std.InstanceData().Log().
-			Zh("代理主机的服务IP与服务IPv6为空").
-			En("proxy host advertise ip and advertise ipv6 are both empty").
-			Error()
-
-		return types.RelayInfo{}, errors.New("proxy host advertise ip and advertise ipv6 are both empty")
-	}
-
 	return types.RelayInfo{
 		HostID:          relayHost.HostID,
 		AgentID:         relayHost.Dynamic.AgentID,
@@ -198,4 +195,28 @@ func (act *actionSelectRelayHost) selectDedicatedInstallerHost(
 		DownloadSvcPort: relayHost.Dynamic.RelayDownloadPort,
 		CallbackSvcPort: relayHost.Dynamic.RelayCallbackPort,
 	}, nil
+}
+
+func (act *actionSelectRelayHost) validateRelayHost(host *types.Host) error {
+	if host == nil {
+		return errors.New("host is nil")
+	}
+
+	if host.Dynamic.AgentID == "" {
+		return errors.New("agent-id is required")
+	}
+
+	if host.Dynamic.RelayDownloadPort <= 0 {
+		return errors.New("relay download service port is required")
+	}
+
+	if host.Dynamic.RelayCallbackPort <= 0 {
+		return errors.New("relay callback service port is required")
+	}
+
+	if host.Dynamic.AdvertiseIP == "" || host.Dynamic.AdvertiseIPV6 == "" {
+		return errors.New("advertise ip or ipv6 is required")
+	}
+
+	return nil
 }

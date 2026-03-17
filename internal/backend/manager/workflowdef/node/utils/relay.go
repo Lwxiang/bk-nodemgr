@@ -11,6 +11,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/discover"
@@ -91,6 +92,40 @@ func RelayInfosToEndpoints(infos []*types.RelayInfo) (callbacks []discover.Endpo
 	}
 
 	return callbacks, downloads
+}
+
+// GetSelectedRelay returns the relay that was selected by SelectRelayHost action.
+func (std *NodeActionStandarder) GetSelectedRelay() (*types.RelayInfo, error) {
+	relay := &std.DeployInfo().RelayInfo
+	if relay.HostID <= 0 {
+		return nil, errors.New("host id is required")
+	}
+
+	if relay.AgentID == "" {
+		return nil, errors.New("agent id is required")
+	}
+
+	if relay.DownloadSvcPort <= 0 {
+		return nil, errors.New("download service port is required")
+	}
+
+	if relay.CallbackSvcPort <= 0 {
+		return nil, errors.New("callback service port is required")
+	}
+
+	if relay.AdvertiseIP == "" || relay.AdvertiseIPV6 == "" {
+		return nil, errors.New("advertise ip or ipv6 is required")
+	}
+
+	return relay, nil
+}
+
+// BuildRelayServerURLs builds download and callback urls directly from the selected relay.
+func (std *NodeActionStandarder) BuildRelayServerURLs(relay *types.RelayInfo) (string, string) {
+	downloadURL := BuildServerURLs(relayInfoToEndpoint(relay, relay.DownloadSvcPort))
+	callbackURL := BuildServerURLs(relayInfoToEndpoint(relay, relay.CallbackSvcPort))
+
+	return downloadURL, callbackURL
 }
 
 // GetRelayEndpoints queries Relay hosts and returns Endpoint list, callback and download endpoints.

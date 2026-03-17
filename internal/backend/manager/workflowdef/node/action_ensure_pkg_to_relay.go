@@ -164,13 +164,18 @@ func (act *actionEnsurePkgToRelay) Do(ctx *action.InstanceContext) error {
 		return nil
 	}
 
-	if err := act.queryRelayPackageState(std, filesToProcess); err != nil {
-		return fmt.Errorf("query relay state failed: %w", err)
+	relayInfo, err := std.GetSelectedRelay()
+	if err != nil {
+		return fmt.Errorf("failed to get selected relay: %w", err)
+	}
+
+	if err := act.queryRelayPackageState(std, filesToProcess, relayInfo); err != nil {
+		return fmt.Errorf("failed to query relay package state: %w", err)
 	}
 
 	pkgStates, storageDir, err := act.waitForRelayReportFile(std, filesToProcess)
 	if err != nil {
-		return fmt.Errorf("wait for relay report failed: %w", err)
+		return fmt.Errorf("failed to wait for relay report: %w", err)
 	}
 
 	if storageDir == "" {
@@ -190,11 +195,11 @@ func (act *actionEnsurePkgToRelay) Do(ctx *action.InstanceContext) error {
 
 	// only notify relay if there are packages to transfer.
 	if len(transferredPkgs) > 0 {
-		if err := act.notifyRelayToReceivePackage(std, transferredPkgs); err != nil {
-			return fmt.Errorf("notify transfer completion failed: %w", err)
+		if err := act.notifyRelayToReceivePackage(std, transferredPkgs, relayInfo); err != nil {
+			return fmt.Errorf("failed to notify transfer completion: %w", err)
 		}
 		if err := act.waitForRelayReportStorage(std); err != nil {
-			return fmt.Errorf("wait for relay report storage failed: %w", err)
+			return fmt.Errorf("failed to wait for relay report storage: %w", err)
 		}
 	}
 
@@ -245,7 +250,7 @@ func (act *actionEnsurePkgToRelay) determineFilesToProcess(
 }
 
 func (act *actionEnsurePkgToRelay) queryRelayPackageState(std *nodeUtils.NodeActionStandarder,
-	files []protoRelay.FileInfo) error {
+	files []protoRelay.FileInfo, relayInfo *types.RelayInfo) error {
 
 	event := protoRelay.CheckPkgStateReq{
 		ActionName: std.InstanceData().Name,
@@ -255,28 +260,7 @@ func (act *actionEnsurePkgToRelay) queryRelayPackageState(std *nodeUtils.NodeAct
 
 	data, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("marshal event failed: %w", err)
-	}
-
-	// Get multiple relay infos for retry
-	relayInfos, err := std.GetRelayInfos()
-	if err != nil {
-		return err
-	}
-	if len(relayInfos) == 0 {
-		return fmt.Errorf("no relay info selected")
-	}
-
-	// Try each relay sequentially until one succeeds
-	return act.queryRelayPackageStateMultiRelay(std, data, relayInfos)
-}
-
-// queryRelayPackageStateSingle sends package state check request to a single relay.
-func (act *actionEnsurePkgToRelay) queryRelayPackageStateSingle(
-	std *nodeUtils.NodeActionStandarder, data []byte, relayInfo *types.RelayInfo) error {
-
-	if relayInfo == nil || relayInfo.AgentID == "" {
-		return fmt.Errorf("relay info has no agent id")
+		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
 	errCh := act.proxyMessager.PushToClient(std.Context(),
@@ -284,7 +268,7 @@ func (act *actionEnsurePkgToRelay) queryRelayPackageStateSingle(
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return fmt.Errorf("push to relay failed. agent-id(%s): %w", relayInfo.AgentID, err)
+			return fmt.Errorf("failed to push to relay. agent-id(%s): %w", relayInfo.AgentID, err)
 		}
 
 		return nil
@@ -293,47 +277,6 @@ func (act *actionEnsurePkgToRelay) queryRelayPackageStateSingle(
 	case <-time.After(queryClientTimeout):
 		return fmt.Errorf("wait client timed out. agent-id(%s)", relayInfo.AgentID)
 	}
-}
-
-// queryRelayPackageStateMultiRelay tries each relay sequentially until one succeeds.
-func (act *actionEnsurePkgToRelay) queryRelayPackageStateMultiRelay(
-	std *nodeUtils.NodeActionStandarder, data []byte, relayInfos []*types.RelayInfo) error {
-
-	var lastErr error
-	for i, relayInfo := range relayInfos {
-		if relayInfo == nil || relayInfo.AgentID == "" {
-			std.InstanceData().Log().
-				Zh("索引 %d 的 relay 信息没有 agent id，尝试下一个", i).
-				En("relay info at index %d has no agent id, trying next", i).
-				Warn()
-
-			continue
-		}
-
-		std.InstanceData().Log().
-			Zh("正在尝试从 relay 查询包状态，索引(%d/%d)，agent-id(%s)", i+1, len(relayInfos), relayInfo.AgentID).
-			En("attempting to query package state from relay, index(%d/%d), agent-id(%s)", i+1, len(relayInfos), relayInfo.AgentID).
-			Info()
-
-		err := act.queryRelayPackageStateSingle(std, data, relayInfo)
-		if err == nil {
-			std.InstanceData().Log().
-				Zh("包状态查询已成功发送到 relay，agent-id(%s)", relayInfo.AgentID).
-				En("package state query sent to relay successfully, agent-id(%s)", relayInfo.AgentID).
-				Info()
-
-			return nil
-		}
-
-		std.InstanceData().Log().
-			Zh("从 relay 查询包状态失败，索引(%d/%d)，agent-id(%s): %v", i+1, len(relayInfos), relayInfo.AgentID, err).
-			En("failed to query package state from relay, index(%d/%d), agent-id(%s): %v", i+1, len(relayInfos), relayInfo.AgentID, err).
-			Warn()
-		lastErr = err
-	}
-
-	// All relays failed
-	return fmt.Errorf("failed to query package state from all relay(s). count(%d): %w", len(relayInfos), lastErr)
 }
 
 // nolint: gocognit
@@ -364,7 +307,7 @@ func (act *actionEnsurePkgToRelay) waitForRelayReportFile(
 			privateData, err := act.storageActionInstance.GetActionInstancePrivateData(
 				timeoutCtx, std.InstanceData().OperationInstanceID, std.InstanceData().Name)
 			if err != nil {
-				return results, fileStorageDir, fmt.Errorf("get private data failed: %w", err)
+				return results, fileStorageDir, fmt.Errorf("failed to get private data: %w", err)
 			}
 
 			fileStateRaw, exists := privateData[relayconstant.FileStateKey]
@@ -613,7 +556,7 @@ func (act *actionEnsurePkgToRelay) transferInstaller(
 	}
 
 	if result.ErrorCode != 0 {
-		return fmt.Errorf("transfer installer failed. task-id(%s), relay-host-id(%d), err-code(%d), err-msg(%s)",
+		return fmt.Errorf("failed to transfer installer. task-id(%s), relay-host-id(%d), err-code(%d), err-msg(%s)",
 			transferHandler.GetTaskID(), std.DeployInfo().RelayInfo.HostID, result.ErrorCode, result.ErrorMessage)
 	}
 
@@ -626,7 +569,7 @@ func (act *actionEnsurePkgToRelay) transferInstaller(
 }
 
 func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackage(
-	std *nodeUtils.NodeActionStandarder, pkgNames []string) error {
+	std *nodeUtils.NodeActionStandarder, pkgNames []string, relayInfo *types.RelayInfo) error {
 
 	event := protoRelay.NotifyReceiveReq{
 		ActionName: std.InstanceData().Name,
@@ -634,28 +577,7 @@ func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackage(
 		PkgName:    pkgNames}
 	data, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("marshal event failed: %w", err)
-	}
-
-	// Get multiple relay infos for retry
-	relayInfos, err := std.GetRelayInfos()
-	if err != nil {
-		return err
-	}
-	if len(relayInfos) == 0 {
-		return fmt.Errorf("no relay info selected")
-	}
-
-	// Try each relay sequentially until one succeeds
-	return act.notifyRelayToReceivePackageMultiRelay(std, data, relayInfos)
-}
-
-// notifyRelayToReceivePackageSingle sends receive notification to a single relay.
-func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackageSingle(
-	std *nodeUtils.NodeActionStandarder, data []byte, relayInfo *types.RelayInfo) error {
-
-	if relayInfo == nil || relayInfo.AgentID == "" {
-		return fmt.Errorf("relay info has no agent id")
+		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
 	errCh := act.proxyMessager.PushToClient(std.Context(),
@@ -663,7 +585,7 @@ func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackageSingle(
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return fmt.Errorf("notify relay to receive failed. agent-id(%s): %w", relayInfo.AgentID, err)
+			return fmt.Errorf("failed to notify relay to receive. agent-id(%s): %w", relayInfo.AgentID, err)
 		}
 
 		return nil
@@ -672,47 +594,6 @@ func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackageSingle(
 	case <-time.After(queryClientTimeout):
 		return fmt.Errorf("wait client timed out. agent-id(%s)", relayInfo.AgentID)
 	}
-}
-
-// notifyRelayToReceivePackageMultiRelay tries each relay sequentially until one succeeds.
-func (act *actionEnsurePkgToRelay) notifyRelayToReceivePackageMultiRelay(
-	std *nodeUtils.NodeActionStandarder, data []byte, relayInfos []*types.RelayInfo) error {
-
-	var lastErr error
-	for i, relayInfo := range relayInfos {
-		if relayInfo == nil || relayInfo.AgentID == "" {
-			std.InstanceData().Log().
-				Zh("索引 %d 的 relay 信息没有 agent id，尝试下一个", i).
-				En("relay info at index %d has no agent id, trying next", i).
-				Warn()
-
-			continue
-		}
-
-		std.InstanceData().Log().
-			Zh("正在尝试通知 relay 接收包，索引(%d/%d)，agent-id(%s)", i+1, len(relayInfos), relayInfo.AgentID).
-			En("attempting to notify relay to receive package, index(%d/%d), agent-id(%s)", i+1, len(relayInfos), relayInfo.AgentID).
-			Info()
-
-		err := act.notifyRelayToReceivePackageSingle(std, data, relayInfo)
-		if err == nil {
-			std.InstanceData().Log().
-				Zh("通知 relay 接收包完成，agent-id(%s)", relayInfo.AgentID).
-				En("notify relay to receive package done, agent-id(%s)", relayInfo.AgentID).
-				Info()
-
-			return nil
-		}
-
-		std.InstanceData().Log().
-			Zh("通知 relay 接收包失败，索引(%d/%d)，agent-id(%s): %v", i+1, len(relayInfos), relayInfo.AgentID, err).
-			En("failed to notify relay to receive package, index(%d/%d), agent-id(%s): %v", i+1, len(relayInfos), relayInfo.AgentID, err).
-			Warn()
-		lastErr = err
-	}
-
-	// All relays failed
-	return fmt.Errorf("failed to notify all relay(s) to receive package. count(%d): %w", len(relayInfos), lastErr)
 }
 
 func (act *actionEnsurePkgToRelay) waitForRelayReportStorage(
