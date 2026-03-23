@@ -17,6 +17,7 @@ import (
 
 	pluginUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/plugin/utils"
 	pluginStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/retrier"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
@@ -34,6 +35,7 @@ func NewActionTryStopProcess(capability *Capability) action.Definition {
 	return &actTryStopProcess{
 		daoPluginDeployment: capability.StoragePlugin,
 		daoProcess:          capability.StoragePlugin,
+		daoHost:             capability.StorageTopo,
 		gseHandlerProc:      capability.GSEHandler,
 	}
 }
@@ -47,6 +49,7 @@ type ActionParamTryStopProcess struct {
 type actTryStopProcess struct {
 	daoPluginDeployment pluginStg.IDaoPluginDeployment
 	daoProcess          pluginStg.IDaoProcess
+	daoHost             topoStg.IStorageHost
 	gseHandlerProc      gse.IHandlerProc
 }
 
@@ -67,7 +70,7 @@ func (act *actTryStopProcess) Description() string {
 
 // Timeout returns the timeout of the action.
 func (act *actTryStopProcess) Timeout() time.Duration {
-	return 30 * time.Second // nolint: mnd
+	return 1 * time.Minute // nolint: mnd
 }
 
 // Tags returns the tags of the action.
@@ -127,7 +130,13 @@ func (act *actTryStopProcess) Do(ctx *action.InstanceContext) error {
 		return nil
 	}
 
-	process, err := act.daoProcess.GetProcess(nCtx, std.DeployInfo().Process.HostID, std.DeployInfo().Process.PluginName)
+	process, err := pluginUtils.GetActualExistingProcess(
+		nCtx,
+		act.daoProcess,
+		act.daoHost,
+		std.DeployInfo().Process.HostID,
+		std.DeployInfo().Process.PluginName,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get process info: %w", err)
 	}

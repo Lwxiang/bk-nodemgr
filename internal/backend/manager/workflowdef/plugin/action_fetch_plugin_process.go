@@ -12,11 +12,11 @@ package plugin
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	pluginUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/plugin/utils"
 	pluginStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
 )
@@ -31,6 +31,7 @@ func NewActionFetchPluginProcess(capability *Capability) action.Definition {
 	return &actionFetchPluginProcess{
 		daoPluginDeployment: capability.StoragePlugin,
 		daoProcess:          capability.StoragePlugin,
+		daoHost:             capability.StorageTopo,
 	}
 }
 
@@ -42,6 +43,7 @@ type ActParamFetchPluginProcess struct {
 type actionFetchPluginProcess struct {
 	daoPluginDeployment pluginStg.IDaoPluginDeployment
 	daoProcess          pluginStg.IDaoProcess
+	daoHost             topoStg.IStorageHost
 }
 
 // Name returns the name of the action.
@@ -102,7 +104,13 @@ func (act *actionFetchPluginProcess) Do(ctx *action.InstanceContext) error {
 
 	nCtx := std.Context()
 	deployInfo := std.DeployInfo()
-	process, err := act.daoProcess.GetProcess(nCtx, deployInfo.Process.HostID, deployInfo.Process.PluginName)
+	process, err := pluginUtils.GetActualExistingProcess(
+		nCtx,
+		act.daoProcess,
+		act.daoHost,
+		deployInfo.Process.HostID,
+		deployInfo.Process.PluginName,
+	)
 	if err != nil {
 		std.InstanceData().Log().
 			Zh("获取进程失败，process-name(%s), host-id(%d): %v",
@@ -111,8 +119,7 @@ func (act *actionFetchPluginProcess) Do(ctx *action.InstanceContext) error {
 				deployInfo.Process.PluginName, deployInfo.Process.HostID, err).
 			Error()
 
-		return fmt.Errorf("failed to get plugin process, process-name(%s), host-id(%d): %w",
-			deployInfo.Process.PluginName, deployInfo.Process.HostID, err)
+		return err
 	}
 
 	std.InstanceData().Log().
@@ -123,6 +130,13 @@ func (act *actionFetchPluginProcess) Do(ctx *action.InstanceContext) error {
 		Info()
 
 	deployInfo.Process = *process
+
+	std.InstanceData().Log().
+		Zh("获取插件AgentID成功，agent-id(%s)",
+			deployInfo.Process.Info.AgentID).
+		En("fetch plugin agent id succeed, agent-id(%s)",
+			deployInfo.Process.Info.AgentID).
+		Info()
 
 	return nil
 }
