@@ -20,6 +20,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func newDao(tenantID string, client *mongo.Database) *dao {
@@ -58,9 +59,14 @@ func (d *dao) GetTableName() string {
 
 // GetIndexes get the dao's indexes.
 func (d *dao) GetIndexes() []mongo.IndexModel {
-	var indexes []mongo.IndexModel
-
-	return indexes
+	return []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: FieldKeyPriority, Value: 1}},
+			Options: options.Index().SetPartialFilterExpression(bson.D{
+				{Key: base.FieldKeyIsDeleted, Value: false},
+			}),
+		},
+	}
 }
 
 func (d *dao) create(nCtx contextx.IContext, configPolicy *ConfigPolicy) (int64, error) {
@@ -69,7 +75,13 @@ func (d *dao) create(nCtx contextx.IContext, configPolicy *ConfigPolicy) (int64,
 		return 0, err
 	}
 
+	prioritySeq, err := d.counter.Generate(nCtx, counterKeyPriority)
+	if err != nil {
+		return 0, err
+	}
+
 	configPolicy.Raw.ConfigPolicyID = newSequence
+	configPolicy.Raw.Priority = prioritySeq + 1
 	if err := d.Create(nCtx, configPolicy); err != nil {
 		return -1, err
 	}
