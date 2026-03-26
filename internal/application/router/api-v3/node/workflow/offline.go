@@ -17,9 +17,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/nodepkg"
 	platfmt "github.com/TencentBlueKing/bk-nodemgr/pkg/format/platform"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/tool"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/goasync"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	protoApplication "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/application/api/v3"
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
@@ -33,7 +38,7 @@ const (
 	// installerFileMode is the file mode for the installer binary inside the tar package.
 	installerFileMode = 0o755
 
-	// scriptFileMode is the file mode for install.sh inside the tar package.
+	// scriptFileMode is the file mode for the offline install script inside the tar package.
 	scriptFileMode = 0o755
 
 	// configFileMode is the file mode for config and metadata files inside the tar package.
@@ -41,7 +46,7 @@ const (
 )
 
 // GetOfflinePackageDownload downloads the offline install tar.gz package for an operation.
-// nolint: funlen, gocognit
+// nolint: funlen, gocognit, cyclop, gocyclo
 func (h *handler) GetOfflinePackageDownload(rCtx restserver.IContext) (*restserver.StreamResponse, error) {
 	req := new(protoApplication.NodeWorkflowOperationOfflinePackageDownloadReq)
 	if err := rCtx.BindJSON(req); err != nil {
@@ -99,11 +104,16 @@ func (h *handler) GetOfflinePackageDownload(rCtx restserver.IContext) (*restserv
 	}
 
 	// Download the installer binary from the file service.
-	installerStream, err := h.fileHandler.DownloadInstaller(
-		rCtx,
-		criteria.OSType(installerInfo.GetOsType()),
-		criteria.CPUArch(installerInfo.GetCpuArch()),
-	)
+	installerOs := criteria.OSType(installerInfo.GetOsType())
+	installerArch := criteria.CPUArch(installerInfo.GetCpuArch())
+	installerFileName, err := tool.FormatInstallerName(installerOs, installerArch)
+	if err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to get offline package, failed to format installer file name")
+
+		return nil, resterrf.ErrWrap(resterrf.ThirdpartyRequestFailed, err)
+	}
+
+	installerStream, err := h.fileHandler.DownloadInstaller(rCtx, installerOs, installerArch)
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to get offline package, failed to download installer binary")
 
@@ -115,7 +125,7 @@ func (h *handler) GetOfflinePackageDownload(rCtx restserver.IContext) (*restserv
 	// Stream the tar.gz through a pipe to avoid buffering the entire package in memory.
 	pipeReader, pipeWriter := io.Pipe()
 
-	go func() {
+	if err := h.goAsyncPool.Run(rCtx, func(_ contextx.IContext) error {
 		gzWriter := gzip.NewWriter(pipeWriter)
 		tarWriter := tar.NewWriter(gzWriter)
 
@@ -147,43 +157,56 @@ func (h *handler) GetOfflinePackageDownload(rCtx restserver.IContext) (*restserv
 		}()
 
 		// Add installer binary (size comes from Content-Length header returned by file service).
-		if buildErr = tarstream.AddStreamFileToTar(tarWriter, pkgName, "installer",
+		if buildErr = tarstream.AddStreamFileToTar(tarWriter, pkgName, installerFileName,
 			installerStream.Data, installerStream.Headers, installerFileMode); buildErr != nil {
-			return
+			return buildErr
 		}
 
-		// Add release package into data/ directory (required by --skip_download install.sh flag).
-		if buildErr = tarstream.AddStreamFileToTar(tarWriter, pkgName+"/data", releasePkgFilename,
+		// Tar entry names are POSIX paths; use path.Join (not filepath.Join) so separators stay '/'.
+		dataDirPrefix := path.Join(pkgName, installer.OfflinePkgRelPathData)
+		configDirPrefix := path.Join(pkgName, installer.OfflinePkgRelPathConfig)
+
+		// Add release package under data/ (required by install.sh + --skip_download).
+		if buildErr = tarstream.AddStreamFileToTar(tarWriter, dataDirPrefix, releasePkgFilename,
 			releaseStream.Data, releaseStream.Headers, configFileMode); buildErr != nil {
-			return
+			return buildErr
 		}
 
-		// Add install.sh script.
-		if buildErr = tarstream.AddTextFileToTar(tarWriter, pkgName, "install.sh",
+		// Add offline install script at bundle root.
+		if buildErr = tarstream.AddTextFileToTar(tarWriter, pkgName, installer.OfflinePkgInstallScriptName,
 			[]byte(infoData.GetInstallScript()), scriptFileMode); buildErr != nil {
-			return
+			return buildErr
 		}
 
-		// Add metadata.json.
-		if buildErr = tarstream.AddTextFileToTar(tarWriter, pkgName, "metadata.json",
+		// Add metadata at bundle root.
+		if buildErr = tarstream.AddTextFileToTar(tarWriter, pkgName, installer.OfflinePkgMetadataFileName,
 			[]byte(infoData.GetMetadata()), configFileMode); buildErr != nil {
-			return
+			return buildErr
 		}
 
-		// Add precheck.json into data/ directory.
-		if buildErr = tarstream.AddTextFileToTar(tarWriter, pkgName+"/data", "precheck.json",
+		// Add precheck JSON under data/.
+		if buildErr = tarstream.AddTextFileToTar(tarWriter, dataDirPrefix, installer.OfflinePkgPrecheckFileName,
 			[]byte(infoData.GetPrecheck()), configFileMode); buildErr != nil {
-			return
+			return buildErr
 		}
 
-		// Add GSE config files into data/config/ directory.
+		// Add GSE config files under data/config/.
 		for fileName, content := range infoData.GetConfigs() {
-			if buildErr = tarstream.AddTextFileToTar(tarWriter, pkgName+"/data/config", fileName,
+			if buildErr = tarstream.AddTextFileToTar(tarWriter, configDirPrefix, fileName,
 				[]byte(content), configFileMode); buildErr != nil {
-				return
+				return buildErr
 			}
 		}
-	}()
+
+		return nil
+	}, goasync.WithName("offline_package_tar_stream")); err != nil {
+		_ = installerStream.Data.Close()
+		_ = releaseStream.Data.Close()
+		_ = pipeWriter.CloseWithError(err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to get offline package, failed to schedule tar stream task")
+
+		return nil, resterrf.ErrWrap(resterrf.Aborted, fmt.Errorf("failed to schedule offline package stream: %w", err))
+	}
 
 	headers := http.Header{}
 	headers.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.tar.gz", pkgName))

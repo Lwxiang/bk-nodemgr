@@ -22,6 +22,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/deployconstant"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/nodepkg"
 	platfmt "github.com/TencentBlueKing/bk-nodemgr/pkg/format/platform"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/format/tool"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
@@ -32,14 +33,6 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
-)
-
-const (
-	offlinePkgNamePrefix = "bk-nodemgr-proxy-offline"
-
-	gseAgentConfFilename     = "gse_agent.conf"
-	gseFileProxyConfFilename = "gse_file_proxy.conf"
-	gseDataProxyConfFilename = "gse_data_proxy.conf"
 )
 
 // offlineInstallMetadata is the structure of metadata.json in the offline package.
@@ -128,9 +121,9 @@ func (h *handler) GetOfflineInstallInfo(rCtx restserver.IContext) (interface{}, 
 
 	// render GSE config files.
 	configKeyToFilename := map[string]string{
-		types.ConfigKeyAgent: gseAgentConfFilename,
-		types.ConfigKeyFile:  gseFileProxyConfFilename,
-		types.ConfigKeyData:  gseDataProxyConfFilename,
+		types.ConfigKeyAgent: installer.OfflineGseAgentConfFileName,
+		types.ConfigKeyFile:  installer.OfflineGseFileProxyConfFileName,
+		types.ConfigKeyData:  installer.OfflineGseDataProxyConfFileName,
 	}
 
 	configs := make(map[string]string, len(configKeyToFilename))
@@ -161,9 +154,16 @@ func (h *handler) GetOfflineInstallInfo(rCtx restserver.IContext) (interface{}, 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
+	installerFileName, err := tool.FormatInstallerName(
+		deployInfo.Host.Dynamic.NodeOsType, deployInfo.Host.Dynamic.NodeCPUArch)
+	if err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to get offline install info, failed to format installer file name")
+		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
 	// build install.sh content.
 	installScript := buildOfflineInstallScript(
-		deployInfo, deployConst.BaseWorkDir, deployConst.BaseDeployDir, param.Token, lastInstID)
+		deployInfo, deployConst.BaseWorkDir, deployConst.BaseDeployDir, param.Token, lastInstID, installerFileName)
 
 	// build metadata.json content.
 	targetIP := ""
@@ -296,6 +296,7 @@ func buildOfflineInstallScript(
 	baseDeployDir string,
 	deployToken string,
 	operInstID string,
+	installerFileName string,
 ) string {
 
 	deployEnv := system.GetEnv()
@@ -330,9 +331,9 @@ func buildOfflineInstallScript(
 		`SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"`,
 		fmt.Sprintf(`DATA_DIR="%s"`, dataDir),
 		`mkdir -p "${DATA_DIR}"`,
-		`cp -rn "${SCRIPT_DIR}/data/." "${DATA_DIR}/"`,
-		`chmod +x "${SCRIPT_DIR}/installer"`,
-		`"${SCRIPT_DIR}/installer" ` + installer.NodeCmdFullInstall + ` \`,
+		fmt.Sprintf(`cp -rn "${SCRIPT_DIR}/%s/." "${DATA_DIR}/"`, installer.OfflinePkgRelPathData),
+		fmt.Sprintf(`chmod +x "${SCRIPT_DIR}/%s"`, installerFileName),
+		fmt.Sprintf(`"${SCRIPT_DIR}/%s" `, installerFileName) + installer.NodeCmdFullInstall + ` \`,
 	}
 
 	for i, arg := range args {
@@ -346,8 +347,8 @@ func buildOfflineInstallScript(
 	// After the installer completes (--skip_callback), results are written to installer.data.json.
 	// Print the file content so the user can copy and paste it into the management portal.
 	lines = append(lines,
-		`echo "--- installer.data.json ---"`,
-		fmt.Sprintf(`cat "%s/installer.data.json"`, dataDir),
+		fmt.Sprintf(`echo "--- %s ---"`, installer.DataFileName),
+		fmt.Sprintf(`cat "%s/%s"`, dataDir, installer.DataFileName),
 	)
 
 	return strings.Join(lines, "\n") + "\n"
@@ -370,5 +371,5 @@ func buildOfflinePackageStem(deployInfo *types.DeploymentInfo) string {
 		ipSlug = "unknown"
 	}
 
-	return fmt.Sprintf("%s-%d-%s", offlinePkgNamePrefix, networkAreaID, ipSlug)
+	return fmt.Sprintf("%s-%d-%s", installer.OfflinePackageNamePrefix, networkAreaID, ipSlug)
 }
