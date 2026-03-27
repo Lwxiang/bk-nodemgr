@@ -1,9 +1,11 @@
-package agent
+package proxy
 
 import (
 	"fmt"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
 func buildBizResources(bizIDs []int64) []auth.Resource {
@@ -13,6 +15,18 @@ func buildBizResources(bizIDs []int64) []auth.Resource {
 	}
 
 	return resources
+}
+
+func buildBizIDsFromTypeHosts(hosts []*types.Host) []int64 {
+	bizIDMap := make(map[int64]struct{})
+	for _, host := range hosts {
+		if host == nil || host.Static == nil {
+			continue
+		}
+		bizIDMap[host.Static.BizID] = struct{}{}
+	}
+
+	return conv.MapKeyToSlice(bizIDMap)
 }
 
 func buildNetworkUnitResources(networkUnitIDs []int64) []auth.Resource {

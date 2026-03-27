@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
@@ -54,6 +55,22 @@ func (h *handler) Install(rCtx restserver.IContext) (interface{}, error) {
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to install proxy, failed to generate node deployments")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
+	networkUnitIDMap := make(map[int64]struct{})
+	for _, host := range req.GetHost() {
+		networkUnitIDMap[host.GetBkNetworkunitId()] = struct{}{}
+	}
+	networkUnitIDs := conv.MapKeyToSlice(networkUnitIDMap)
+	networkUnitResources := buildNetworkUnitResources(networkUnitIDs)
+	if authErr := h.authorizer.BatchCheck(rCtx, auth.ActionNetworkUnitUseForProxy, networkUnitResources); authErr != nil {
+		logger.G.Biz(rCtx).WithErr(authErr).Error("failed to install proxy, networkunit permission denied")
+		return nil, resterrf.ErrWrap(resterrf.PermissionDenied, authErr)
+	}
+	resources := buildBizResources(bizIDs)
+	if authErr := h.authorizer.BatchCheck(rCtx, auth.ActionProxyOperate, resources); authErr != nil {
+		logger.G.Biz(rCtx).WithErr(authErr).Error("failed to install proxy, permission denied")
+		return nil, resterrf.ErrWrap(resterrf.PermissionDenied, authErr)
 	}
 
 	workflowID, err := h.nodeMgrIface.LaunchInstallNode(rCtx, types.InstallNodeParam{
