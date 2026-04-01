@@ -288,6 +288,40 @@
         ]
       }
     },
+    "/api/v3/policy/config/preview": {
+      "post": {
+        "summary": "ConfigPolicyPreview previews merged config for selected hosts.",
+        "operationId": "ConfigPolicyAPI_ConfigPolicyPreview",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3ConfigPolicyPreviewResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "ConfigPolicyPreviewReq describes HTTP request body for previewing merged\nconfig result by host list.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3ConfigPolicyPreviewReq"
+            }
+          }
+        ],
+        "tags": [
+          "ConfigPolicyAPI"
+        ]
+      }
+    },
     "/api/v3/policy/config/reorder_priorities": {
       "post": {
         "summary": "ConfigPolicyPriorityReorder reorders config policy priorities within a\n(biz, type) scope.",
@@ -358,6 +392,57 @@
     }
   },
   "definitions": {
+    "ConfigPolicyPreviewRespMatchedPolicy": {
+      "type": "object",
+      "properties": {
+        "configpolicy_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "configpolicy_name": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "ConfigPolicyPreviewRespPreviewItem": {
+      "type": "object",
+      "properties": {
+        "bk_host_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matched_policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ConfigPolicyPreviewRespMatchedPolicy"
+          }
+        },
+        "merged_configs_string": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "merged_configs_int": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "merged_configs_bool": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
     "ErrorDetails": {
       "type": "object",
       "properties": {
@@ -431,7 +516,7 @@
         "configpolicy_type": {
           "type": "string"
         },
-        "biz_id": {
+        "bk_biz_id": {
           "type": "integer",
           "format": "int64"
         },
@@ -501,7 +586,7 @@
         "configpolicy_type": {
           "type": "string"
         },
-        "biz_id": {
+        "bk_biz_id": {
           "type": "integer",
           "format": "int64"
         },
@@ -942,7 +1027,7 @@
             "format": "int64"
           }
         },
-        "biz_id": {
+        "bk_biz_id": {
           "type": "array",
           "items": {
             "type": "integer",
@@ -1076,10 +1161,74 @@
         }
       }
     },
+    "v3ConfigPolicyPreviewReq": {
+      "type": "object",
+      "properties": {
+        "bk_biz_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "policy_type": {
+          "type": "string"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v3PreviewHost"
+          }
+        }
+      },
+      "description": "ConfigPolicyPreviewReq describes HTTP request body for previewing merged\nconfig result by host list."
+    },
+    "v3ConfigPolicyPreviewResp": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/v3Error"
+        },
+        "permission": {
+          "$ref": "#/definitions/v3Permission"
+        },
+        "data": {
+          "$ref": "#/definitions/v3ConfigPolicyPreviewRespData"
+        }
+      },
+      "description": "ConfigPolicyPreviewResp describes HTTP response body for preview result."
+    },
+    "v3ConfigPolicyPreviewRespData": {
+      "type": "object",
+      "properties": {
+        "reliable_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ConfigPolicyPreviewRespPreviewItem"
+          }
+        },
+        "unreliable_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ConfigPolicyPreviewRespPreviewItem"
+          }
+        }
+      }
+    },
     "v3ConfigPolicyPriorityReorderReq": {
       "type": "object",
       "properties": {
-        "biz_id": {
+        "bk_biz_id": {
           "type": "integer",
           "format": "int64"
         },
@@ -1157,7 +1306,7 @@
         "configpolicy_type": {
           "type": "string"
         },
-        "biz_id": {
+        "bk_biz_id": {
           "type": "integer",
           "format": "int64"
         },
@@ -1296,6 +1445,30 @@
           }
         }
       }
+    },
+    "v3PreviewHost": {
+      "type": "object",
+      "properties": {
+        "bk_host_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "bk_networkunit_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "bk_networkarea_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "os_type": {
+          "type": "string"
+        },
+        "cpu_arch": {
+          "type": "string"
+        }
+      },
+      "description": "PreviewHost carries a host ID with optional attribute overrides for preview."
     },
     "v3RelatedResourceType": {
       "type": "object",
