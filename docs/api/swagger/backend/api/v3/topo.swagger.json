@@ -1037,9 +1037,6 @@
         "base_deploy_dir": {
           "type": "string"
         },
-        "host_id_path": {
-          "type": "string"
-        },
         "log_dir": {
           "type": "string"
         },
@@ -1342,7 +1339,7 @@
           "type": "integer",
           "format": "int64"
         },
-        "deploy_configs": {
+        "custom_deploy_config": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v3CustomDeployConfig"
@@ -1388,7 +1385,7 @@
           "type": "integer",
           "format": "int64"
         },
-        "deploy_configs": {
+        "custom_deploy_config": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v3CustomDeployConfig"
@@ -3033,7 +3030,7 @@
           "type": "integer",
           "format": "int64"
         },
-        "deploy_configs": {
+        "custom_deploy_config": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v3CustomDeployConfig"
@@ -3277,7 +3274,7 @@
           "type": "integer",
           "format": "int64"
         },
-        "deploy_configs": {
+        "custom_deploy_config": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v3CustomDeployConfig"

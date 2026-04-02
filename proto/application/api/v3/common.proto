@@ -59,10 +59,9 @@ message CustomGSERuntime {
 // CustomPluginRuntime describes the custom plugin runtime config.
 message CustomPluginRuntime {
   string base_deploy_dir = 1;
-  string host_id_path = 2;
-  string log_dir = 3;
-  string data_dir = 4;
-  string run_dir = 5;
+  string log_dir = 2;
+  string data_dir = 3;
+  string run_dir = 4;
 }
 
 // CustomDeployConfig describes the deploy config for host deployment.
@@ -93,7 +92,7 @@ message NetworkUnit {
   optional bool is_direct = 7;
   Endpoints direct_endpoints = 8;
   optional int64 generation = 9;
-  map<string, CustomDeployConfig> deploy_configs = 10;
+  map<string, CustomDeployConfig> custom_deploy_config = 10;
 }
 
 // NetworkUnitBrief describes the network unit brief informations.
@@ -108,7 +107,7 @@ message NetworkUnitBrief {
   optional bool is_direct = 7;
   Endpoints direct_endpoints = 8;
   optional int64 generation = 9;
-  map<string, CustomDeployConfig> deploy_configs = 10;
+  map<string, CustomDeployConfig> custom_deploy_config = 10;
 }
 
 // HostState describes the host state informations. Usually contains
