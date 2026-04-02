@@ -310,6 +310,7 @@
             <span class="mr-[5px]">{{ $t('components.installTable.osType') }}</span>
             <span class="mx-[3px] text-[#FF5656]">*</span>
             <BatchEdit
+              v-if="!isUpgrade"
               :title="$t('components.installTable.batchEditOsType')"
               type="select"
               :options="datasourceList"
@@ -318,7 +319,8 @@
             </BatchEdit>
           </template>
           <template #default="{ row, rowIndex }">
-            <ValidateCell :error="getError(rowIndex, 'os_type')">
+            <Input v-if="isUpgrade" v-model="row.os_type" :disabled="true" />
+            <ValidateCell v-else :error="getError(rowIndex, 'os_type')">
               <Select
                 v-model="row.os_type"
                 auto-focus
@@ -344,26 +346,27 @@
             </ValidateCell>
           </template>
         </VxeColumn>
-        <!-- cpu_arch: only for proxy offline install -->
+        <!-- cpu_arch: for proxy offline install or upgrade -->
         <VxeColumn
           field="cpu_arch"
           :min-width="120"
           :visible="settings.checked.includes('cpu_arch')"
-          v-if="releaseType === 'proxy' && type === 'offline'"
+          v-if="(releaseType === 'proxy' && type === 'offline') || isUpgrade"
         >
           <template #header>
             <span class="mr-[5px]">{{ $t('components.installTable.cpuArch') }}</span>
-            <span class="mx-[3px] text-[#FF5656]">*</span>
+            <span v-if="!isUpgrade" class="mx-[3px] text-[#FF5656]">*</span>
             <BatchEdit
+              v-if="!isUpgrade"
               :title="$t('components.installTable.batchEditCpuArch')"
               type="select"
               :options="cpuArchOptions"
               @confirm="(value) => handleBatchEdit('cpu_arch', value)"
-            >
-            </BatchEdit>
+            />
           </template>
           <template #default="{ row, rowIndex }">
-            <ValidateCell :error="getError(rowIndex, 'cpu_arch')">
+            <Input v-if="isUpgrade" v-model="row.cpu_arch" :disabled="true" />
+            <ValidateCell v-else :error="getError(rowIndex, 'cpu_arch')">
               <Select
                 v-model="row.cpu_arch"
                 auto-focus
@@ -375,8 +378,7 @@
                   :key="option.id"
                   :id="option.id"
                   :name="option.name"
-                >
-                </Select.Option>
+                />
               </Select>
             </ValidateCell>
           </template>
@@ -424,7 +426,11 @@
       </VxeColgroup>
 
       <!-- 登录信息 -->
-      <VxeColgroup :title="$t('components.installTable.loginInfo')" align="center" v-if="type !== 'manual' && type !== 'offline'">
+      <VxeColgroup
+        :title="$t('components.installTable.loginInfo')"
+        align="center"
+        v-if="type !== 'manual' && type !== 'offline'"
+      >
         <VxeColumn
           field="login_ip"
           :title="$t('components.installTable.loginIP')"
@@ -852,6 +858,7 @@ const props = defineProps({
   maxHeight: { type: Number, default: 300 },
   releaseType: { type: String, default: 'agent' },
   isReinstall: { type: Boolean, default: false },
+  isUpgrade: { type: Boolean, default: false },
   currentSettings: {
     type: Object,
     default: () => ({
@@ -1062,6 +1069,15 @@ const getHostDistinct = async () => {
 };
 
 const handleBatchEdit = (field: string, value: any) => {
+  if (field === 'bk_networkunit_id' && isProxyDirectNetworkUnit(value)) {
+    Message({
+      theme: 'warning',
+      message: t('topoManager.installProxy.form.tip'),
+    });
+
+    return;
+  }
+
   tableData.value?.forEach((item: any, index: number) => {
     if (field === 'credit') {
       if (item.login_mode === 'password') item.credit = value.password;
@@ -1156,6 +1172,12 @@ const handleFieldBlur = (rowIndex: number, field: string, value: any) => {
 
   if (requiredFields.includes(field) && !value && value !== 0) {
     setError(rowIndex, field,  t('validate.required'));
+    return;
+  }
+
+  if (field === 'bk_networkunit_id' && value && isProxyDirectNetworkUnit(value)) {
+    setError(rowIndex, field, t('topoManager.installProxy.form.tip'));
+
     return;
   }
 
@@ -1254,6 +1276,11 @@ const tableValidate = async () => {
     }
     // 2.4 Proxy IP
     if (props.releaseType === 'proxy') {
+      if (row.bk_networkunit_id && isProxyDirectNetworkUnit(row.bk_networkunit_id)) {
+        setError(i, 'bk_networkunit_id', t('topoManager.installProxy.form.tip'));
+        rowValid = false;
+      }
+
       if (settings.checked.includes('export_ip')) {
         if (!row.export_ip) {
           setError(i, 'export_ip',  t('validate.required'));
@@ -1363,8 +1390,18 @@ const getNetworkUnitList = async () => {
 };
 
 // 根据网络区域ID获取对应的网络单元列表
-const getNetworkUnitsByAreaId = (bkNetworkAreaId: number) => {
-  return networkUnitGroupMap.value[bkNetworkAreaId] || [];
+const getNetworkUnitsByAreaId = (bkNetworkAreaId: number | string) => {
+  return networkUnitGroupMap.value[Number(bkNetworkAreaId)] || [];
+};
+
+const isProxyDirectNetworkUnit = (networkUnitID: number | string) => {
+  if (props.releaseType !== 'proxy') {
+    return false;
+  }
+
+  return !!networkUnitList.value.find((unit: any) => (
+    String(unit.bk_networkunit_id) === String(networkUnitID) && unit.is_direct
+  ));
 };
 
 const isSameNetworkArea = computed(() => {
@@ -1379,6 +1416,8 @@ const networkUnitBatchOptions = computed(() => {
   return getNetworkUnitsByAreaId(areaId).map((unit: any) => ({
     id: String(unit.bk_networkunit_id),
     name: `[${unit.bk_networkunit_id}] ${unit.bk_networkunit_name}`,
+    disabled: props.releaseType === 'proxy' && unit.is_direct,
+    disabledTip: t('topoManager.installProxy.form.tip'),
   }));
 });
 
@@ -1445,7 +1484,7 @@ onMounted(async () => {
 watch(
   () => tableData.value?.map((item: any) => Number(item.bk_networkarea_id)).join(',') || '',
   async (val: string) => {
-    if (!props.isReinstall) return;
+    if (!props.isReinstall && !props.isUpgrade) return;
     if (!val) {
       networkUnitList.value = [];
       networkUnitGroupMap.value = {};
