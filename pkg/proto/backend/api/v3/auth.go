@@ -13,7 +13,10 @@ package v3
 import (
 	"fmt"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
 // Validate validates the request body.
@@ -34,6 +37,17 @@ func (x *AuthVerifyReq) AutoConvert() {}
 func (x *AuthVerifyResp) ConvertResultsFromVerify(results []*AuthVerifyResult) {
 	x.Data = &AuthVerifyResp_Data{
 		Results: results,
+	}
+}
+
+func (x *AuthVerifyResp) ConvertResultsFromTypes(results []*types.IAMCheckResult) {
+	x.Data = &AuthVerifyResp_Data{
+		Results: conv.SliceToSlice(results, func(result *types.IAMCheckResult) *AuthVerifyResult {
+			return &AuthVerifyResult{
+				Action:     result.ActionID,
+				Authorized: result.Authorized,
+			}
+		}),
 	}
 }
 
@@ -86,4 +100,39 @@ func NewAuthVerifyResult(action string, authorized bool) *AuthVerifyResult {
 		Action:     action,
 		Authorized: authorized,
 	}
+}
+
+// ConvertItemsToActionResources converts verify request items to action-resource map.
+func (x *AuthVerifyReq) ConvertItemsToActionResources() map[auth.Action][]auth.Resource {
+	items := x.GetItems()
+	if len(items) == 0 {
+		return nil
+	}
+
+	actionResources := make(map[auth.Action][]auth.Resource, len(items))
+	for _, item := range items {
+		action := auth.Action(item.GetAction())
+		resources := ConvertAuthResourcesToInternal(item.GetResources())
+		actionResources[action] = append(actionResources[action], resources...)
+	}
+
+	return actionResources
+}
+
+// ConvertAuthResourcesToInternal converts proto auth resources to internal auth resources.
+func ConvertAuthResourcesToInternal(protoResources []*AuthResource) []auth.Resource {
+	if len(protoResources) == 0 {
+		return nil
+	}
+
+	resources := make([]auth.Resource, len(protoResources))
+	for i, pr := range protoResources {
+		resources[i] = auth.Resource{
+			SystemID: pr.GetSystemId(),
+			Type:     auth.ResourceType(pr.GetType()),
+			ID:       pr.GetId(),
+		}
+	}
+
+	return resources
 }
