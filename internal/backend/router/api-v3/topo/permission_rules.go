@@ -15,6 +15,7 @@ import (
 	"fmt"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
+	authRouter "github.com/TencentBlueKing/bk-nodemgr/internal/backend/router/api-v3/auth"
 	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -26,17 +27,9 @@ var (
 	errBizViewDeniedByEmptyScope         = errors.New("no authorized businesses")
 )
 
+// buildBizResources is deprecated. Use auth.BuildBizResources instead.
 func buildBizResources(bizIDs []int64) []auth.Resource {
-	resources := make([]auth.Resource, 0, len(bizIDs))
-	for _, bizID := range bizIDs {
-		resources = append(resources, auth.Resource{
-			SystemID: auth.SystemIDCMDB,
-			Type:     auth.ResourceTypeBiz,
-			ID:       fmt.Sprintf("%d", bizID),
-		})
-	}
-
-	return resources
+	return authRouter.BuildBizResources(bizIDs)
 }
 
 // buildNetworkAreaResources constructs IAM resource descriptors for the given network area IDs.
@@ -53,17 +46,9 @@ func buildNetworkAreaResources(ids []int64) []auth.Resource {
 	return resources
 }
 
+// buildNetworkUnitResources is deprecated. Use auth.BuildNetworkUnitResources instead.
 func buildNetworkUnitResources(ids []int64) []auth.Resource {
-	resources := make([]auth.Resource, 0, len(ids))
-	for _, id := range ids {
-		resources = append(resources, auth.Resource{
-			SystemID: auth.SystemIDNodeMgr,
-			Type:     auth.ResourceTypeNetworkUnit,
-			ID:       fmt.Sprintf("%d", id),
-		})
-	}
-
-	return resources
+	return authRouter.BuildNetworkUnitResources(ids)
 }
 
 func (h *handler) narrowAuthorizedNetworkAreaIDs(
@@ -222,7 +207,9 @@ func hostListBizActions(condition *types.HostCondition) []auth.Action {
 		return []auth.Action{auth.ActionAgentView, auth.ActionProxyView}
 	}
 
-	actions := make([]auth.Action, 0, 2)
+	// Pre-allocate for at most 2 actions: AgentView and ProxyView
+	const maxActions = 2
+	actions := make([]auth.Action, 0, maxActions)
 	needAgentView := false
 	needProxyView := false
 
@@ -257,6 +244,7 @@ func mergeNarrowedBizIDs(
 	rightIDs []int64, rightScopeIsAny bool,
 	requestedIDs []int64,
 ) ([]int64, bool) {
+
 	if leftScopeIsAny && rightScopeIsAny {
 		return requestedIDs, true
 	}
@@ -275,6 +263,7 @@ func mergeNarrowedBizIDs(
 func (h *handler) narrowAuthorizedBizIDsForHostList(
 	rCtx restserver.IContext, requestedIDs []int64, condition *types.HostCondition,
 ) ([]int64, bool, error) {
+
 	actions := hostListBizActions(condition)
 	if len(actions) == 1 {
 		return h.narrowAuthorizedBizIDsByAction(rCtx, actions[0], requestedIDs)
@@ -294,6 +283,7 @@ func (h *handler) narrowAuthorizedBizIDsForHostList(
 		if idx == 0 {
 			mergedIDs = narrowedIDs
 			mergedScopeIsAny = scopeIsAny
+
 			continue
 		}
 
