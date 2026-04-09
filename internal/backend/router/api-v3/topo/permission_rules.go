@@ -22,23 +22,23 @@ import (
 )
 
 var (
-	errNetworkAreaViewDeniedByEmptyScope = errors.New("no authorized network areas")
 	errNetworkUnitViewDeniedByEmptyScope = errors.New("no authorized network units")
 	errBizViewDeniedByEmptyScope         = errors.New("no authorized businesses")
 	errAccessPointViewDeniedByEmptyScope = errors.New("no authorized access points")
 )
+
 // buildBizResources is deprecated. Use auth.BuildBizResources instead.
-func buildBizResources(bizIDs []int64) []auth.Resource {
+func buildBizResources(bizIDs []int64) []types.AuthResource {
 	return authRouter.BuildBizResources(bizIDs)
 }
 
 // buildNetworkAreaResources constructs IAM resource descriptors for the given network area IDs.
-func buildNetworkAreaResources(ids []int64) []auth.Resource {
-	resources := make([]auth.Resource, 0, len(ids))
+func buildNetworkAreaResources(ids []int64) []types.AuthResource {
+	resources := make([]types.AuthResource, 0, len(ids))
 	for _, id := range ids {
-		resources = append(resources, auth.Resource{
-			SystemID: auth.SystemIDNodeMgr,
-			Type:     auth.ResourceTypeNetworkArea,
+		resources = append(resources, types.AuthResource{
+			SystemID: types.SystemIDNodeMgr,
+			Type:     types.AuthResourceTypeNetworkArea,
 			ID:       fmt.Sprintf("%d", id),
 		})
 	}
@@ -47,77 +47,22 @@ func buildNetworkAreaResources(ids []int64) []auth.Resource {
 }
 
 // buildNetworkUnitResources is deprecated. Use auth.BuildNetworkUnitResources instead.
-func buildNetworkUnitResources(ids []int64) []auth.Resource {
+func buildNetworkUnitResources(ids []int64) []types.AuthResource {
 	return authRouter.BuildNetworkUnitResources(ids)
-}
-
-func (h *handler) narrowAuthorizedNetworkAreaIDs(
-	rCtx restserver.IContext, requestedIDs []int64,
-) ([]int64, bool, error) {
-
-	scope, err := h.authorizer.ListAuthorizedInstances(rCtx, auth.ActionNetworkAreaView, auth.ResourceTypeNetworkArea)
-
-	if err != nil {
-		return nil, false, err
-	}
-
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
-		scope, requestedIDs, auth.ResourceTypeNetworkArea,
-	)
-
-	if err != nil {
-		return nil, false, err
-	}
-
-	if !hasAuthorized {
-		if checkErr := h.authorizer.Check(rCtx, auth.ActionNetworkAreaView, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, errNetworkAreaViewDeniedByEmptyScope
-	}
-
-	if scopeIsAny {
-		return requestedIDs, true, nil
-	}
-
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
-		if checkErr := h.authorizer.Check(rCtx, auth.ActionNetworkAreaView, buildNetworkAreaResources(requestedIDs)); checkErr != nil {
-			return nil, false, checkErr
-		}
-	}
-
-	return narrowedIDs, false, nil
-}
-
-func narrowNetworkAreaCondition(condition *types.NetworkAreaCondition, narrowedIDs []int64, scopeIsAny bool) *types.NetworkAreaCondition {
-	if scopeIsAny {
-		return condition
-	}
-
-	if condition == nil {
-		condition = &types.NetworkAreaCondition{}
-	}
-	if condition.ExactInclude == nil {
-		condition.ExactInclude = &types.NetworkAreaExactFields{}
-	}
-	condition.ExactInclude.NetworkAreaID = conv.SliceUnique(narrowedIDs)
-
-	return condition
 }
 
 func (h *handler) narrowAuthorizedNetworkUnitIDs(
 	rCtx restserver.IContext, requestedIDs []int64,
 ) ([]int64, bool, error) {
 
-	scope, err := h.authorizer.ListAuthorizedInstances(rCtx, auth.ActionNetworkUnitView, auth.ResourceTypeNetworkUnit)
+	scope, err := h.authorizer.ListAuthorizedInstances(rCtx, auth.ActionNetworkUnitView, types.AuthResourceTypeNetworkUnit)
 
 	if err != nil {
 		return nil, false, err
 	}
 
 	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
-		scope, requestedIDs, auth.ResourceTypeNetworkUnit,
+		scope, requestedIDs, types.AuthResourceTypeNetworkUnit,
 	)
 
 	if err != nil {
@@ -167,14 +112,14 @@ func (h *handler) narrowAuthorizedBizIDsByAction(
 	rCtx restserver.IContext, action auth.Action, requestedIDs []int64,
 ) ([]int64, bool, error) {
 
-	scope, err := h.authorizer.ListAuthorizedInstances(rCtx, action, auth.ResourceTypeBiz)
+	scope, err := h.authorizer.ListAuthorizedInstances(rCtx, action, types.AuthResourceTypeBiz)
 
 	if err != nil {
 		return nil, false, err
 	}
 
 	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
-		scope, requestedIDs, auth.ResourceTypeBiz,
+		scope, requestedIDs, types.AuthResourceTypeBiz,
 	)
 
 	if err != nil {
@@ -295,7 +240,7 @@ func (h *handler) narrowAuthorizedBizIDsForHostList(
 	}
 
 	if len(requestedIDs) > 0 && !mergedScopeIsAny && len(mergedIDs) == 0 {
-		actionResources := make(map[auth.Action][]auth.Resource, len(actions))
+		actionResources := make(map[auth.Action][]types.AuthResource, len(actions))
 		resources := buildBizResources(requestedIDs)
 		for _, action := range actions {
 			actionResources[action] = resources
