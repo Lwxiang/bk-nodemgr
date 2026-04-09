@@ -26,14 +26,23 @@
         :name="item.bk_biz_name"
         :id="item.bk_biz_id"
         v-bk-tooltips="{
-          content: `[${item.bk_biz_id}] ${item.bk_biz_name}`,
-          disabled: !textOverflowMap[item.bk_biz_id],
+          content: isBizAuthorized(item.bk_biz_id)
+            ? `[${item.bk_biz_id}] ${item.bk_biz_name}`
+            : t('components.permission.noPermission'),
+          disabled: isBizAuthorized(item.bk_biz_id) && !textOverflowMap[item.bk_biz_id],
           boundary: 'parent',
           placement: 'right',
           offset: 10
         }"
       >
-        <div class="w-full flex items-center biz-select-option overflow-hidden">
+        <div
+          class="w-full flex items-center biz-select-option overflow-hidden"
+          :class="{ 'unauthorized-biz-row': !isBizAuthorized(item.bk_biz_id) }"
+          @click="!isBizAuthorized(item.bk_biz_id) && handleApplyPermission(item.bk_biz_id)"
+          @mouseenter="handleOptionMouseEnter($event, item.bk_biz_id)"
+          @mousemove="handleOptionMouseMove($event, item.bk_biz_id)"
+          @mouseleave="handleOptionMouseLeave()"
+        >
           <Button
             class="mr-[8px] w-[18px] shrink-0"
             text
@@ -76,14 +85,23 @@
         :name="item.bk_biz_name"
         :id="item.bk_biz_id"
         v-bk-tooltips="{
-          content: `[${item.bk_biz_id}] ${item.bk_biz_name}`,
-          disabled: !textOverflowMap[item.bk_biz_id],
+          content: isBizAuthorized(item.bk_biz_id)
+            ? `[${item.bk_biz_id}] ${item.bk_biz_name}`
+            : t('components.permission.noPermission'),
+          disabled: isBizAuthorized(item.bk_biz_id) && !textOverflowMap[item.bk_biz_id],
           boundary: 'parent',
           placement: 'right',
           offset: 10
         }"
       >
-        <div class="w-full flex items-center biz-select-option overflow-hidden">
+        <div
+          class="w-full flex items-center biz-select-option overflow-hidden"
+          :class="{ 'unauthorized-biz-row': !isBizAuthorized(item.bk_biz_id) }"
+          @click="!isBizAuthorized(item.bk_biz_id) && handleApplyPermission(item.bk_biz_id)"
+          @mouseenter="handleOptionMouseEnter($event, item.bk_biz_id)"
+          @mousemove="handleOptionMouseMove($event, item.bk_biz_id)"
+          @mouseleave="handleOptionMouseLeave()"
+        >
           <Button
             class="mr-[8px] w-[18px] shrink-0"
             text
@@ -105,6 +123,16 @@
         </div>
       </Select.Option>
     </Select>
+    <!-- hover 无权限业务时跟随鼠标的锁图标（Teleport 到 body 确保在 popover 层上方） -->
+    <Teleport to="body">
+      <div
+        v-show="lockCursorVisible"
+        class="biz-lock-cursor"
+        :style="{ left: lockCursorX + 'px', top: lockCursorY + 'px' }"
+      >
+        <img src="/images/lock.svg" alt="" />
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -114,11 +142,14 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 
+import { useAuthStore } from '@/stores/auth';
 import { useMainStore } from '@/stores/main';
+import { usePermissionStore } from '@/stores/permission';
 
 const { t } = useI18n();
 const route = useRoute();
 const mainStore = useMainStore();
+const authStore = useAuthStore();
 
 defineProps<{
   /** 左侧菜单是否展开 */
@@ -126,8 +157,75 @@ defineProps<{
 }>();
 
 // ===== 可见性与模式 =====
-const isVisible = computed(() => !route.path.includes('topo-manager') && !route.path.includes('pkg-manager'));
+const NO_BIZ_SELECTOR_MAIN_MENUS = ['topoManager', 'pkgManager'];
+
+const isVisible = computed(() => {
+  if (route.path.includes('topo-manager') || route.path.includes('pkg-manager')) return false;
+  // 403/404 页面：通过 mainMenu 判断原模块是否不需要业务选择器
+  if (route.name === '403' || route.name === '404') {
+    const mainMenu = route.query.mainMenu as string;
+    if (mainMenu && NO_BIZ_SELECTOR_MAIN_MENUS.includes(mainMenu)) return false;
+  }
+  return true;
+});
 const isSingle = computed(() => route.path.includes('rule-manager'));
+
+// ===== 菜单路由 → authorized action 映射 =====
+// 每个菜单路由对应的 view action（用于 biz-selector 判断业务权限）
+const MENU_ROUTE_ACTION_MAP: Record<string, string> = {
+  // nodeManager
+  agent: 'agent_view',
+  proxy: 'proxy_view',
+  agentSetup: 'agent_operate',
+  agentEdit: 'agent_operate',
+  assignUnit: 'agent_operate',
+  plugin: 'plugin_view',
+  history: 'agent_history_view',
+  taskDetail: 'agent_history_view',
+  log: 'agent_history_view',
+  // ruleManager
+  agentStrategy: 'deploy_policy_view',
+  proxyStrategy: 'deploy_policy_view',
+  pluginStrategy: 'config_policy_view',
+  strategyTaskHistory: 'deploy_policy_history_view',
+};
+
+// 顶层导航模块 → 默认 view action（用于 403 页面时通过 mainMenu 反推）
+const MAIN_MENU_DEFAULT_ACTION: Record<string, string> = {
+  nodeManager: 'agent_view',
+  ruleManager: 'deploy_policy_view',
+};
+
+// 缓存上次有效的 action，用于 403 等无法匹配路由名的场景
+let cachedAction: string | undefined;
+
+// 根据当前路由名获取对应的 action
+function getActionForRoute(): string | undefined {
+  const name = route.name;
+  if (typeof name === 'string' && MENU_ROUTE_ACTION_MAP[name]) {
+    cachedAction = MENU_ROUTE_ACTION_MAP[name];
+    return cachedAction;
+  }
+  // 403/404 页面：通过 query.mainMenu 反推
+  if (name === '403' || name === '404') {
+    const mainMenu = route.query.mainMenu as string;
+    if (mainMenu && MAIN_MENU_DEFAULT_ACTION[mainMenu]) {
+      return MAIN_MENU_DEFAULT_ACTION[mainMenu];
+    }
+  }
+  // 兜底：使用缓存
+  return cachedAction;
+}
+
+// 判断某个业务在当前菜单页是否有权限
+function isBizAuthorized(bizId: number): boolean {
+  if (!authStore.authorizedLoaded) return true; // 未加载完成时默认有权限，避免闪烁
+  const action = getActionForRoute();
+  if (!action) return true; // 非 biz 路由或无映射时不做限制
+  return authStore.hasAuthorizedBiz(action, bizId);
+}
+
+const filteredBusinessList = computed(() => mainStore.businessList);
 
 // ===== 业务列表（本地排序副本，不修改 store 原数组）=====
 const businessList = ref<Business[]>([]);
@@ -141,6 +239,23 @@ const multiBusiness = ref<number[]>([]);
 // ===== 策略单选业务 =====
 const singleBusiness = ref<number | ''>('');
 
+// ===== 节点管理模块：权限加载后，多选模式无选中业务时默认选中第一个有权限的业务 =====
+watch(() => authStore.authorizedLoaded, (loaded) => {
+  if (!loaded || isSingle.value || multiBusiness.value.length > 0 || filteredBusinessList.value.length === 0) return;
+  const action = getActionForRoute();
+  if (!action) return;
+  const authorizedBizIds = authStore.getAuthorizedBizIds(action);
+  // authorizedBizIds === null 表示全部有权限，否则为有权限的 bizId 数组
+  const firstAuthorized = authorizedBizIds === null
+    ? filteredBusinessList.value[0]?.bk_biz_id
+    : filteredBusinessList.value.find(b => authorizedBizIds.includes(String(b.bk_biz_id)))?.bk_biz_id;
+  if (firstAuthorized !== undefined) {
+    multiBusiness.value = [firstAuthorized];
+    mainStore.updateCurBusiness([firstAuthorized]);
+    localStorage.setItem('bk_biz_id', JSON.stringify([firstAuthorized]));
+  }
+}, { immediate: true });
+
 // ===== 策略单选业务持久化 & 同步到 store =====
 watch(singleBusiness, (val) => {
   if (val !== '' && val !== undefined) {
@@ -148,6 +263,28 @@ watch(singleBusiness, (val) => {
     mainStore.updateStrategyBizId(val);
   }
 });
+
+// ===== hover 无权限业务时跟随鼠标的锁图标 =====
+const lockCursorVisible = ref(false);
+const lockCursorX = ref(0);
+const lockCursorY = ref(0);
+
+const handleOptionMouseEnter = (e: MouseEvent, bizId: number) => {
+  if (!isBizAuthorized(bizId)) {
+    lockCursorVisible.value = true;
+    lockCursorX.value = e.clientX + 8;
+    lockCursorY.value = e.clientY - 8;
+  }
+};
+const handleOptionMouseMove = (e: MouseEvent, bizId: number) => {
+  if (!isBizAuthorized(bizId)) {
+    lockCursorX.value = e.clientX + 8;
+    lockCursorY.value = e.clientY - 8;
+  }
+};
+const handleOptionMouseLeave = () => {
+  lockCursorVisible.value = false;
+};
 
 // ===== 文字溢出检测 =====
 const textOverflowMap = reactive<Record<number, boolean>>({});
@@ -172,7 +309,13 @@ const shrinkText = computed(() => {
 
 // ===== 排序逻辑（拷贝后排序，不影响 store 原数组）=====
 const sortBusinessList = () => {
-  businessList.value = [...mainStore.businessList].sort((a: Business, b: Business) => {
+  businessList.value = [...filteredBusinessList.value].sort((a: Business, b: Business) => {
+    // 优先级1: 有权限的排在前面
+    const aAuthorized = isBizAuthorized(a.bk_biz_id);
+    const bAuthorized = isBizAuthorized(b.bk_biz_id);
+    if (aAuthorized && !bAuthorized) return -1;
+    if (!aAuthorized && bAuthorized) return 1;
+
     const aIsCollected = collectList.value.includes(a.bk_biz_id);
     const bIsCollected = collectList.value.includes(b.bk_biz_id);
 
@@ -184,13 +327,13 @@ const sortBusinessList = () => {
       ? b.bk_biz_id === singleBusiness.value
       : multiBusiness.value.includes(b.bk_biz_id);
 
-    // 优先级1: 选中状态（选中的排在前面）
+    // 优先级2: 选中状态（选中的排在前面）
     if (aIsSelected && !bIsSelected) return -1;
     if (!aIsSelected && bIsSelected) return 1;
-    // 优先级2: 收藏状态（收藏在前）
+    // 优先级3: 收藏状态（收藏在前）
     if (aIsCollected && !bIsCollected) return -1;
     if (!aIsCollected && bIsCollected) return 1;
-    // 优先级3: 按ID从小到大
+    // 优先级4: 按ID从小到大
     return a.bk_biz_id - b.bk_biz_id;
   });
 };
@@ -208,6 +351,21 @@ const handleCollect = (val: number) => {
     collectList.value.push(val);
   }
   localStorage.setItem('collect', JSON.stringify(collectList.value));
+};
+
+// ===== 点击无权限业务，申请当前菜单页的查看权限 =====
+const permissionStore = usePermissionStore();
+const handleApplyPermission = async (bizId: number) => {
+  const action = getActionForRoute();
+  if (!action) return;
+
+  // 构造 PageAuthItem 用于 batchVerify
+  const authItem = { id: action, action, resourceType: 'biz', routes: [] };
+  await authStore.batchVerify([authItem], bizId);
+  const detail = authStore.permissionDetail;
+  if (detail) {
+    permissionStore.showDialog(detail);
+  }
 };
 
 // ===== 多选业务变更 =====
@@ -239,14 +397,14 @@ const filterOption = (input: any, options: { id: number; name: string }) => {
 
 // ===== 路由切换到策略页面时，自动初始化单选业务 =====
 watch(isSingle, (val) => {
-  if (val && (singleBusiness.value === '' || singleBusiness.value === undefined) && mainStore.businessList.length > 0) {
+  if (val && (singleBusiness.value === '' || singleBusiness.value === undefined) && filteredBusinessList.value.length > 0) {
     sortBusinessList();
     const savedBizId = localStorage.getItem('strategy_biz_id');
     const defaultBiz = businessList.value[0]?.bk_biz_id
-      ?? [...mainStore.businessList].sort((a, b) => a.bk_biz_id - b.bk_biz_id)[0].bk_biz_id;
+      ?? [...filteredBusinessList.value].sort((a, b) => a.bk_biz_id - b.bk_biz_id)[0].bk_biz_id;
     if (savedBizId) {
       const parsedId = Number(savedBizId);
-      const exists = mainStore.businessList.some(b => b.bk_biz_id === parsedId);
+      const exists = filteredBusinessList.value.some(b => b.bk_biz_id === parsedId);
       singleBusiness.value = exists ? parsedId : defaultBiz;
     } else {
       singleBusiness.value = defaultBiz;
@@ -271,19 +429,19 @@ const init = () => {
   }
 
   // 3. 排序
-  if (mainStore.businessList.length > 0) {
+  if (filteredBusinessList.value.length > 0) {
     sortBusinessList();
   }
 
   // 4. 策略模块：恢复/默认单选业务（排序后取第一个，没有则取id最小的）
-  if (isSingle.value && mainStore.businessList.length > 0) {
+  if (isSingle.value && filteredBusinessList.value.length > 0) {
     const savedBizId = localStorage.getItem('strategy_biz_id');
     // 排序后的第一个作为默认值，兜底取id最小的
     const defaultBiz = businessList.value[0]?.bk_biz_id
-      ?? [...mainStore.businessList].sort((a, b) => a.bk_biz_id - b.bk_biz_id)[0].bk_biz_id;
+      ?? [...filteredBusinessList.value].sort((a, b) => a.bk_biz_id - b.bk_biz_id)[0].bk_biz_id;
     if (savedBizId) {
       const parsedId = Number(savedBizId);
-      const exists = mainStore.businessList.some(b => b.bk_biz_id === parsedId);
+      const exists = filteredBusinessList.value.some(b => b.bk_biz_id === parsedId);
       singleBusiness.value = exists ? parsedId : defaultBiz;
     } else {
       singleBusiness.value = defaultBiz;
@@ -311,5 +469,23 @@ defineExpose({ init });
       display: inline;
     }
   }
+}
+</style>
+
+<style lang="postcss">
+/* 非 scoped：跟随鼠标锁图标和置灰样式需穿透 Select Option popover */
+.biz-lock-cursor {
+  position: fixed;
+  z-index: 999999;
+  pointer-events: none;
+  width: 12px;
+  height: 16px;
+  img {
+    width: 12px;
+    height: 16px;
+  }
+}
+.unauthorized-biz-row {
+  color: #c4c6cc !important;
 }
 </style>
