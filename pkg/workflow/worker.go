@@ -98,6 +98,8 @@ func (mgr *manager) do(ctx context.Context, actionName string, operationInstance
 	)
 	defer span.End()
 
+	span.AddEvent(spanEventActionReceived)
+
 	actionDef, ok := mgr.registeredActionDefs[actionName]
 	if !ok {
 		// record metric.
@@ -143,6 +145,9 @@ func (mgr *manager) do(ctx context.Context, actionName string, operationInstance
 	// check if this action should be executed.
 	if err := actionInstData.NeedExecuted(); err != nil {
 		if errors.Is(err, common.ErrActionAlreadySucceeded()) || errors.Is(err, common.ErrActionSkipped()) {
+			span.AddEvent(spanEventActionSkipped, trace.WithAttributes(
+				attribute.String(attributeKeySkipReason, err.Error())))
+
 			return nil
 		}
 
@@ -179,6 +184,9 @@ func (mgr *manager) do(ctx context.Context, actionName string, operationInstance
 	}
 
 	// handle action instance lifecycle.
+	span.AddEvent(spanEventActionStarted, trace.WithAttributes(
+		attribute.Bool(attributeKeyIsFirst, actionInstData.IsFirst()),
+		attribute.Bool(attributeKeyIsLast, actionInstData.IsLast())))
 	actionInstData.Lifecycle.Start()
 	if err = mgr.updateActionLifecycle(nCtx, operationInstanceID, actionName, actionInstData.Lifecycle); err != nil {
 		return err
@@ -208,6 +216,12 @@ func (mgr *manager) do(ctx context.Context, actionName string, operationInstance
 	// execute and wait for action done.
 	// nolint: contextcheck
 	executeErr := mgr.executeAndWatchAction(nCtx, actionDef, operInstBriefData, actionInstData)
+	if executeErr != nil {
+		span.AddEvent(spanEventActionFailed, trace.WithAttributes(
+			attribute.String(attributeKeyError, executeErr.Error())))
+	} else {
+		span.AddEvent(spanEventActionSucceeded)
+	}
 
 	// updates action instance lifecycle.
 	if err = mgr.updateActionLifecycle(nCtx, operationInstanceID, actionName, actionInstData.Lifecycle); err != nil {
@@ -224,6 +238,9 @@ func (mgr *manager) do(ctx context.Context, actionName string, operationInstance
 		nCtx, operationInstanceID, actionName, actionInstData.PrivateData); err != nil {
 		return err
 	}
+
+	span.AddEvent(spanEventActionCompleted, trace.WithAttributes(
+		attribute.String(attributeKeyFinalState, string(actionInstData.Lifecycle.State))))
 
 	// when action done or error happens, we need to update the state of the operation instance.
 	if actionInstData.IsLast() || executeErr != nil {

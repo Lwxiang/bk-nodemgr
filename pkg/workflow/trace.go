@@ -29,4 +29,18 @@ const (
 	attributeKeyOperationDefName    = "operation_def_name"
 
 	attributeKeyActionName = "action_name"
+
+	attributeKeySkipReason = "skip_reason"
+	attributeKeyError      = "error"
+	attributeKeyRetryCount = "retry_count"
+	attributeKeyIsFirst    = "is_first"
+	attributeKeyIsLast     = "is_last"
+	attributeKeyFinalState = "final_state"
+
+	spanEventActionReceived  = "action.received"
+	spanEventActionSkipped   = "action.skipped"
+	spanEventActionStarted   = "action.started"
+	spanEventActionFailed    = "action.failed"
+	spanEventActionSucceeded = "action.succeeded"
+	spanEventActionCompleted = "action.completed"
 )
