@@ -196,7 +196,7 @@ func (x *TopoNetworkUnitUpdateReq) ConvertNetworkUnitFromTypes(
 	x.Fields = convertFieldsFromTypes(fields)
 
 	generation := int64(networkUnit.Generation)
-	x.Networkunit = &NetworkUnit{
+	x.Networkunit = &NetworkUnitDetail{
 		BkNetworkunitId:    &networkUnit.ID,
 		BkNetworkunitName:  &networkUnit.Name,
 		BkNetworkareaId:    &networkUnit.NetworkAreaID,
@@ -234,7 +234,7 @@ func (x *TopoNetworkUnitGetReq) AutoConvert() {
 func (x *TopoNetworkUnitGetResp) ConvertNetworkUnitFromTypes(
 	networkUnit *types.NetworkUnit, accessPoints []*types.AccessPoint) {
 
-	data := newEmptyNetworkUnit()
+	data := newEmptyNetworkUnitDetail()
 	*data.TenantId = networkUnit.TenantID
 	*data.BkNetworkunitId = networkUnit.ID
 	*data.BkNetworkunitName = networkUnit.Name
@@ -417,16 +417,17 @@ func (x *TopoGetNetworkUnitDistributionByNetworkAreaIDResp) ConvertResultToTypes
 // ConvertNetworkUnitsFromTypes convert networkunits from types to proto.
 func (x *TopoNetworkUnitListResp) ConvertNetworkUnitsFromTypes(total int64, networkUnits []*types.NetworkUnit) {
 
-	items := make([]*NetworkUnitBrief, len(networkUnits))
+	items := make([]*NetworkUnit, len(networkUnits))
 	for idx, networkUnit := range networkUnits {
-		item := newEmptyNetworkUnitBrief()
+		item := newEmptyNetworkUnit()
 		*item.TenantId = networkUnit.TenantID
 		*item.BkNetworkunitId = networkUnit.ID
 		*item.BkNetworkunitName = networkUnit.Name
 		*item.BkNetworkareaId = networkUnit.NetworkAreaID
+		*item.IsDirect = networkUnit.IsDirect
+
 		item.Accesspoints = networkUnit.AccessPoints
 		item.Links = convertLinksFromTypes(networkUnit.Links)
-		*item.IsDirect = networkUnit.IsDirect
 		item.DirectEndpoints = convertEndpointFromTypes(networkUnit.DirectEndpoints)
 		*item.Generation = int64(networkUnit.Generation)
 		item.CustomDeployConfig = convertCustomDeployConfigFromTypes(networkUnit.CustomDeployConfig)
@@ -480,6 +481,109 @@ func (x *TopoNetworkUnitDeleteReq) Validate() error {
 func (x *TopoNetworkUnitDeleteReq) AutoConvert() {
 }
 
+// Validate check body.
+func (x *TopoNetworkUnitListBriefReq) Validate() error {
+	return validatePage(x.GetPage())
+}
+
+// AutoConvert auto convert.
+func (x *TopoNetworkUnitListBriefReq) AutoConvert() {
+}
+
+// PageTimeout return page timeout.
+func (x *TopoNetworkUnitListBriefReq) PageTimeout() time.Duration {
+	return backendPagingListTimeout
+}
+
+// PageLimit return page limit.
+func (x *TopoNetworkUnitListBriefReq) PageLimit() int {
+	return maxNetworkUnitLimit
+}
+
+// ConvertPageToTypes convert page to types.
+func (x *TopoNetworkUnitListBriefReq) ConvertPageToTypes() (types.Page, error) {
+	return convPageToTypes(x.GetPage(), x.PageLimit())
+}
+
+// ConvertConditionsToTypes convert conditions to types.
+func (x *TopoNetworkUnitListBriefReq) ConvertConditionsToTypes() *types.NetworkUnitCondition {
+	condition := &types.NetworkUnitCondition{}
+
+	// exact conditions.
+	if exactCond := x.GetExactIncludeConditions(); exactCond != nil {
+		condition.ExactInclude = &types.NetworkUnitExactFields{
+			NetworkAreaID: exactCond.GetBkNetworkareaId(),
+			NetworkUnitID: exactCond.GetBkNetworkunitId(),
+		}
+	}
+
+	return condition
+}
+
+// ConvertConditionsFromTypes convert conditions from types to proto.
+func (x *TopoNetworkUnitListBriefReq) ConvertConditionsFromTypes(condition *types.NetworkUnitCondition) error {
+	if condition == nil {
+		return nil
+	}
+
+	if condition.ExactInclude != nil {
+		x.ExactIncludeConditions = &TopoNetworkUnitListBriefReq_ExactConditions{
+			BkNetworkunitId: condition.ExactInclude.NetworkUnitID,
+			BkNetworkareaId: condition.ExactInclude.NetworkAreaID,
+			IsDirect:        condition.ExactInclude.IsDirect,
+			Generation:      condition.ExactInclude.Generation,
+		}
+	}
+
+	if condition.FuzzyInclude != nil || condition.ExactExclude != nil || condition.FuzzyExclude != nil {
+		return fmt.Errorf("fuzzy-include, exact-exclude and fuzzy-exclude not supported")
+	}
+
+	return nil
+}
+
+// ConvertNetworkUnitBriefsFromTypes convert networkunit briefs from types to proto.
+func (x *TopoNetworkUnitListBriefResp) ConvertNetworkUnitBriefsFromTypes(total int64, networkUnits []*types.NetworkUnit) {
+	items := make([]*NetworkUnitBrief, len(networkUnits))
+	for idx, networkUnit := range networkUnits {
+		items[idx] = convertNetworkUnitBriefFromTypes(networkUnit)
+	}
+
+	x.Data = &TopoNetworkUnitListBriefResp_Data{
+		Total: total,
+		Items: items,
+	}
+}
+
+// ConvertNetworkUnitsToTypes convert networkunit briefs from proto to types.
+func (x *TopoNetworkUnitListBriefResp) ConvertNetworkUnitsToTypes() (int64, []*types.NetworkUnit) {
+	data := x.GetData()
+	if data == nil {
+		return 0, nil
+	}
+
+	items := data.GetItems()
+	result := make([]*types.NetworkUnit, len(items))
+	for idx, item := range items {
+		result[idx] = &types.NetworkUnit{
+			NetworkAreaID: item.GetBkNetworkareaId(),
+			ID:            item.GetBkNetworkunitId(),
+			Name:          item.GetBkNetworkunitName(),
+		}
+	}
+
+	return data.GetTotal(), result
+}
+
+func convertNetworkUnitBriefFromTypes(networkUnit *types.NetworkUnit) *NetworkUnitBrief {
+	data := &NetworkUnitBrief{}
+	data.BkNetworkareaId = &networkUnit.NetworkAreaID
+	data.BkNetworkunitId = &networkUnit.ID
+	data.BkNetworkunitName = &networkUnit.Name
+
+	return data
+}
+
 // ConvertNetworkUnitFromTypes convert networkunit from types to proto.
 func (x *TopoNetworkUnitDeleteResp) ConvertNetworkUnitFromTypes(networkUnitID int64) {
 	data := &TopoNetworkUnitDeleteResp_Data{BkNetworkunitId: new(int64)}
@@ -502,6 +606,29 @@ func (ap *AccessPoint) autoConvert() {
 
 func newEmptyNetworkUnit() *NetworkUnit {
 	return &NetworkUnit{
+		TenantId:          new(string),
+		BkNetworkunitId:   new(int64),
+		BkNetworkunitName: new(string),
+		BkNetworkareaId:   new(int64),
+		Accesspoints:      make([]int64, 0),
+		Links: &Links{
+			Cluster: newEmptyLink(),
+			File:    newEmptyLink(),
+			Data:    newEmptyLink(),
+		},
+		IsDirect: new(bool),
+		DirectEndpoints: &Endpoints{
+			Cluster: make([]string, 0),
+			File:    make([]string, 0),
+			Data:    make([]string, 0),
+		},
+		Generation:         new(int64),
+		CustomDeployConfig: make(map[string]*CustomDeployConfig, 0),
+	}
+}
+
+func newEmptyNetworkUnitDetail() *NetworkUnitDetail {
+	return &NetworkUnitDetail{
 		TenantId:          new(string),
 		BkNetworkunitId:   new(int64),
 		BkNetworkunitName: new(string),
@@ -535,14 +662,8 @@ func newEmptyNetworkUnitBrief() *NetworkUnitBrief {
 			File:    newEmptyLink(),
 			Data:    newEmptyLink(),
 		},
-		IsDirect: new(bool),
-		DirectEndpoints: &Endpoints{
-			Cluster: make([]string, 0),
-			File:    make([]string, 0),
-			Data:    make([]string, 0),
-		},
-		Generation:         new(int64),
-		CustomDeployConfig: make(map[string]*CustomDeployConfig, 0),
+		IsDirect:   new(bool),
+		Generation: new(int64),
 	}
 }
 

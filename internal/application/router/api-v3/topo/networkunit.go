@@ -163,35 +163,8 @@ func (h *handler) ListNetworkUnit(rCtx restserver.IContext) (interface{}, error)
 		return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
 	}
 
-	// get accesspoints.
-	idMap := make(map[int64]bool, 0)
-	for _, networkUnit := range networkUnits {
-		for _, accessPointID := range networkUnit.AccessPoints {
-			idMap[accessPointID] = true
-		}
-	}
-	ids := make([]int64, len(idMap))
-	index := 0
-	for id := range idMap {
-		ids[index] = id
-		index++
-	}
-
-	accessPoints := make([]*types.AccessPoint, 0)
-	if len(ids) > 0 {
-		accessPoints, _, err = h.backendHandler.ListAccessPoint(
-			rCtx, types.Page{Limit: len(ids)}, &types.AccessPointCondition{
-				ExactInclude: &types.AccessPointExactFields{
-					AccessPointID: ids,
-				}})
-		if err != nil {
-			logger.G.Biz(rCtx).WithErr(err).Error("failed to list networkunit, failed to list accesspoint")
-			return nil, resterrf.ErrWrap(resterrf.ThirdpartyRequestFailed, err)
-		}
-	}
-
 	resp := new(protoApplication.TopoNetworkUnitListResp)
-	resp.ConvertNetworkUnitsFromTypes(num, networkUnits, accessPoints)
+	resp.ConvertNetworkUnitsFromTypes(num, networkUnits)
 
 	return resp.GetData(), nil
 }
@@ -211,6 +184,38 @@ func (h *handler) DeleteNetworkUnit(rCtx restserver.IContext) (interface{}, erro
 
 	resp := new(protoApplication.TopoNetworkUnitDeleteResp)
 	resp.ConvertNetworkUnitFromTypes(req.GetBkNetworkunitId())
+
+	return resp.GetData(), nil
+}
+
+// ListNetworkUnitBrief lists network units brief.
+func (h *handler) ListNetworkUnitBrief(rCtx restserver.IContext) (interface{}, error) {
+	req := new(protoApplication.TopoNetworkUnitListBriefReq)
+	if err := rCtx.BindJSON(req); err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to list networkunit brief, failed to decode request body")
+		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
+	page, err := req.ConvertPageToTypes()
+	if err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to list networkunit brief, invalid page info")
+		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
+	// special logic:
+	// networkunit request with limit 0 means unlimited
+	if page.Limit == 0 {
+		page = types.UnlimitedPage()
+	}
+
+	networkUnits, num, err := h.backendHandler.ListNetworkUnitBrief(rCtx, page, req.ConvertConditionsToTypes())
+	if err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to list networkunit brief")
+		return nil, resterrf.ErrWrap(resterrf.ThirdpartyRequestFailed, err)
+	}
+
+	resp := new(protoApplication.TopoNetworkUnitListBriefResp)
+	resp.ConvertNetworkUnitBriefsFromTypes(num, networkUnits)
 
 	return resp.GetData(), nil
 }
