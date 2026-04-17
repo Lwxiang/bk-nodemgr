@@ -39,7 +39,7 @@ type handler struct {
 	daoReleasePluginBinTool release.IPluginBinTool
 	daoPlugin               plugin.IDaoPlugin
 
-	daoTenant tenant.IStorage
+	daoTenant  tenant.IStorage
 	authorizer auth.IAuthorizer
 }
 
@@ -73,6 +73,7 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 
 	// release agent.
 	h.rg.POST("/release/agent/list", restserver.Handler(h.ListReleaseAgent))
+	h.rg.POST("/release/agent/list/brief", restserver.Handler(h.ListReleaseAgentBrief))
 	h.rg.POST("/release/agent/distinct", restserver.Handler(h.DistinctReleaseAgent))
 	h.rg.POST("/release/agent/set_labels_many", restserver.Handler(h.SetReleaseAgentLabelsMany))
 	h.rg.POST("/release/agent/enable", restserver.Handler(h.EnableReleaseAgent))
@@ -83,6 +84,7 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 
 	// release proxy.
 	h.rg.POST("/release/proxy/list", restserver.Handler(h.ListReleaseProxy))
+	h.rg.POST("/release/proxy/list/brief", restserver.Handler(h.ListReleaseProxyBrief))
 	h.rg.POST("/release/proxy/distinct", restserver.Handler(h.DistinctReleaseProxy))
 	h.rg.POST("/release/proxy/set_labels_many", restserver.Handler(h.SetReleaseProxyLabelsMany))
 	h.rg.POST("/release/proxy/enable", restserver.Handler(h.EnableReleaseProxy))
@@ -93,6 +95,7 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 
 	// release plugin.
 	h.rg.POST("/release/plugin/list", restserver.Handler(h.ListReleasePlugin))
+	h.rg.POST("/release/plugin/list/brief", restserver.Handler(h.ListReleasePluginBrief))
 	h.rg.POST("/release/plugin/enable", restserver.Handler(h.EnableReleasePlugin))
 	h.rg.POST("/release/plugin/disable", restserver.Handler(h.DisableReleasePlugin))
 	h.rg.POST("/release/plugin/set_as_default", restserver.Handler(h.SetAsDefaultReleasePlugin))
