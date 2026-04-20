@@ -138,11 +138,9 @@ func distinctNamesWithPagination(names []string, page types.Page) ([]string, int
 
 // ListAttr returns empty result as package has no attributes.
 func (p *PackageProvider) ListAttr(_ contextx.IContext, _ *Request[EmptyFilter]) (*ListAttrData, error) {
-	data := &ListAttrData{
-		Results: []ResourceAttribute{},
-	}
+	data := ListAttrData([]ResourceAttribute{})
 
-	return data, nil
+	return &data, nil
 }
 
 // ListAttrValue returns empty result as package has no attribute values.
@@ -281,11 +279,8 @@ func (p *PackageProvider) FetchInstanceInfo(ctx contextx.IContext, req *Request[
 	ids := req.Filter.IDs
 
 	if len(ids) == 0 {
-		data := &FetchInstanceInfoData{
-			Results: []InstanceInfo{},
-		}
-
-		return data, nil
+		data := FetchInstanceInfoData(nil)
+		return &data, nil
 	}
 
 	// Build name set for quick lookup
@@ -310,11 +305,9 @@ func (p *PackageProvider) FetchInstanceInfo(ctx contextx.IContext, req *Request[
 	// Check fixed types (agent, proxy, cert, bintool)
 	p.addFixedTypePackages(nameSet, addedSet, &results)
 
-	data := &FetchInstanceInfoData{
-		Results: results,
-	}
+	data := FetchInstanceInfoData(results)
 
-	return data, nil
+	return &data, nil
 }
 
 // addPluginReleases adds matching plugin releases to results.

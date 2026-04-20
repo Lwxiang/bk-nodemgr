@@ -30,11 +30,9 @@ func NewPackageTypeProvider() *PackageTypeProvider {
 
 // ListAttr returns empty result as package type has no attributes.
 func (p *PackageTypeProvider) ListAttr(_ contextx.IContext, _ *Request[EmptyFilter]) (*ListAttrData, error) {
-	data := &ListAttrData{
-		Results: []ResourceAttribute{},
-	}
+	data := ListAttrData([]ResourceAttribute{})
 
-	return data, nil
+	return &data, nil
 }
 
 // ListAttrValue returns empty result as package type has no attribute values.
@@ -74,11 +72,8 @@ func (p *PackageTypeProvider) FetchInstanceInfo(_ contextx.IContext, req *Reques
 	ids := req.Filter.IDs
 
 	if len(ids) == 0 {
-		data := &FetchInstanceInfoData{
-			Results: []InstanceInfo{},
-		}
-
-		return data, nil
+		data := FetchInstanceInfoData(nil)
+		return &data, nil
 	}
 
 	// Convert to IAM response format
@@ -94,11 +89,9 @@ func (p *PackageTypeProvider) FetchInstanceInfo(_ contextx.IContext, req *Reques
 		}
 	}
 
-	data := &FetchInstanceInfoData{
-		Results: results,
-	}
+	data := FetchInstanceInfoData(results)
 
-	return data, nil
+	return &data, nil
 }
 
 // ListInstanceByPolicy lists package type instances filtered by IAM policy expression.

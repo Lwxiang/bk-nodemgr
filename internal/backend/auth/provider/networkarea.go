@@ -41,11 +41,9 @@ func NewNetworkAreaProvider(storage topo.IStorage) *NetworkAreaProvider {
 
 // ListAttr returns empty result as network area has no attributes.
 func (p *NetworkAreaProvider) ListAttr(_ contextx.IContext, _ *Request[EmptyFilter]) (*ListAttrData, error) {
-	data := &ListAttrData{
-		Results: []ResourceAttribute{},
-	}
+	data := ListAttrData([]ResourceAttribute{})
 
-	return data, nil
+	return &data, nil
 }
 
 // ListAttrValue returns empty result as network area has no attribute values.
@@ -101,11 +99,8 @@ func (p *NetworkAreaProvider) FetchInstanceInfo(ctx contextx.IContext, req *Requ
 	}
 
 	if len(ids) == 0 {
-		data := &FetchInstanceInfoData{
-			Results: []InstanceInfo{},
-		}
-
-		return data, nil
+		data := FetchInstanceInfoData([]InstanceInfo{})
+		return &data, nil
 	}
 
 	// Query network areas by IDs
@@ -131,11 +126,9 @@ func (p *NetworkAreaProvider) FetchInstanceInfo(ctx contextx.IContext, req *Requ
 		})
 	}
 
-	data := &FetchInstanceInfoData{
-		Results: results,
-	}
+	data := FetchInstanceInfoData(results)
 
-	return data, nil
+	return &data, nil
 }
 
 // ListInstanceByPolicy lists network area instances filtered by IAM policy expression.
