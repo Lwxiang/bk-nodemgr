@@ -26,10 +26,18 @@ func (h *handler) List(rCtx restserver.IContext) (interface{}, error) {
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
+	condition := req.ConvertConditionsToTypes()
+	narrowedPluginName, scopeIsAny, authErr := h.narrowAuthorizedPluginNamesForView(rCtx)
+	if authErr != nil {
+		logger.G.Biz(rCtx).WithErr(authErr).Error("failed to list processes, permission denied")
+		return nil, resterrf.ErrWrap(resterrf.PermissionDenied, authErr)
+	}
+	condition = narrowProcessCondition(condition, narrowedPluginName, scopeIsAny)
+
 	if req.GetOnlyCount() {
 		cnt, err := h.daoProcess.CountProcesses(
 			rCtx,
-			req.ConvertConditionsToTypes())
+			condition)
 		if err != nil {
 			logger.G.Biz(rCtx).WithErr(err).Error("failed to list processes, failed to count processes.")
 			return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
@@ -47,7 +55,7 @@ func (h *handler) List(rCtx restserver.IContext) (interface{}, error) {
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	processes, cnt, err := h.daoProcess.ListProcesses(rCtx, page, req.ConvertConditionsToTypes())
+	processes, cnt, err := h.daoProcess.ListProcesses(rCtx, page, condition)
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to list processes.")
 		return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)

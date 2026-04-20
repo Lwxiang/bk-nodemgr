@@ -15,6 +15,7 @@ import (
 	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
@@ -24,6 +25,17 @@ func (h *handler) Uninstall(rCtx restserver.IContext) (interface{}, error) {
 	if err := rCtx.BindJSON(req); err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to uninstall plugin, failed to decode request body.")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
+	pluginName := conv.SliceToSlice(req.GetPlugin(), func(item *protoBackend.PluginOperateBasicInfo) string {
+		return item.GetPluginName()
+	})
+	if authErr := h.authorizedPluginOperate(rCtx, pluginName...); authErr != nil {
+		logger.G.Biz(rCtx).WithErr(authErr).
+			With("plugin-name", pluginName).
+			Error("failed to uninstall plugin, permission denied.")
+
+		return nil, resterrf.ErrWrap(resterrf.PermissionDenied, authErr)
 	}
 
 	pluginDeployments, hostIDs, err := types.NewPluginDeploymentsByParams(
