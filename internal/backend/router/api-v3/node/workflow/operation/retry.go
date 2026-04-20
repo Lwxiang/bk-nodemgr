@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package workflow
+package operation
 
 import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
@@ -16,27 +16,35 @@ import (
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
 	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operation"
 )
 
-// GetManualInfo get manual info.
-func (h *handler) GetManualInfo(rCtx restserver.IContext) (interface{}, error) {
-	req := new(protoBackend.NodeWorkflowOperationManualInfoGetReq)
+// RetryOperation retry the operation of node workflow.
+func (h *handler) RetryOperation(rCtx restserver.IContext) (interface{}, error) {
+	req := new(protoBackend.NodeWorkflowOperationRetryReq)
 	if err := rCtx.BindJSON(req); err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to get manual info, failed to decode request body")
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to retry operation, failed to decode request body")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	info, err := h.nodeMgrIface.GetOperationManualInfoFromLastInstance(rCtx, types.GetNodeWorklfowOperationManualInfoParam{
-		WorkflowID:  req.GetWorkflowId(),
-		OperationID: req.GetOperationId(),
+	workflowID := req.GetWorkflowId()
+
+	// Check permission before retry
+	if err := h.checkWorkflowOperatePermission(rCtx, workflowID); err != nil {
+		return nil, err
+	}
+
+	err := h.nodeMgrIface.LaunchRetryNodeOperationFromLastInstance(rCtx, types.RetryNodeWorkflowOperationParam{
+		WorkflowID:   workflowID,
+		RetryMod:     operation.RetryMode(req.GetRetryMod()),
+		OperationIDs: req.GetOperationIds(),
 	})
 	if err != nil {
-		logger.G.Biz(rCtx).WithErr(err).Error("failed to get manual info")
-		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to retry operation: %w", err)
+		return nil, resterrf.ErrWrap(resterrf.BackendOperateFailed, err)
 	}
 
-	resp := new(protoBackend.NodeWorkflowOperationManualInfoGetResp)
-	resp.ConvertManualInfoFromTypes(info)
+	resp := new(protoBackend.NodeWorkflowOperationRetryResp)
 
 	return resp.GetData(), nil
 }
