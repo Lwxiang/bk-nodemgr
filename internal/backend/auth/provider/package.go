@@ -330,7 +330,9 @@ func (p *PackageProvider) addPluginReleases(ctx contextx.IContext, nameSet map[s
 			*results = append(*results, InstanceInfo{
 				ID:          r.Name,
 				DisplayName: r.Name,
-				Attributes:  make(map[string]interface{}),
+				Attributes: map[string]interface{}{
+					AttrIAMPath: BuildIAMPath(ResourceTypePackageType, string(types.ReleaseTypePlugin)),
+				},
 			})
 			addedSet[r.Name] = true
 		}
@@ -361,7 +363,9 @@ func (p *PackageProvider) addPluginBinToolReleases(
 			*results = append(*results, InstanceInfo{
 				ID:          r.Name,
 				DisplayName: r.Name,
-				Attributes:  make(map[string]interface{}),
+				Attributes: map[string]interface{}{
+					AttrIAMPath: BuildIAMPath(ResourceTypePackageType, string(types.ReleaseTypePluginBinTool)),
+				},
 			})
 			addedSet[r.Name] = true
 		}
@@ -380,16 +384,23 @@ func (p *PackageProvider) addFixedTypePackages(nameSet map[string]bool, addedSet
 	}
 
 	for name := range nameSet {
-		if !addedSet[name] {
-			if _, ok := fixedTypes[name]; ok {
-				*results = append(*results, InstanceInfo{
-					ID:          name,
-					DisplayName: name,
-					Attributes:  make(map[string]interface{}),
-				})
-				addedSet[name] = true
-			}
+		if addedSet[name] {
+			continue
 		}
+
+		_, ok := fixedTypes[name]
+		if !ok {
+			continue
+		}
+
+		*results = append(*results, InstanceInfo{
+			ID:          name,
+			DisplayName: name,
+			Attributes: map[string]interface{}{
+				AttrIAMPath: BuildIAMPath(ResourceTypePackageType, name),
+			},
+		})
+		addedSet[name] = true
 	}
 }
 
