@@ -31,42 +31,28 @@ type topoEventIDNarrower func(requestedIDs []int64) ([]int64, bool, error)
 
 var (
 	errNetworkUnitHistoryViewDeniedByEmptyScope = errors.New("no authorized network unit history scope")
-	errNetworkAreaHistoryViewDeniedByEmptyScope = errors.New("no authorized network area history scope")
 )
 
 func narrowAuthorizedHistoryResourceIDs(
-	rCtx restserver.IContext,
-	authorizer auth.IAuthorizer,
-	action auth.Action,
-	resourceType types.AuthResourceType,
-	requestedIDs []int64,
-	buildResources func(...int64) []types.AuthResource,
-	emptyScopeErr error,
-) ([]int64, bool, error) {
+	rCtx restserver.IContext, authorizer auth.IAuthorizer, action auth.Action,
+	resourceType types.AuthResourceType, requestedIDs []int64, buildResources func(...int64,
+	) []types.AuthResource) ([]int64, bool, error) {
 
 	scope, err := authorizer.ListAuthorizedInstances(rCtx, action, resourceType)
 	if err != nil {
 		return nil, false, err
 	}
 
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(scope, requestedIDs, resourceType)
+	narrowedIDs, scopeIsAny, err := auth.ResolveAuthorizedResourceIDsInt64(scope, requestedIDs, resourceType)
 	if err != nil {
 		return nil, false, err
-	}
-
-	if !hasAuthorized {
-		if checkErr := authorizer.Check(rCtx, action, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, emptyScopeErr
 	}
 
 	if scopeIsAny {
 		return requestedIDs, true, nil
 	}
 
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
+	if len(narrowedIDs) == 0 {
 		if checkErr := authorizer.Check(rCtx, action, buildResources(requestedIDs...)); checkErr != nil {
 			return nil, false, checkErr
 		}
@@ -130,24 +116,19 @@ func (h *handler) narrowAuthorizedNetworkUnitHistoryIDs(
 		auth.ActionNetworkUnitHistoryView,
 		types.AuthResourceTypeNetworkUnit,
 		requestedIDs,
-		authRouter.BuildNetworkUnitResources,
-		errNetworkUnitHistoryViewDeniedByEmptyScope,
-	)
+		authRouter.BuildNetworkUnitResources)
 }
 
 func (h *handler) narrowAuthorizedNetworkAreaHistoryIDs(
 	rCtx restserver.IContext, requestedIDs []int64,
 ) ([]int64, bool, error) {
 
-	return narrowAuthorizedHistoryResourceIDs(
-		rCtx,
+	return narrowAuthorizedHistoryResourceIDs(rCtx,
 		h.authorizer,
 		auth.ActionNetworkAreaHistoryView,
 		types.AuthResourceTypeNetworkArea,
 		requestedIDs,
-		buildNetworkAreaResources,
-		errNetworkAreaHistoryViewDeniedByEmptyScope,
-	)
+		buildNetworkAreaResources)
 }
 
 func (h *handler) narrowAuthorizedAccessPointHistoryIDs(

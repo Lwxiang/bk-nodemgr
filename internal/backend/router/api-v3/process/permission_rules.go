@@ -12,17 +12,11 @@
 package process
 
 import (
-	"errors"
-
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	authRouter "github.com/TencentBlueKing/bk-nodemgr/internal/backend/router/api-v3/auth"
 	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
-)
-
-var (
-	errBizViewDeniedByEmptyScope = errors.New("no authorized businesses")
 )
 
 // Only authenticate the business. Even if the condition parameter carries a plugin_name that does not belong to this business,
@@ -33,26 +27,18 @@ func (h *handler) narrowAuthorizedBizIDsForProcessView(rCtx restserver.IContext,
 		return nil, false, err
 	}
 
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
+	narrowedIDs, scopeIsAny, err := auth.ResolveAuthorizedResourceIDsInt64(
 		scope, requestedIDs, types.AuthResourceTypeBiz,
 	)
 	if err != nil {
 		return nil, false, err
 	}
 
-	if !hasAuthorized {
-		if checkErr := h.authorizer.Check(rCtx, auth.ActionPluginView, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, errBizViewDeniedByEmptyScope
-	}
-
 	if scopeIsAny {
 		return requestedIDs, true, nil
 	}
 
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
+	if len(narrowedIDs) == 0 {
 		if checkErr := h.authorizer.Check(rCtx, auth.ActionPluginView, authRouter.BuildBizResources(requestedIDs...)); checkErr != nil {
 			return nil, false, checkErr
 		}

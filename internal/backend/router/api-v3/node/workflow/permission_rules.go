@@ -11,17 +11,11 @@
 package workflow
 
 import (
-	"errors"
-
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	authRouter "github.com/TencentBlueKing/bk-nodemgr/internal/backend/router/api-v3/auth"
 	restserver "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
-)
-
-var (
-	errBizViewDeniedByEmptyScope = errors.New("no authorized businesses")
 )
 
 // workflowListBizActions determines which view actions are required based on node roles in the query condition.
@@ -77,7 +71,7 @@ func (h *handler) narrowAuthorizedBizIDsByAction(
 		return nil, false, err
 	}
 
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
+	narrowedIDs, scopeIsAny, err := auth.ResolveAuthorizedResourceIDsInt64(
 		scope, requestedIDs, types.AuthResourceTypeBiz,
 	)
 
@@ -85,19 +79,11 @@ func (h *handler) narrowAuthorizedBizIDsByAction(
 		return nil, false, err
 	}
 
-	if !hasAuthorized {
-		if checkErr := h.authorizer.Check(rCtx, action, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, errBizViewDeniedByEmptyScope
-	}
-
 	if scopeIsAny {
 		return requestedIDs, true, nil
 	}
 
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
+	if len(narrowedIDs) == 0 {
 		if checkErr := h.authorizer.Check(rCtx, action, authRouter.BuildBizResources(requestedIDs...)); checkErr != nil {
 			return nil, false, checkErr
 		}

@@ -22,9 +22,6 @@ import (
 )
 
 var (
-	errNetworkUnitViewDeniedByEmptyScope = errors.New("no authorized network units")
-	errNetworkAreaViewDeniedByEmptyScope = errors.New("no authorized network areas")
-	errBizViewDeniedByEmptyScope         = errors.New("no authorized businesses")
 	errAccessPointViewDeniedByEmptyScope = errors.New("no authorized access points")
 )
 
@@ -62,7 +59,7 @@ func (h *handler) narrowAuthorizedNetworkUnitIDs(
 		return nil, false, err
 	}
 
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
+	narrowedIDs, scopeIsAny, err := auth.ResolveAuthorizedResourceIDsInt64(
 		scope, requestedIDs, types.AuthResourceTypeNetworkUnit,
 	)
 
@@ -70,19 +67,11 @@ func (h *handler) narrowAuthorizedNetworkUnitIDs(
 		return nil, false, err
 	}
 
-	if !hasAuthorized {
-		if checkErr := h.authorizer.Check(rCtx, auth.ActionNetworkUnitView, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, errNetworkUnitViewDeniedByEmptyScope
-	}
-
 	if scopeIsAny {
 		return requestedIDs, true, nil
 	}
 
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
+	if len(narrowedIDs) == 0 {
 		if checkErr := h.authorizer.Check(rCtx, auth.ActionNetworkUnitView, buildNetworkUnitResources(requestedIDs)); checkErr != nil {
 			return nil, false, checkErr
 		}
@@ -101,7 +90,7 @@ func (h *handler) narrowAuthorizedNetworkAreaIDs(
 		return nil, false, err
 	}
 
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
+	narrowedIDs, scopeIsAny, err := auth.ResolveAuthorizedResourceIDsInt64(
 		scope, requestedIDs, types.AuthResourceTypeNetworkArea,
 	)
 
@@ -109,43 +98,17 @@ func (h *handler) narrowAuthorizedNetworkAreaIDs(
 		return nil, false, err
 	}
 
-	if !hasAuthorized {
-		if checkErr := h.authorizer.Check(rCtx, auth.ActionNetworkAreaView, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, errNetworkAreaViewDeniedByEmptyScope
-	}
-
 	if scopeIsAny {
 		return requestedIDs, true, nil
 	}
 
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
+	if len(narrowedIDs) == 0 {
 		if checkErr := h.authorizer.Check(rCtx, auth.ActionNetworkAreaView, buildNetworkAreaResources(requestedIDs...)); checkErr != nil {
 			return nil, false, checkErr
 		}
 	}
 
 	return narrowedIDs, false, nil
-}
-
-func narrowHostConditionByNetworkArea(condition *types.HostCondition, narrowedIDs []int64, scopeIsAny bool) *types.HostCondition {
-	if scopeIsAny {
-		return condition
-	}
-
-	if condition == nil {
-		condition = &types.HostCondition{}
-	}
-
-	if condition.StaticExactInclude == nil {
-		condition.StaticExactInclude = &types.HostStaticExactFields{}
-	}
-
-	condition.StaticExactInclude.NetworkAreaID = conv.SliceUnique(narrowedIDs)
-
-	return condition
 }
 
 func narrowNetworkUnitCondition(condition *types.NetworkUnitCondition, narrowedIDs []int64, scopeIsAny bool) *types.NetworkUnitCondition {
@@ -166,27 +129,6 @@ func narrowNetworkUnitCondition(condition *types.NetworkUnitCondition, narrowedI
 	return condition
 }
 
-func narrowNetworkUnitConditionByNetworkArea(
-	condition *types.NetworkUnitCondition, narrowedIDs []int64, scopeIsAny bool,
-) *types.NetworkUnitCondition {
-
-	if scopeIsAny {
-		return condition
-	}
-
-	if condition == nil {
-		condition = &types.NetworkUnitCondition{}
-	}
-
-	if condition.ExactInclude == nil {
-		condition.ExactInclude = &types.NetworkUnitExactFields{}
-	}
-
-	condition.ExactInclude.NetworkAreaID = conv.SliceUnique(narrowedIDs)
-
-	return condition
-}
-
 func (h *handler) narrowAuthorizedBizIDsByAction(
 	rCtx restserver.IContext, action auth.Action, requestedIDs []int64,
 ) ([]int64, bool, error) {
@@ -197,7 +139,7 @@ func (h *handler) narrowAuthorizedBizIDsByAction(
 		return nil, false, err
 	}
 
-	narrowedIDs, scopeIsAny, hasAuthorized, err := auth.ResolveAuthorizedResourceIDsInt64(
+	narrowedIDs, scopeIsAny, err := auth.ResolveAuthorizedResourceIDsInt64(
 		scope, requestedIDs, types.AuthResourceTypeBiz,
 	)
 
@@ -205,19 +147,11 @@ func (h *handler) narrowAuthorizedBizIDsByAction(
 		return nil, false, err
 	}
 
-	if !hasAuthorized {
-		if checkErr := h.authorizer.Check(rCtx, action, nil); checkErr != nil {
-			return nil, false, checkErr
-		}
-
-		return nil, false, errBizViewDeniedByEmptyScope
-	}
-
 	if scopeIsAny {
 		return requestedIDs, true, nil
 	}
 
-	if len(requestedIDs) > 0 && len(narrowedIDs) == 0 {
+	if len(narrowedIDs) == 0 {
 		if checkErr := h.authorizer.Check(rCtx, action, buildBizResources(requestedIDs)); checkErr != nil {
 			return nil, false, checkErr
 		}
