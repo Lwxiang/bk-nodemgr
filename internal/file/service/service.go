@@ -16,6 +16,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -47,6 +48,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bkrepo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tracing"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/version"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -61,6 +63,8 @@ const (
 	mongoMaxPoolSize     = uint64(500)
 	mongoMinPoolSize     = uint64(5)
 	mongoMaxConnIdleTime = 3 * time.Minute
+
+	serverName = "file"
 )
 
 // Service defines a server that provides file services.
@@ -196,8 +200,9 @@ func (svc *Service) newBKRepoHandler() (bkrepo.IHandler, error) {
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: svc.conf.Repo.TraceServiceName,
-		SampleRate:  svc.conf.Repo.TraceSampleRate,
+		ServiceName:     svc.conf.Repo.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      svc.conf.Repo.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -631,8 +636,9 @@ func newAPIGwClientCapability(name string, conf *config.APIGatewayClient) (*rest
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: conf.TraceServiceName,
-		SampleRate:  conf.TraceSampleRate,
+		ServiceName:     conf.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      conf.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -759,11 +765,20 @@ func (svc *Service) GracefulShutdown() error {
 }
 
 func (svc *Service) initTracing() error {
+	// Read instanceID from environment variable if set
+	instanceID := svc.conf.Tracing.InstanceID
+	if envInstanceID := os.Getenv("BK_NODEMGR_TRACING_INSTANCEID"); envInstanceID != "" {
+		instanceID = envInstanceID
+	}
+
 	tracingConf := tracing.Config{
 		Exporter: tracing.ExporterConfig{
 			ExporterType: tracing.ExporterType(svc.conf.Tracing.ExporterType),
 		},
 		Environment: system.GetEnv(),
+		Namespace:   serverName,
+		InstanceID:  instanceID,
+		Version:     version.Version().Version,
 	}
 
 	if tracingConf.Exporter.ExporterType == tracing.ExporterTypeOTLP {

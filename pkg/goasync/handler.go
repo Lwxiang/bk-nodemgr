@@ -18,6 +18,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	"github.com/panjf2000/ants/v2"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -94,6 +95,7 @@ func NewHandler(option HandlerOption) (*Handler, error) {
 				// The first line of the stack trace is of the form "goroutine N [status]:",
 				// but by the time the panic reaches here the goroutine may no longer exist,
 				// and its status will have changed. Trim out the misleading line.
+				// nolint: gocritic
 				if line := bytes.IndexByte(stack[:], '\n'); line >= 0 {
 					stack = stack[line+1:]
 				}
@@ -107,10 +109,19 @@ func NewHandler(option HandlerOption) (*Handler, error) {
 		parentSpan := trace.SpanFromContext(task.nCtx)
 		tracer := parentSpan.TracerProvider().Tracer(fmt.Sprintf("%s%s", scopeNamePrefix, task.name))
 
+		var taskErr error
 		spanCtx, span := tracer.Start(task.nCtx, fmt.Sprintf("%s %s", spanName, task.name),
 			trace.WithSpanKind(trace.SpanKindInternal),
 		)
-		defer span.End()
+		defer func() {
+			if taskErr != nil {
+				span.SetStatus(codes.Error, taskErr.Error())
+				span.RecordError(taskErr)
+			} else {
+				span.SetStatus(codes.Ok, "")
+			}
+			span.End()
+		}()
 
 		nCtx := contextx.FromContext(spanCtx)
 
@@ -119,8 +130,8 @@ func NewHandler(option HandlerOption) (*Handler, error) {
 			return
 		}
 
-		if err := task.runFn(nCtx); err != nil {
-			logger.G.Biz(nCtx).WithErr(err).Error("failed to run async function")
+		if taskErr = task.runFn(nCtx); taskErr != nil {
+			logger.G.Biz(nCtx).WithErr(taskErr).Error("failed to run async function")
 		}
 	}, loadBalancingStrategy)
 	if err != nil {

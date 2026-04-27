@@ -77,9 +77,16 @@ func (h *Handler) NewService(config ServiceConfig) (IService, error) {
 
 	// Create resource with service information
 	res, err := resource.New(contextx.Background(),
+		resource.WithOS(),
+		resource.WithContainer(),
+		resource.WithHost(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(config.ServiceName),
+			semconv.ServiceNamespaceKey.String(h.conf.Namespace),
+			semconv.ServiceInstanceIDKey.String(h.conf.InstanceID),
+			semconv.ServiceVersionKey.String(h.conf.Version),
 			semconv.DeploymentEnvironmentKey.String(h.conf.Environment),
+			ServiceCategoryKey.String(config.ServiceCategory),
 		),
 	)
 	if err != nil {

@@ -50,6 +50,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/notice"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tracing"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/version"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -66,6 +67,8 @@ const (
 	mongoMaxPoolSize     = uint64(500)
 	mongoMinPoolSize     = uint64(5)
 	mongoMaxConnIdleTime = 3 * time.Minute
+
+	serviceName = "application"
 )
 
 // Service defines a apigwserver that provides application services.
@@ -268,8 +271,9 @@ func (svc *Service) newFileHandler() (file.IHandler, error) {
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: svc.conf.File.TraceServiceName,
-		SampleRate:  svc.conf.File.TraceSampleRate,
+		ServiceName:     svc.conf.File.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      svc.conf.File.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -545,8 +549,9 @@ func newAPIGwClientCapability(name string, conf *config.APIGatewayClient) (*rest
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: conf.TraceServiceName,
-		SampleRate:  conf.TraceSampleRate,
+		ServiceName:     conf.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      conf.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -585,8 +590,9 @@ func newBKLoginHandler(conf config.BKLogin) (bksaasbklogin.IHandler, error) {
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: conf.TraceServiceName,
-		SampleRate:  conf.TraceSampleRate,
+		ServiceName:     conf.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      conf.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -710,11 +716,20 @@ func (svc *Service) GracefulShutdown() error {
 }
 
 func (svc *Service) initTracing() error {
+	// Read instanceID from environment variable if set
+	instanceID := svc.conf.Tracing.InstanceID
+	if envInstanceID := os.Getenv("BK_NODEMGR_TRACING_INSTANCEID"); envInstanceID != "" {
+		instanceID = envInstanceID
+	}
+
 	tracingConf := tracing.Config{
 		Exporter: tracing.ExporterConfig{
 			ExporterType: tracing.ExporterType(svc.conf.Tracing.ExporterType),
 		},
 		Environment: system.GetEnv(),
+		Namespace:   serviceName,
+		InstanceID:  instanceID,
+		Version:     version.Version().Version,
 	}
 
 	if tracingConf.Exporter.ExporterType == tracing.ExporterTypeOTLP {

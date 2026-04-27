@@ -10,12 +10,19 @@
 
 package tracing
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // Config is the configuration for the tracer manager.
 type Config struct {
 	Exporter    ExporterConfig
 	Environment string
+	Namespace   string
+	InstanceID  string
+	Version     string
 }
 
 // Validate validates the configuration.
@@ -38,6 +45,9 @@ func DefaultConfig() Config {
 			ExporterType: ExporterTypeStdout,
 		},
 		Environment: "dev",
+		Namespace:   "default",
+		InstanceID:  uuid.NewString(),
+		Version:     "unknown",
 	}
 }
 
@@ -45,6 +55,9 @@ func DefaultConfig() Config {
 type ServiceConfig struct {
 	// service name
 	ServiceName string
+
+	// service category
+	ServiceCategory ServiceCategory
 
 	// sampling rate
 	SampleRate float64

@@ -17,6 +17,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"time"
 
@@ -73,6 +74,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/usermanager"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tracing"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/version"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/extra/redisotel/v9"
@@ -94,6 +96,8 @@ const (
 	mongoMaxPoolSize     = uint64(500)
 	mongoMinPoolSize     = uint64(5)
 	mongoMaxConnIdleTime = 3 * time.Minute
+
+	serverName = "backend"
 )
 
 // Service defines a apigwserver that provides backend services.
@@ -369,8 +373,9 @@ func (svc *Service) newFileHandler() (file.IHandler, error) {
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: svc.conf.File.TraceServiceName,
-		SampleRate:  svc.conf.File.TraceSampleRate,
+		ServiceName:     svc.conf.File.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      svc.conf.File.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -551,8 +556,9 @@ func (svc *Service) newRedisClient() (redis.UniversalClient, error) {
 	})
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: svc.conf.Redis.TraceServiceName,
-		SampleRate:  svc.conf.Redis.TraceSampleRate,
+		ServiceName:     svc.conf.Redis.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryCache,
+		SampleRate:      svc.conf.Redis.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tracing service: %w", err)
@@ -575,8 +581,9 @@ func (svc *Service) newRedisClient() (redis.UniversalClient, error) {
 
 func (svc *Service) newMongoClient() (*mongo.Client, error) {
 	mongoSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: svc.conf.MongoDB.TraceServiceName,
-		SampleRate:  svc.conf.MongoDB.TraceSampleRate,
+		ServiceName:     svc.conf.MongoDB.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryDB,
+		SampleRate:      svc.conf.MongoDB.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mongo service: %w", err)
@@ -751,8 +758,9 @@ func (svc *Service) initialManager() error {
 	})
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: svc.conf.Workflow.TraceServiceName,
-		SampleRate:  svc.conf.Workflow.TraceSampleRate,
+		ServiceName:     svc.conf.Workflow.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryAsyncBackend,
+		SampleRate:      svc.conf.Workflow.TraceSampleRate,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create tracing service: %w", err)
@@ -1087,8 +1095,9 @@ func newAPIGwClientCapability(name string, conf *config.APIGatewayClient) (*rest
 	}
 
 	traceSvc, err := tracing.G().NewService(tracing.ServiceConfig{
-		ServiceName: conf.TraceServiceName,
-		SampleRate:  conf.TraceSampleRate,
+		ServiceName:     conf.TraceServiceName,
+		ServiceCategory: tracing.ServiceCategoryHTTP,
+		SampleRate:      conf.TraceSampleRate,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to new trace service: %w", err)
@@ -1194,11 +1203,20 @@ func (svc *Service) GracefulShutdown() error {
 }
 
 func (svc *Service) initTracing() error {
+	// Read instanceID from environment variable if set
+	instanceID := svc.conf.Tracing.InstanceID
+	if envInstanceID := os.Getenv("BK_NODEMGR_TRACING_INSTANCEID"); envInstanceID != "" {
+		instanceID = envInstanceID
+	}
+
 	tracingConf := tracing.Config{
 		Exporter: tracing.ExporterConfig{
 			ExporterType: tracing.ExporterType(svc.conf.Tracing.ExporterType),
 		},
 		Environment: system.GetEnv(),
+		Namespace:   serverName,
+		InstanceID:  instanceID,
+		Version:     version.Version().Version,
 	}
 
 	if tracingConf.Exporter.ExporterType == tracing.ExporterTypeOTLP {
