@@ -38,7 +38,11 @@ data:
 
     bkSaaS: {{ .Values.application.config.bkSaaS | toYaml | nindent 6 }}
 
+    bkPaaS: {{ .Values.application.config.bkPaaS | toYaml | nindent 6 }}
+
     iamV3: {{ .Values.application.config.iamV3 | toYaml | nindent 6 }}
+
+    notice: {{ .Values.application.config.notice | toYaml | nindent 6 }}
 
     tracing: {{ .Values.application.config.tracing | toYaml | nindent 6 }}
 
