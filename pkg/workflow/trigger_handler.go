@@ -506,10 +506,6 @@ func (handler *triggerHandler) doOrderedTrigger(nCtx contextx.IContext, trigCtl 
 	return instanceList, nil
 }
 
-const (
-	periodicTriggerMaxSleepTime = 1 * time.Minute
-)
-
 func (handler *triggerHandler) doPeriodicTrigger(nCtx contextx.IContext, trigCtl ITriggerCtl) ([]IOperationInstanceCtl, error) {
 	metadata, ok := trigCtl.GetTriggerMetadata().(*trigger.MetadataPeriodic)
 	if !ok {
@@ -524,11 +520,7 @@ func (handler *triggerHandler) doPeriodicTrigger(nCtx contextx.IContext, trigCtl
 	}
 
 	if nextTime.After(time.Now()) {
-		sleepTime := time.Until(nextTime)
-		sleepTime = min(sleepTime, periodicTriggerMaxSleepTime)
-		time.Sleep(sleepTime)
-
-		return nil, nil
+		return make([]IOperationInstanceCtl, 0), nil
 	}
 
 	workingCount, err := handler.mgr.stgOperationInstance.CountOperationInstanceByState(nCtx, trigCtl.GetTriggerID(),

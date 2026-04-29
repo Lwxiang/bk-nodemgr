@@ -12,10 +12,12 @@ package schedule
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/workflow"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/pageexecutor"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/operation"
@@ -97,6 +99,11 @@ func (exec *extraExecution) Do(nCtx contextx.IContext, instance *operation.Insta
 	}
 }
 
+const (
+	operationListMaxPageSize = 1000
+	operationListTimeout     = 30 * time.Second
+)
+
 func (exec *extraExecution) preprocess(nCtx contextx.IContext, instance *operation.InstanceBriefData, param *ExtraExecutionParam) error {
 	sw, err := exec.workflowStg.GetScheduledWorkflow(nCtx, param.WorkflowID)
 	if err != nil {
@@ -117,7 +124,13 @@ func (exec *extraExecution) preprocess(nCtx contextx.IContext, instance *operati
 		return nil
 	}
 
-	operInstList, _, err := exec.workflowStg.ListOperInstanceBriefWithoutActionInstByOperationID(nCtx, types.UnlimitedPage(), operationIDs...)
+	executor := pageexecutor.NewPageExecutor[*operation.InstanceBriefData](operationListMaxPageSize, operationListTimeout)
+	fn := func(nCtx contextx.IContext, p types.Page) ([]*operation.InstanceBriefData, error) {
+		operInsts, _, err := exec.workflowStg.ListOperInstanceBriefWithoutActionInstByOperationID(nCtx, p, operationIDs...)
+
+		return operInsts, err
+	}
+	result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
 	if err != nil {
 		logger.G.Sys().Ctx(nCtx).
 			WithErr(err).
@@ -127,7 +140,7 @@ func (exec *extraExecution) preprocess(nCtx contextx.IContext, instance *operati
 		return err
 	}
 
-	for _, operInst := range operInstList {
+	for _, operInst := range result.Items {
 		if operation.CheckStateFinished(operInst.Lifecycle.State) {
 			continue
 		}
@@ -140,11 +153,42 @@ func (exec *extraExecution) preprocess(nCtx contextx.IContext, instance *operati
 }
 
 func (exec *extraExecution) postprocess(nCtx contextx.IContext, instance *operation.InstanceBriefData, param *ExtraExecutionParam) error {
-	// get all managed operations.
-	parentOperationIDs := []string{instance.Metadata.OperationID}
+	// get current scheduled operation instance.
+	executor := pageexecutor.NewPageExecutor[*operation.Operation](operationListMaxPageSize, operationListTimeout)
+	fn := func(nCtx contextx.IContext, p types.Page) ([]*operation.Operation, error) {
+		operations, _, err := exec.workflowStg.ListOperationByParentOperInstID(nCtx, p, instance.Metadata.OperationInstanceID)
+
+		return operations, err
+	}
+	result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
+	if err != nil {
+		logger.G.Sys().Ctx(nCtx).
+			WithErr(err).
+			With("operation", instance.Metadata.OperationDefName, "parent-oper-inst-id", instance.Metadata.OperationInstanceID).
+			Error("failed to list operations by parent operation instance id")
+
+		return err
+	}
+
+	// get all managed sub operations.
+	subOperations := result.Items
 	managedOperationIDMap := make(map[string]struct{}, 0)
-	for len(parentOperationIDs) > 0 {
-		operations, _, err := exec.workflowStg.ListOperationByParentOperationID(nCtx, types.UnlimitedPage(), parentOperationIDs...)
+	for len(subOperations) > 0 {
+		for _, sub := range subOperations {
+			managedOperationIDMap[sub.OperationID] = struct{}{}
+		}
+
+		parentOperationIDs := make([]string, 0)
+		for _, sub := range subOperations {
+			parentOperationIDs = append(parentOperationIDs, sub.OperationID)
+		}
+
+		fn := func(nCtx contextx.IContext, p types.Page) ([]*operation.Operation, error) {
+			operations, _, err := exec.workflowStg.ListOperationByParentOperationID(nCtx, p, parentOperationIDs...)
+
+			return operations, err
+		}
+		result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
 		if err != nil {
 			logger.G.Sys().Ctx(nCtx).
 				WithErr(err).
@@ -153,12 +197,7 @@ func (exec *extraExecution) postprocess(nCtx contextx.IContext, instance *operat
 
 			return err
 		}
-
-		parentOperationIDs = make([]string, 0)
-		for _, operation := range operations {
-			parentOperationIDs = append(parentOperationIDs, operation.OperationID)
-			managedOperationIDMap[operation.OperationID] = struct{}{}
-		}
+		subOperations = result.Items
 	}
 
 	// update managed operation ids into private data.
