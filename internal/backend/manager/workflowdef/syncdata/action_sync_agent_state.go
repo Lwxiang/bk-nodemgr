@@ -64,7 +64,7 @@ func (act *actionSyncAgentState) Description() string {
 
 // Timeout returns the timeout of this action.
 func (act *actionSyncAgentState) Timeout() time.Duration {
-	return time.Minute * 5 // nolint: mnd
+	return 10 * time.Minute // nolint: mnd
 }
 
 // MaxRetryCount returns the max retry count of this action.
@@ -146,12 +146,14 @@ func (act *actionSyncAgentState) Do(ctx *action.InstanceContext) error {
 		return nil
 	}
 
-	err = act.topoStg.UpdateHostDynamicFields(std.Context(), types.HostDynamicFields{
-		NodeRole:       true,
-		NodeGeneration: true,
-		NodeVersion:    true,
-		NodeStatus:     true,
-	}, upsertHosts...)
+	err = batchHandleHosts(upsertHosts, func(hosts ...*types.Host) error {
+		return act.topoStg.UpdateHostDynamicFields(std.Context(), types.HostDynamicFields{
+			NodeRole:       true,
+			NodeGeneration: true,
+			NodeVersion:    true,
+			NodeStatus:     true,
+		}, hosts...)
+	})
 	if err != nil {
 		logger.G.Sys().Ctx(std.Context()).WithErr(err).Error("failed to update host dynamic")
 

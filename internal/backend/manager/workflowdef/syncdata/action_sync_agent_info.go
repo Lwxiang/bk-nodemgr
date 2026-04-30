@@ -64,7 +64,7 @@ func (act *actionSyncAgentInfo) Description() string {
 
 // Timeout returns the timeout of the action.
 func (act *actionSyncAgentInfo) Timeout() time.Duration {
-	return time.Minute * 5 // nolint: mnd
+	return 10 * time.Minute // nolint: mnd
 }
 
 // Tags returns the tags of the action.
@@ -148,14 +148,16 @@ func (act *actionSyncAgentInfo) Do(ctx *action.InstanceContext) error {
 		return nil
 	}
 
-	err = act.topoStg.UpdateHostDynamicFields(std.Context(), types.HostDynamicFields{
-		NodeStatus:     true,
-		NodeGeneration: true,
-		NodeRole:       true,
-		NodeVersion:    true,
-		NodeCPUArch:    true,
-		NodeOsType:     true,
-	}, upsertHosts...)
+	err = batchHandleHosts(upsertHosts, func(hosts ...*types.Host) error {
+		return act.topoStg.UpdateHostDynamicFields(std.Context(), types.HostDynamicFields{
+			NodeStatus:     true,
+			NodeGeneration: true,
+			NodeRole:       true,
+			NodeVersion:    true,
+			NodeCPUArch:    true,
+			NodeOsType:     true,
+		}, hosts...)
+	})
 	if err != nil {
 		logger.G.Sys().Ctx(std.Context()).WithErr(err).Error("failed to update host dynamic")
 
