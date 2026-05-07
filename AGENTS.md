@@ -21,11 +21,15 @@
 |Conventions:for every touched path, identify and obey all applicable scoped AGENTS.md files before designing or coding|priority=nearest-scope over broader guidance|if local AGENTS already constrain boundary/type/flow, treat it as a hard requirement, not a style hint
 |Conventions:prefer extending existing code paths/helpers/proto conversions over parallel implementations
 #LC||Conventions:prefer reusing existing implementations/patterns after searching analogous code first|aim=minimize cross-module inconsistency and style drift
-|Conventions:tests default to pkg/** and other shared lower layers where contracts, conversions, persistence behavior, and reusable helpers can be validated with lower maintenance cost
-|Conventions:internal/** and other upper business layers should add tests only for semantics that cannot be covered effectively at pkg/lower layers, such as routing/middleware behavior, auth policy, workflow orchestration, or service-private composition rules
-|Conventions:avoid high-maintenance business-layer tests that mainly mirror implementation steps instead of protecting stable behavior and user-visible outcomes
+|Conventions:testing delivery=pkg/** may add unit tests when appropriate|outside pkg/** do not proactively add unit tests unless user explicitly asks
+|Conventions:do not proactively deliver tests unless user asks|regression/behavior tests require concrete scenarios and must not be invented from thin air
+|Conventions:write regression/behavior tests when a real new requirement or bugfix provides the acceptance scenario|avoid high-maintenance tests that mirror implementation steps instead of protecting stable behavior/user-visible outcomes
 |Conventions:use pkg/logger for structured logging
 |Conventions:frontend package manager=pnpm@9.8.0|eslint extends @blueking/eslint-config-bk/tsvue3 with import sorting and type-import rules
+|Conventions:assumption discipline=do not silently choose among materially different interpretations; after retrieval, ask one precise question if ambiguity affects API/behavior/data model
+|Conventions:simplicity first=minimum code that satisfies requested behavior; no speculative features/configuration/abstractions; if implementation grows unexpectedly, simplify before expanding
+|Conventions:surgical changes=every changed line must trace to the request; do not refactor/reformat adjacent code; only remove unused code introduced by current change
+|Conventions:goal-driven execution=convert work into verifiable success criteria; bugfix requires reproduction/validation path; feature requires behavior check; multi-step work maps step→verification
 |OCP:extend by addition, not mutation|anchor:{internal/*/router/api-v3,internal/backend/auth,pkg/proto/*}|pattern:{new-subpackage,new-constant,new-interface-impl,additive-proto,new-method}|ban:{patching-stable-signatures,rename/remove-proto-fields}
 |SRP:one unit=one reason to change|anchor:{internal/<service>,internal/*/router/api-v3,internal/backend/auth,pkg}|pattern:{domain-split,service-private-internal,shared-only-in-pkg}|signal:{multiple-change-reasons,file-sprawl}
 |ISP:depend on minimal interfaces only|anchor:{internal/backend/auth,pkg/proto/*}|pattern:{small-interfaces,domain-split-services}|ban:{catch-all-interfaces,methods-unused-by-implementors}
