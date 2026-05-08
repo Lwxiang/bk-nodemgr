@@ -19,6 +19,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/base"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/host"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/gopool"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
@@ -555,4 +556,41 @@ func (s *Storage) getRelayInfosInNetworkUnit(nCtx contextx.IContext, networkUnit
 	results, err := s.daoHost.GetRelayInfosInNetworkUnit(nCtx, networkUnitID)
 
 	return results, err
+}
+
+func (s *Storage) getHostBizMapping(nCtx contextx.IContext, hostIDs []int64) (map[int64]int64, error) {
+	if nCtx == nil {
+		return nil, basestorage.ErrNilContent()
+	}
+
+	hostIDs = conv.SliceUnique(hostIDs)
+	selection := &types.HostFieldSelection{
+		HostID: true,
+		BizID:  true,
+	}
+	results, _, err := s.daoHost.ListWithFields(nCtx, types.UnlimitedPage(), selection, host.WithHostID(hostIDs...))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host biz mapping: %w", err)
+	}
+
+	hostBizMapping := make(map[int64]int64, len(results))
+	for _, host := range results {
+		if host.HostID == 0 {
+			return nil, fmt.Errorf("invalid host id in host biz mapping result: %d", host.HostID)
+		}
+
+		if _, ok := hostBizMapping[host.HostID]; ok {
+			return nil, fmt.Errorf("duplicate host id in host biz mapping result: %d", host.HostID)
+		}
+
+		hostBizMapping[host.HostID] = host.Static.BizID
+	}
+
+	for _, id := range hostIDs {
+		if _, ok := hostBizMapping[id]; !ok {
+			return nil, fmt.Errorf("host id %d not found in host biz mapping result", id)
+		}
+	}
+
+	return hostBizMapping, nil
 }
