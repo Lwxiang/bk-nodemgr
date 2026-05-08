@@ -259,11 +259,13 @@ func (m *Manager) transferPkg(nCtx contextx.IContext, srcFilePath, dstDir string
 		}
 	}
 
-	// unix user use 'root', windows use 'system'.
-	srcUser := "root"
-	dstUser := "root"
+	// we can make sure the src host must be unix system, so use root to transfer file.
+	srcUser := string(criteria.AdminUserUnixRoot)
+	dstUser := string(criteria.AdminUserUnixRoot)
 	if dstHost.Dynamic.NodeOsType == criteria.OSWindows {
-		dstUser = "system"
+		// notice: In Windows use system to transfer file will not switch users,
+		// which can avoid the problem caused by the need to re-enter the password in some environments
+		dstUser = gse.WindowsOperateUser
 	}
 
 	taskID, err := m.gseHandler.TransferFile(nCtx,
