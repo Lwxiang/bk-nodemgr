@@ -796,7 +796,42 @@ func (h *Handler) parseQueryProcResult(operateProcResultResp getProcOperateResul
 }
 
 // QueryMultiProcessInfoMany query multiple process info for many agents.
+//
+// Name mapping in GSE:
+//   - meta.name / labels.procName: nodemgr pluginName.
+//   - spec.identity.procName: programName, the real OS process name from process identity.
+//
+// The returned map is keyed by meta.name, so callers can use the key as pluginName.
 func (h *Handler) QueryMultiProcessInfoMany(
+	nCtx contextx.IContext, procNameAgentIDMap ...*types.ProcessAgentGroup) (map[string][]types.ProcessInfo, error) {
+
+	if len(procNameAgentIDMap) == 0 {
+		return make(map[string][]types.ProcessInfo), nil
+	}
+
+	processInfoMap := make(map[string][]types.ProcessInfo)
+	for _, item := range procNameAgentIDMap {
+		for start := 0; start < len(item.AgentIDList); start += queryMultiProcessInfoPageSize {
+			end := min(start+queryMultiProcessInfoPageSize, len(item.AgentIDList))
+			batchProcessInfoMap, err := h.queryMultiProcessInfoMany(nCtx, &types.ProcessAgentGroup{
+				PluginName:  item.PluginName,
+				ProcessName: item.ProcessName,
+				AgentIDList: item.AgentIDList[start:end],
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			for pluginName, infos := range batchProcessInfoMap {
+				processInfoMap[pluginName] = append(processInfoMap[pluginName], infos...)
+			}
+		}
+	}
+
+	return processInfoMap, nil
+}
+
+func (h *Handler) queryMultiProcessInfoMany(
 	nCtx contextx.IContext, procNameAgentIDMap ...*types.ProcessAgentGroup) (map[string][]types.ProcessInfo, error) {
 
 	if len(procNameAgentIDMap) == 0 {
@@ -838,6 +873,8 @@ func (h *Handler) QueryMultiProcessInfoMany(
 	processInfoMap := make(map[string][]types.ProcessInfo)
 	for agentID, infos := range procInfoMap {
 		for _, info := range infos {
+			// For this GSE API, info.ProcessName carries meta.name/pluginName,
+			// not spec.identity.procName/programName.
 			processInfoMap[info.ProcessName] = append(processInfoMap[info.ProcessName], types.ProcessInfo{
 				AutoStart: info.IsAuto,
 				AgentID:   agentID,

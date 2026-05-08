@@ -11,11 +11,13 @@
 package syncdata
 
 import (
+	"slices"
 	"time"
 
 	syncDataUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/syncdata/utils"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin"
 	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
@@ -126,49 +128,31 @@ func (act *actionSyncAlivePluginProcessInfo) Do(ctx *action.InstanceContext) err
 		return err
 	}
 
-	if len(aliveProcess) == 0 {
-		logger.G.Sys().Ctx(std.Context()).With("host-ids", param.HostIDs).Info("hosts have no alive process need to sync")
-		return nil
-	}
-
-	agentIDHostIDMap, pluginNameAgentIDList := aggregateHostsAndProcesses(hosts, aliveProcess)
-	procInfos, err := act.gseHandler.QueryMultiProcessInfoMany(std.Context(), pluginNameAgentIDList...)
-	if err != nil {
-		return err
-	}
-
-	if len(procInfos) == 0 {
-		logger.G.Sys().Ctx(std.Context()).Info("no process info need to sync")
-		return nil
-	}
-
-	processInfoDeltas := make([]*types.ProcessInfoDelta, 0)
-	for name, infos := range procInfos {
-		for _, info := range infos {
-			hostID := agentIDHostIDMap[info.AgentID]
-			processInfoDelta := &types.ProcessInfoDelta{
-				HostID:      hostID,
-				PluginName:  name,
-				ProcessInfo: info,
-			}
-
-			processInfoDeltas = append(processInfoDeltas, processInfoDelta)
+	if len(aliveProcess) > 0 {
+		needUpdateProcInfos, err := act.checkAliveProcess(std.Context(), hosts, aliveProcess)
+		if err != nil {
+			return err
 		}
-	}
 
-	if err = act.processStg.UpdateManyProcessInfo(std.Context(), processInfoDeltas); err != nil {
-		return err
-	}
+		if err = batchHandleProcessInfoDeltas(needUpdateProcInfos, func(processInfoDeltas ...*types.ProcessInfoDelta) error {
+			return act.processStg.UpdateManyProcessInfo(std.Context(), processInfoDeltas)
+		}); err != nil {
+			return err
+		}
 
-	logger.G.Sys().Ctx(std.Context()).Info("sync alive plugin process info success, process count: %d", len(procInfos))
+		logger.G.Sys().Ctx(std.Context()).
+			With("need-update-proc-infos", len(needUpdateProcInfos)).
+			Info("sync alive plugin process info success")
+	}
 
 	return nil
 }
 
-func aggregateHostsAndProcesses(hosts []*types.Host, processes []*types.Process) (map[string]int64, []*types.ProcessAgentGroup) {
+func (act *actionSyncAlivePluginProcessInfo) checkAliveProcess(nCtx contextx.IContext, hosts []*types.Host,
+	aliveProcess []*types.Process) ([]*types.ProcessInfoDelta, error) {
+
 	hostIDAgentIDMap := make(map[int64]string)
 	agentIDHostIDMap := make(map[string]int64)
-
 	for _, host := range hosts {
 		hostIDAgentIDMap[host.HostID] = host.Dynamic.AgentID
 		agentIDHostIDMap[host.Dynamic.AgentID] = host.HostID
@@ -176,9 +160,10 @@ func aggregateHostsAndProcesses(hosts []*types.Host, processes []*types.Process)
 
 	pluginNameAgentIDListMap := make(map[string][]string)
 	pluginNameProcessNameMap := make(map[string]string)
-	for _, proc := range processes {
-		pluginNameAgentIDListMap[proc.PluginName] = append(pluginNameAgentIDListMap[proc.PluginName], hostIDAgentIDMap[proc.HostID])
-		pluginNameProcessNameMap[proc.PluginName] = proc.Identity.Name
+	for _, proc := range aliveProcess {
+		pluginName := proc.PluginName
+		pluginNameAgentIDListMap[pluginName] = append(pluginNameAgentIDListMap[pluginName], hostIDAgentIDMap[proc.HostID])
+		pluginNameProcessNameMap[pluginName] = proc.Identity.Name
 	}
 
 	pluginNameAgentIDList := make([]*types.ProcessAgentGroup, 0)
@@ -190,7 +175,70 @@ func aggregateHostsAndProcesses(hosts []*types.Host, processes []*types.Process)
 		})
 	}
 
-	return agentIDHostIDMap, pluginNameAgentIDList
+	procInfos, err := act.gseHandler.QueryMultiProcessInfoMany(nCtx, pluginNameAgentIDList...)
+	if err != nil {
+		return nil, err
+	}
+
+	underControlledProcInfos := make([]*types.ProcessInfoDelta, 0)
+	for pluginName, infos := range procInfos {
+		for idx := range infos {
+			processInfo := infos[idx]
+			hostID := agentIDHostIDMap[processInfo.AgentID]
+			processInfoDelta := &types.ProcessInfoDelta{
+				HostID:      hostID,
+				PluginName:  pluginName,
+				ProcessInfo: processInfo,
+			}
+
+			underControlledProcInfos = append(underControlledProcInfos, processInfoDelta)
+		}
+	}
+
+	underControlledProcessMap, _ := conv.SliceToMap(underControlledProcInfos,
+		func(v *types.ProcessInfoDelta) types.ProcessUniqueKey {
+			return v.GetUniqueKey()
+		})
+
+	lostControlledProcInfos := make([]*types.ProcessInfoDelta, 0)
+	for _, proc := range aliveProcess {
+		if _, ok := underControlledProcessMap[proc.GetUniqueKey()]; ok {
+			// proc is under controlled, skip it.
+			continue
+		}
+
+		processInfoDelta := &types.ProcessInfoDelta{
+			HostID:     proc.HostID,
+			PluginName: proc.PluginName,
+			ProcessInfo: types.ProcessInfo{
+				Pid:       0,
+				Version:   "",
+				AgentID:   hostIDAgentIDMap[proc.HostID],
+				AutoStart: false,
+				Status:    types.ProcessStatusUnknown,
+			},
+		}
+
+		lostControlledProcInfos = append(lostControlledProcInfos, processInfoDelta)
+	}
+
+	needUpdateProcInfos := slices.Concat(underControlledProcInfos, lostControlledProcInfos)
+
+	return needUpdateProcInfos, nil
+}
+
+func batchHandleProcessInfoDeltas(processInfoDeltas []*types.ProcessInfoDelta,
+	fn func(processInfoDeltas ...*types.ProcessInfoDelta) error) error {
+
+	processInfoDeltaLen := len(processInfoDeltas)
+	for start := 0; start < processInfoDeltaLen; start += syncHostDBBatchSize {
+		end := min(start+syncHostDBBatchSize, processInfoDeltaLen)
+		if err := fn(processInfoDeltas[start:end]...); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // DisplayNameZh returns the Chinese display name of the action.
