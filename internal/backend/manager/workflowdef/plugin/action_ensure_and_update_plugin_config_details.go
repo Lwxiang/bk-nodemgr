@@ -155,7 +155,9 @@ func (act *actionEnsureAndUpdatePluginConfigDetails) Do(ctx *action.InstanceCont
 
 	pluginConf.TemplateRenderer = pluginRelease.TemplateRendererType
 	pluginConf.SystemConfigContext = renderContext
-	fillConfigDetails(pluginRelease, pluginConf)
+	if err := act.fillConfigDetails(std, pluginRelease, pluginConf); err != nil {
+		return fmt.Errorf("failed to fill config details: %w", err)
+	}
 
 	if err := act.daoPluginDeployment.UpdatePluginDeploymentPluginConf(std.Context(), std.Token(), pluginConf); err != nil {
 		return fmt.Errorf("failed to update plugin deployment plugin conf: %w", err)
@@ -164,7 +166,9 @@ func (act *actionEnsureAndUpdatePluginConfigDetails) Do(ctx *action.InstanceCont
 	return nil
 }
 
-func fillConfigDetails(pluginRelease *types.ReleasePlugin, pluginConf *types.PluginDeploymentPluginConf) {
+func (act *actionEnsureAndUpdatePluginConfigDetails) fillConfigDetails(std *pluginUtils.PluginActionStandarder, pluginRelease *types.ReleasePlugin,
+	pluginConf *types.PluginDeploymentPluginConf) error {
+
 	templateMap := make(map[string]types.PluginPkgConfigTemplate, len(pluginRelease.ConfigTemplates))
 	var mainTemplate *types.PluginConfigDetail
 
@@ -182,16 +186,26 @@ func fillConfigDetails(pluginRelease *types.ReleasePlugin, pluginConf *types.Plu
 	}
 
 	for idx, detail := range pluginConf.ConfigFilesDetail {
-		if tpl, ok := templateMap[detail.Name]; ok {
-			pluginConf.ConfigFilesDetail[idx].Content = tpl.SourceContent
-			pluginConf.ConfigFilesDetail[idx].IsMainConfig = tpl.IsMainConfig
-			pluginConf.ConfigFilesDetail[idx].FilePath = splitPathAndCombineByOS(tpl.FilePath, pluginRelease.Platform.OS)
+		tpl, ok := templateMap[detail.Name]
+		if !ok {
+
+			std.InstanceData().Log().Zh("未匹配到模板, config-file-name(%s), plugin-name(%s)", detail.Name, pluginRelease.Name).
+				En("no matched template, config-file-name(%s), plugin-name(%s)", detail.Name, pluginRelease.Name).
+				Error()
+
+			return fmt.Errorf("no matched template for config detail, name(%s)", detail.Name)
 		}
+
+		pluginConf.ConfigFilesDetail[idx].Content = tpl.SourceContent
+		pluginConf.ConfigFilesDetail[idx].IsMainConfig = tpl.IsMainConfig
+		pluginConf.ConfigFilesDetail[idx].FilePath = splitPathAndCombineByOS(tpl.FilePath, pluginRelease.Platform.OS)
 	}
 
 	if len(pluginConf.ConfigFilesDetail) == 0 && mainTemplate != nil {
 		pluginConf.ConfigFilesDetail = []*types.PluginConfigDetail{mainTemplate}
 	}
+
+	return nil
 }
 
 func splitPathAndCombineByOS(fullPath string, osType criteria.OSType) string {
