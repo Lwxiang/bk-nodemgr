@@ -20,6 +20,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/frontsetting"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	bksaasbklogin "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bksaas/bklogin"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,6 +29,9 @@ type testFrontSetting struct{}
 func (testFrontSetting) BKLoginURL() string                   { return "https://bklogin.example.com" }
 func (testFrontSetting) BKRequestIDHeaderKey() string         { return "X-Request-Id" }
 func (testFrontSetting) BKPassAnalyticsScript() template.HTML { return "" }
+func (testFrontSetting) BKIamSaaSHost() string                { return "" }
+func (testFrontSetting) BKUserSaaSHost() string               { return "" }
+func (testFrontSetting) BKAPIGWBaseURL() string               { return "" }
 func (testFrontSetting) PasswordVaultSwitch() bool            { return false }
 func (testFrontSetting) PasswordVaultName() string            { return "" }
 func (testFrontSetting) BKUserWebURL() string                 { return "https://bkuser.example.com" }
@@ -37,13 +41,15 @@ func (testFrontSetting) BKAppNavOpenSourceURL() string        { return "https://
 func (testFrontSetting) WindowsWMIPortDefault() int           { return 445 }
 func (testFrontSetting) UnixSSHPortDefault() int              { return 36000 }
 func (testFrontSetting) EnableNotice() bool                   { return false }
+func (testFrontSetting) BKIamSystemIDBKNodemgr() string       { return "" }
+func (testFrontSetting) BKIamSystemIDBKCmdb() string          { return "" }
 
 var _ frontsetting.IFrontSetting = testFrontSetting{}
 
 type testBKLoginHandler struct {
 	authType string
 
-	webUserInfo *bksaasbklogin.WebUserInfo
+	webUserInfo *types.WebUserInfo
 	webUserErr  error
 
 	gotToken string
@@ -55,7 +61,7 @@ func (h *testBKLoginHandler) Verify(_ contextx.IContext, _ string) (string, stri
 }
 func (h *testBKLoginHandler) GetAuthIdentity() *bksaasbklogin.AuthIdentity { return nil }
 func (h *testBKLoginHandler) GetAuthType() string                          { return h.authType }
-func (h *testBKLoginHandler) GetWebUserInfo(_ contextx.IContext, token string) (*bksaasbklogin.WebUserInfo, error) {
+func (h *testBKLoginHandler) GetWebUserInfo(_ contextx.IContext, token string) (*types.WebUserInfo, error) {
 	h.gotToken = token
 
 	return h.webUserInfo, h.webUserErr
@@ -99,7 +105,7 @@ func TestHandlerIndexInjectLoginNameByAuthType(t *testing.T) {
 
 			bkHandler := &testBKLoginHandler{
 				authType:    tt.authType,
-				webUserInfo: &bksaasbklogin.WebUserInfo{Username: tt.username},
+				webUserInfo: &types.WebUserInfo{LoginName: tt.username},
 			}
 
 			h := &handler{
