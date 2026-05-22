@@ -13,8 +13,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"path"
-	"strings"
 	"time"
 
 	nodeUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
@@ -24,7 +22,6 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/winpath"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -48,18 +45,6 @@ func NewActionRestartNode(capability *Capability) action.Definition {
 // ActionParamRestartNode defines the action param.
 type ActionParamRestartNode struct {
 	nodeUtils.NodeActionStandardParam `json:",inline"`
-}
-
-// RestartParams this struct defines the parameters for restarting node through command.
-type RestartParams struct {
-	AgentID          string
-	InstallerName    string
-	InstallerWorkDir string
-	Generation       types.Generation
-	NodeRole         types.NodeRole
-	BaseWorkDir      string
-	BaseDeployDir    string
-	AdditionArgs     []string
 }
 
 type actionRestartNode struct {
@@ -235,14 +220,17 @@ func (act *actionRestartNode) restartThroughCommand(std *nodeUtils.NodeActionSta
 		return err
 	}
 
-	restartParams := &RestartParams{
-		AgentID:          info.Host.Dynamic.AgentID,
-		InstallerName:    toolName,
-		InstallerWorkDir: info.InstallerRuntime.WorkDir,
-		Generation:       info.Host.Dynamic.NodeGeneration,
-		NodeRole:         info.Host.Dynamic.NodeRole,
-		BaseWorkDir:      info.InstallerRuntime.BaseWorkDir,
-		BaseDeployDir:    info.BaseRuntime.BaseDeployDir,
+	restartParams := &installer.NodeStepRestartParams{
+		NodeCommonParams: installer.NodeCommonParams{
+			DeployEnv:     system.GetEnv(),
+			Generation:    int(info.Host.Dynamic.NodeGeneration),
+			NodeRole:      string(info.Host.Dynamic.NodeRole),
+			BaseWorkDir:   info.InstallerRuntime.BaseWorkDir,
+			BaseDeployDir: info.BaseRuntime.BaseDeployDir,
+		},
+		InstallWorkDir:    info.InstallerRuntime.WorkDir,
+		InstallerFileName: toolName,
+		Force:             true,
 	}
 
 	// exec upgrade command
@@ -254,23 +242,11 @@ func (act *actionRestartNode) restartThroughCommand(std *nodeUtils.NodeActionSta
 }
 
 // nolint: perfsprint
-func (act *actionRestartNode) restartThroughCommandUnix(std *nodeUtils.NodeActionStandarder, param *RestartParams) error {
-	installerPath := path.Clean(path.Join(param.InstallerWorkDir, param.InstallerName))
-	args := []string{
-		fmt.Sprintf("--deploy_env %s", system.GetEnv()),
-		fmt.Sprintf("--generation %d", param.Generation),
-		fmt.Sprintf("--node_role %s", param.NodeRole),
-		fmt.Sprintf("--base_work_dir %s", param.BaseWorkDir),
-		fmt.Sprintf("--base_deploy_dir %s", param.BaseDeployDir),
-		"--force",
+func (act *actionRestartNode) restartThroughCommandUnix(std *nodeUtils.NodeActionStandarder, param *installer.NodeStepRestartParams) error {
+	_, restartCmd, err := param.ToUnixScript()
+	if err != nil {
+		return fmt.Errorf("failed to render node restart script: %w", err)
 	}
-	if len(param.AdditionArgs) > 0 {
-		args = append(args, param.AdditionArgs...)
-	}
-
-	restartLogPath := path.Clean(fmt.Sprintf("%s.stdout", installerPath))
-	restartCmd := fmt.Sprintf("chmod +x %s && %s %s %s >%s 2>&1 &",
-		installerPath, installerPath, installer.NodeCmdStepRestart, strings.Join(args, " "), restartLogPath)
 	std.InstanceData().Log().
 		Zh("重启命令: %s", restartCmd).
 		En("restart cmd: %s", restartCmd).
@@ -280,13 +256,13 @@ func (act *actionRestartNode) restartThroughCommandUnix(std *nodeUtils.NodeActio
 		types.ScriptTypeBash,
 		fmt.Sprintf(
 			`mkdir -p %s && cd %s && echo "%s" > restart.sh && sh restart.sh`,
-			param.InstallerWorkDir,
-			param.InstallerWorkDir,
+			param.InstallWorkDir,
+			param.InstallWorkDir,
 			restartCmd),
 		cleanScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
-				AgentID: param.AgentID,
+				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
 		})
 	if err != nil {
@@ -301,23 +277,11 @@ func (act *actionRestartNode) restartThroughCommandUnix(std *nodeUtils.NodeActio
 }
 
 // nolint: perfsprint
-func (act *actionRestartNode) restartThroughCommandWindows(std *nodeUtils.NodeActionStandarder, param *RestartParams) error {
-	installerPath := winpath.Clean(winpath.Join(param.InstallerWorkDir, param.InstallerName))
-	args := []string{
-		fmt.Sprintf("--deploy_env %s", system.GetEnv()),
-		fmt.Sprintf("--generation %d", param.Generation),
-		fmt.Sprintf("--node_role %s", param.NodeRole),
-		fmt.Sprintf("--base_work_dir %s", param.BaseWorkDir),
-		fmt.Sprintf("--base_deploy_dir %s", param.BaseDeployDir),
-		"--force",
+func (act *actionRestartNode) restartThroughCommandWindows(std *nodeUtils.NodeActionStandarder, param *installer.NodeStepRestartParams) error {
+	_, restartCmd, err := param.ToWindowsScript()
+	if err != nil {
+		return fmt.Errorf("failed to render node restart script: %w", err)
 	}
-	if len(param.AdditionArgs) > 0 {
-		args = append(args, param.AdditionArgs...)
-	}
-
-	restartLogPath := winpath.Clean(fmt.Sprintf("%s.stdout", installerPath))
-	restartCmd := fmt.Sprintf("%s %s %s >%s 2>&1",
-		installerPath, installer.NodeCmdStepRestart, strings.Join(args, " "), restartLogPath)
 	std.InstanceData().Log().
 		Zh("重启命令: %s", restartCmd).
 		En("restart cmd: %s", restartCmd).
@@ -327,12 +291,12 @@ func (act *actionRestartNode) restartThroughCommandWindows(std *nodeUtils.NodeAc
 		types.ScriptTypeBat,
 		fmt.Sprintf(
 			`cd %s && %s`,
-			param.InstallerWorkDir,
+			param.InstallWorkDir,
 			restartCmd),
 		cleanScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
-				AgentID: param.AgentID,
+				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
 		})
 	if err != nil {

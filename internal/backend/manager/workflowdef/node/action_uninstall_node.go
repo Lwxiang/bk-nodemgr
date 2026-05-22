@@ -13,8 +13,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"path"
-	"strings"
 	"time"
 
 	nodeUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
@@ -25,7 +23,6 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/winpath"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -52,21 +49,6 @@ func NewActionUninstallNode(capability *Capability) action.Definition {
 // ActionParamUninstallNode defines the action param.
 type ActionParamUninstallNode struct {
 	nodeUtils.NodeActionStandardParam `json:",inline"`
-}
-
-// UninstallParams this struct defines the parameters for uninstalling node through command.
-type UninstallParams struct {
-	AgentID          string
-	InstallerName    string
-	InstallerWorkDir string
-	Generation       types.Generation
-	NodeRole         types.NodeRole
-	CallbackSvrAddr  string
-	DeployToken      string
-	OperInstID       string
-	BaseWorkDir      string
-	BaseDeployDir    string
-	AdditionArgs     []string
 }
 
 type actionUninstallNode struct {
@@ -164,17 +146,19 @@ func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("failed to select backend callback endpoints: %w", err)
 	}
 
-	uninstallParams := &UninstallParams{
-		AgentID:          std.DeployInfo().Host.Dynamic.AgentID,
-		InstallerName:    toolName,
-		InstallerWorkDir: std.DeployInfo().InstallerRuntime.WorkDir,
-		Generation:       std.DeployInfo().Host.Dynamic.NodeGeneration,
-		NodeRole:         std.DeployInfo().Host.Dynamic.NodeRole,
-		CallbackSvrAddr:  nodeUtils.BuildServerURLs(callbackEndpoints...),
-		DeployToken:      std.Token(),
-		OperInstID:       std.InstanceData().OperationInstanceID,
-		BaseWorkDir:      std.DeployInfo().InstallerRuntime.BaseWorkDir,
-		BaseDeployDir:    std.DeployInfo().BaseRuntime.BaseDeployDir,
+	uninstallParams := &installer.NodeUninstallParams{
+		NodeCommonParams: installer.NodeCommonParams{
+			DeployEnv:     system.GetEnv(),
+			Generation:    int(std.DeployInfo().Host.Dynamic.NodeGeneration),
+			NodeRole:      string(std.DeployInfo().Host.Dynamic.NodeRole),
+			BaseWorkDir:   std.DeployInfo().InstallerRuntime.BaseWorkDir,
+			BaseDeployDir: std.DeployInfo().BaseRuntime.BaseDeployDir,
+		},
+		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
+		InstallerFileName: toolName,
+		CallbackSvrAddr:   nodeUtils.BuildServerURLs(callbackEndpoints...),
+		DeployToken:       std.Token(),
+		OperInstID:        std.InstanceData().OperationInstanceID,
 	}
 
 	if err := std.UpdateInstanceDataContent(ActionWaitInstallerComplete{
@@ -193,26 +177,11 @@ func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
 }
 
 // nolint: perfsprint
-func (act *actionUninstallNode) doUninstallUnix(std *nodeUtils.NodeActionStandarder, param *UninstallParams) error {
-	installerPath := path.Clean(path.Join(param.InstallerWorkDir, param.InstallerName))
-
-	args := []string{
-		fmt.Sprintf("--deploy_env %s", system.GetEnv()),
-		fmt.Sprintf("--generation %d", param.Generation),
-		fmt.Sprintf("--node_role %s", param.NodeRole),
-		fmt.Sprintf("--base_work_dir %s", param.BaseWorkDir),
-		fmt.Sprintf("--base_deploy_dir %s", param.BaseDeployDir),
-		fmt.Sprintf("--cbsvr_addr %s", param.CallbackSvrAddr),
-		fmt.Sprintf("--deploy_token %s", param.DeployToken),
-		fmt.Sprintf("--oper_inst_id %s", param.OperInstID),
+func (act *actionUninstallNode) doUninstallUnix(std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
+	_, uninstallCmd, err := param.ToUnixScript()
+	if err != nil {
+		return fmt.Errorf("failed to render node uninstall script: %w", err)
 	}
-	if len(param.AdditionArgs) > 0 {
-		args = append(args, param.AdditionArgs...)
-	}
-
-	uninstallLogPath := path.Clean(fmt.Sprintf("%s.stdout", installerPath))
-	uninstallCmd := fmt.Sprintf("chmod +x %s && %s %s %s >%s 2>&1 &",
-		installerPath, installerPath, installer.NodeCmdFullUninstall, strings.Join(args, " "), uninstallLogPath)
 	std.InstanceData().Log().
 		Zh("卸载节点命令: %s", uninstallCmd).
 		En("uninstall node cmd: %s", uninstallCmd).
@@ -222,13 +191,13 @@ func (act *actionUninstallNode) doUninstallUnix(std *nodeUtils.NodeActionStandar
 		types.ScriptTypeBash,
 		fmt.Sprintf(
 			`mkdir -p %s && cd %s && echo "%s" > uninstall.sh && sh uninstall.sh`,
-			param.InstallerWorkDir,
-			param.InstallerWorkDir,
+			param.InstallWorkDir,
+			param.InstallWorkDir,
 			uninstallCmd),
 		uninstallScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
-				AgentID: param.AgentID,
+				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
 		})
 	if err != nil {
@@ -243,26 +212,11 @@ func (act *actionUninstallNode) doUninstallUnix(std *nodeUtils.NodeActionStandar
 }
 
 // nolint: perfsprint
-func (act *actionUninstallNode) doUninstallWindows(std *nodeUtils.NodeActionStandarder, param *UninstallParams) error {
-	installerPath := winpath.Clean(winpath.Join(param.InstallerWorkDir, param.InstallerName))
-
-	args := []string{
-		fmt.Sprintf("--deploy_env %s", system.GetEnv()),
-		fmt.Sprintf("--generation %d", param.Generation),
-		fmt.Sprintf("--node_role %s", param.NodeRole),
-		fmt.Sprintf("--base_work_dir %s", param.BaseWorkDir),
-		fmt.Sprintf("--base_deploy_dir %s", param.BaseDeployDir),
-		fmt.Sprintf("--cbsvr_addr %s", param.CallbackSvrAddr),
-		fmt.Sprintf("--deploy_token %s", param.DeployToken),
-		fmt.Sprintf("--oper_inst_id %s", param.OperInstID),
+func (act *actionUninstallNode) doUninstallWindows(std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
+	_, uninstallCmd, err := param.ToWindowsScript()
+	if err != nil {
+		return fmt.Errorf("failed to render node uninstall script: %w", err)
 	}
-	if len(param.AdditionArgs) > 0 {
-		args = append(args, param.AdditionArgs...)
-	}
-
-	uninstallLogPath := winpath.Clean(fmt.Sprintf("%s.stdout", installerPath))
-	uninstallCmd := fmt.Sprintf("%s %s %s >%s 2>&1",
-		installerPath, installer.NodeCmdFullUninstall, strings.Join(args, " "), uninstallLogPath)
 	std.InstanceData().Log().
 		Zh("卸载节点命令: %s", uninstallCmd).
 		En("uninstall node cmd: %s", uninstallCmd).
@@ -272,12 +226,12 @@ func (act *actionUninstallNode) doUninstallWindows(std *nodeUtils.NodeActionStan
 		types.ScriptTypeBat,
 		fmt.Sprintf(
 			`cd %s && %s`,
-			param.InstallerWorkDir,
+			param.InstallWorkDir,
 			uninstallCmd),
 		uninstallScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
-				AgentID: param.AgentID,
+				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
 		})
 	if err != nil {

@@ -13,8 +13,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"path"
-	"strings"
 	"time"
 
 	nodeUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
@@ -25,7 +23,6 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/winpath"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -52,23 +49,6 @@ func NewActionUpgradeNode(capability *Capability) action.Definition {
 // ActionParamUpgradeNode defines the action param.
 type ActionParamUpgradeNode struct {
 	nodeUtils.NodeActionStandardParam `json:",inline"`
-}
-
-// UpgradeParams this struct defines the parameters for upgrading agent.
-type UpgradeParams struct {
-	AgentID          string
-	InstallerName    string
-	InstallerWorkDir string
-	Generation       types.Generation
-	NodeRole         types.NodeRole
-	DownloadSvrAddr  string
-	CallbackSvrAddr  string
-	NodeVersion      string
-	DeployToken      string
-	OperInstID       string
-	BaseWorkDir      string
-	BaseDeployDir    string
-	AdditionArgs     []string
 }
 
 type actionUpgradeNode struct {
@@ -182,18 +162,21 @@ func (act *actionUpgradeNode) Do(ctx *action.InstanceContext) error {
 		callbackSvrAddr = nodeUtils.BuildServerURLs(callbackEndpoints...)
 	}
 
-	upgradeParams := &UpgradeParams{
-		AgentID:          std.DeployInfo().Host.Dynamic.AgentID,
-		InstallerName:    toolName,
-		InstallerWorkDir: std.DeployInfo().InstallerRuntime.WorkDir,
-		NodeVersion:      std.DeployInfo().Host.Dynamic.NodeVersion,
-		Generation:       std.DeployInfo().Host.Dynamic.NodeGeneration,
-		NodeRole:         std.DeployInfo().Host.Dynamic.NodeRole,
-		CallbackSvrAddr:  callbackSvrAddr,
-		DeployToken:      std.Token(),
-		OperInstID:       std.InstanceData().OperationInstanceID,
-		BaseWorkDir:      std.DeployInfo().InstallerRuntime.BaseWorkDir,
-		BaseDeployDir:    std.DeployInfo().BaseRuntime.BaseDeployDir,
+	upgradeParams := &installer.NodeUpgradeParams{
+		NodeCommonParams: installer.NodeCommonParams{
+			DeployEnv:     system.GetEnv(),
+			Generation:    int(std.DeployInfo().Host.Dynamic.NodeGeneration),
+			NodeRole:      string(std.DeployInfo().Host.Dynamic.NodeRole),
+			BaseWorkDir:   std.DeployInfo().InstallerRuntime.BaseWorkDir,
+			BaseDeployDir: std.DeployInfo().BaseRuntime.BaseDeployDir,
+		},
+		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
+		InstallerFileName: toolName,
+		CallbackSvrAddr:   callbackSvrAddr,
+		DeployToken:       std.Token(),
+		NodeVersion:       std.DeployInfo().Host.Dynamic.NodeVersion,
+		OperInstID:        std.InstanceData().OperationInstanceID,
+		SkipDownload:      true,
 	}
 
 	if err := std.UpdateInstanceDataContent(ActionWaitInstallerComplete{
@@ -211,39 +194,12 @@ func (act *actionUpgradeNode) Do(ctx *action.InstanceContext) error {
 	return act.doUpgradeUnix(std, upgradeParams)
 }
 
-// buildUpgradeArgs builds the common upgrade args shared by Unix and Windows.
-// nolint: perfsprint
-func buildUpgradeArgs(param *UpgradeParams) []string {
-	args := []string{
-		fmt.Sprintf("--deploy_env %s", system.GetEnv()),
-		fmt.Sprintf("--generation %d", param.Generation),
-		fmt.Sprintf("--node_role %s", param.NodeRole),
-		fmt.Sprintf("--base_work_dir %s", param.BaseWorkDir),
-		fmt.Sprintf("--base_deploy_dir %s", param.BaseDeployDir),
-	}
-	args = append(args,
-		fmt.Sprintf("--cbsvr_addr %s", param.CallbackSvrAddr),
-		fmt.Sprintf("--deploy_token %s", param.DeployToken),
-		fmt.Sprintf("--node_version %s", param.NodeVersion),
-		fmt.Sprintf("--oper_inst_id %s", param.OperInstID),
-		"--skip_download",
-	)
-	if len(param.AdditionArgs) > 0 {
-		args = append(args, param.AdditionArgs...)
+func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder, param *installer.NodeUpgradeParams) error {
+	_, upgradeCmd, err := param.ToUnixScript()
+	if err != nil {
+		return fmt.Errorf("failed to render node upgrade script: %w", err)
 	}
 
-	return args
-}
-
-// nolint: perfsprint
-func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder, param *UpgradeParams) error {
-	installerPath := path.Clean(path.Join(param.InstallerWorkDir, param.InstallerName))
-
-	args := buildUpgradeArgs(param)
-
-	upgradeLogPath := path.Clean(fmt.Sprintf("%s.stdout", installerPath))
-	upgradeCmd := fmt.Sprintf("chmod +x %s && %s %s %s >%s 2>&1 &",
-		installerPath, installerPath, installer.NodeCmdFullUpgrade, strings.Join(args, " "), upgradeLogPath)
 	std.InstanceData().Log().
 		Zh("升级节点命令: %s", upgradeCmd).
 		En("upgrade node cmd: %s", upgradeCmd).
@@ -253,18 +209,20 @@ func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder,
 		types.ScriptTypeBash,
 		fmt.Sprintf(
 			`mkdir -p %s && cd %s && echo "%s" > upgrade.sh && sh upgrade.sh`,
-			param.InstallerWorkDir,
-			param.InstallerWorkDir,
+			param.InstallWorkDir,
+			param.InstallWorkDir,
 			upgradeCmd),
 		upgradeScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
-				AgentID: param.AgentID,
+				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to execute upgrade script: %w", err)
 	}
+
 	std.InstanceData().Log().
 		Zh("升级节点 task-id: %s", taskID).
 		En("upgrade node task-id: %s", taskID).
@@ -273,15 +231,12 @@ func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder,
 	return nil
 }
 
-// nolint: perfsprint
-func (act *actionUpgradeNode) doUpgradeWindows(std *nodeUtils.NodeActionStandarder, param *UpgradeParams) error {
-	installerPath := winpath.Clean(winpath.Join(param.InstallerWorkDir, param.InstallerName))
+func (act *actionUpgradeNode) doUpgradeWindows(std *nodeUtils.NodeActionStandarder, param *installer.NodeUpgradeParams) error {
+	_, upgradeCmd, err := param.ToWindowsScript()
+	if err != nil {
+		return fmt.Errorf("failed to render node upgrade script: %w", err)
+	}
 
-	args := buildUpgradeArgs(param)
-
-	upgradeLogPath := winpath.Clean(fmt.Sprintf("%s.stdout", installerPath))
-	upgradeCmd := fmt.Sprintf("%s %s %s >%s 2>&1",
-		installerPath, installer.NodeCmdFullUpgrade, strings.Join(args, " "), upgradeLogPath)
 	std.InstanceData().Log().
 		Zh("升级节点命令: %s", upgradeCmd).
 		En("upgrade node cmd: %s", upgradeCmd).
@@ -291,17 +246,18 @@ func (act *actionUpgradeNode) doUpgradeWindows(std *nodeUtils.NodeActionStandard
 		types.ScriptTypeBat,
 		fmt.Sprintf(
 			`cd %s && %s`,
-			param.InstallerWorkDir,
+			param.InstallWorkDir,
 			upgradeCmd),
 		upgradeScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
-				AgentID: param.AgentID,
+				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
 		})
 	if err != nil {
 		return fmt.Errorf("failed to execute upgrade script: %w", err)
 	}
+
 	std.InstanceData().Log().
 		Zh("升级节点 task-id: %s", taskID).
 		En("upgrade node task-id: %s", taskID).
