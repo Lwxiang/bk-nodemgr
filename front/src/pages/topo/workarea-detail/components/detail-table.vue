@@ -423,7 +423,9 @@ const handleSelectChange = ({
   row: any;
 }) => {
   if (!row) return;
-  setRowCheckedByHostId(row.bk_host_id, checked);
+  const hostId = Number(row.bk_host_id);
+  if (!Number.isSafeInteger(hostId) || hostId <= 0) return;
+  setRowCheckedByHostId(hostId, checked);
   emit('selectChange', selection.value);
 };
 
@@ -449,12 +451,14 @@ const isIndeterminate = computed(() => {
 
 // 1. 处理单行勾选
 const handleRowCheck = (checked: boolean, row: any) => {
-  setRowCheckedByHostId(row.bk_host_id, checked);
+  const hostId = Number(row.bk_host_id);
+  if (!Number.isSafeInteger(hostId) || hostId <= 0) return;
+  setRowCheckedByHostId(hostId, checked);
   if (isCrossPageSelection.value) {
     if (!checked) {
-      excludedIds.value.add(row.bk_host_id);
+      excludedIds.value.add(hostId);
     } else {
-      excludedIds.value.delete(row.bk_host_id);
+      excludedIds.value.delete(hostId);
     }
   }
 };
@@ -622,6 +626,21 @@ const getParams = () => {
       return;
     }
 
+    // Host ID：仅按精确条件传递，不参与任何自动识别/模糊匹配
+    if (item.id === 'bk_host_id' && item.values?.length) {
+      const hostIds = item.values
+        .map((value: any) => String(value.id).trim())
+        .filter((value: string) => /^\d+$/.test(value))
+        .map((value: string) => Number(value))
+        .filter((value: number) => Number.isSafeInteger(value) && value > 0);
+
+      const uniqueHostIds = Array.from(new Set(hostIds));
+      if (uniqueHostIds.length > 0) {
+        params.exact_include_conditions.bk_host_id = uniqueHostIds;
+      }
+      return;
+    }
+
     const target = fuzzyKeys.has(item.id)
       ? params.fuzzy_include_conditions
       : params.exact_include_conditions;
@@ -765,6 +784,10 @@ const getHostDistinct = async () => {
         name: `${t('platform.nodeMan.bk_cloud_name')}ID:IP`,
         id: 'area_ip',
         multiple: true,
+      },
+      {
+        id: 'bk_host_id',
+        name: 'Host ID',
       },
       {
         name: 'AgentID',
