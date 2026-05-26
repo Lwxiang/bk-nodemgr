@@ -66,11 +66,6 @@ func (ct *cachedTriggers) get() []*trigger.Trigger {
 const (
 	triggerHandlerGoAsyncPoolNum         = 10000
 	triggerHandlerGoAsyncPoolPerPoolSize = 10000
-
-	// instantiateOperationConcurrency limits concurrent MongoDB writes when creating operation instances.
-	instantiateOperationConcurrency = 20
-	// launchOperationInstanceConcurrency limits concurrent MongoDB writes when launching operation instances.
-	launchOperationInstanceConcurrency = 20
 )
 
 func newTriggerHandler(mgr *manager, globalLocker locker.MutexFactory) (*triggerHandler, error) {
@@ -82,9 +77,9 @@ func newTriggerHandler(mgr *manager, globalLocker locker.MutexFactory) (*trigger
 		orderedTriggers:  newCachedTriggers(),
 		periodicTriggers: newCachedTriggers(),
 
-		tracerProvider: mgr.traceSvc.TracerProvider(),
+		tracerProvider:            mgr.traceSvc.TracerProvider(),
+		triggerExecutionSemaphore: make(chan struct{}, triggerExecutionConcurrency),
 	}
-
 	var err error
 	trigHandler.goAsyncPool, err = goasync.NewHandler(goasync.HandlerOption{
 		PoolNum:               triggerHandlerGoAsyncPoolNum,
@@ -111,6 +106,8 @@ type triggerHandler struct {
 	goAsyncPool goasync.IHandler
 
 	tracerProvider trace.TracerProvider
+
+	triggerExecutionSemaphore chan struct{}
 }
 
 // Start starts the manager.
@@ -138,6 +135,9 @@ const (
 	orderedTriggersSyncAndCheckIntervalDefault      = 1 * time.Second
 	periodicTriggersSyncAndCheckIntervalDefault     = 1 * time.Second
 	checkAccumulateOperationInstanceIntervalDefault = 1 * time.Minute
+
+	// listAliveTriggerBatchSizeDefault is used to avoid overloading the database from a single large query.
+	listAliveTriggerBatchSizeDefault = 500
 
 	taskIDSyncAndCheckOnceTrigger          = "sync_and_check_once_trigger"
 	taskIDSyncAndCheckOrderedTrigger       = "sync_and_check_ordered_trigger"
@@ -225,7 +225,7 @@ func (handler *triggerHandler) initSchedulerTasks() {
 
 // syncOnceTrigger syncs once triggers from storage.
 func (handler *triggerHandler) syncOnceTrigger(nCtx contextx.IContext) error {
-	list, err := handler.mgr.stgTrigger.ListActiveTrigger(nCtx, trigger.CategoryOnce)
+	list, err := handler.listActiveTriggers(nCtx, trigger.CategoryOnce)
 	if err != nil {
 		// set cached triggers to empty cause the cache is no longer valid.
 		handler.onceTriggers.set([]*trigger.Trigger{})
@@ -242,7 +242,7 @@ func (handler *triggerHandler) syncOnceTrigger(nCtx contextx.IContext) error {
 
 // syncOrderedTrigger syncs ordered triggers from storage.
 func (handler *triggerHandler) syncOrderedTrigger(nCtx contextx.IContext) error {
-	list, err := handler.mgr.stgTrigger.ListActiveTrigger(nCtx, trigger.CategoryOrdered)
+	list, err := handler.listActiveTriggers(nCtx, trigger.CategoryOrdered)
 	if err != nil {
 		// set cached triggers to empty cause the cache is no longer valid.
 		handler.orderedTriggers.set([]*trigger.Trigger{})
@@ -259,7 +259,7 @@ func (handler *triggerHandler) syncOrderedTrigger(nCtx contextx.IContext) error 
 
 // syncPeriodicTrigger syncs periodic triggers from storage.
 func (handler *triggerHandler) syncPeriodicTrigger(nCtx contextx.IContext) error {
-	list, err := handler.mgr.stgTrigger.ListActiveTrigger(nCtx, trigger.CategoryPeriodic)
+	list, err := handler.listActiveTriggers(nCtx, trigger.CategoryPeriodic)
 	if err != nil {
 		// set cached triggers to empty cause the cache is no longer valid.
 		handler.periodicTriggers.set([]*trigger.Trigger{})
@@ -274,6 +274,21 @@ func (handler *triggerHandler) syncPeriodicTrigger(nCtx contextx.IContext) error
 	return nil
 }
 
+// listActiveTriggers lists active triggers by category in pages.
+func (handler *triggerHandler) listActiveTriggers(nCtx contextx.IContext, category trigger.Category) ([]*trigger.Trigger, error) {
+	executor := pageexecutor.NewPageExecutor[*trigger.Trigger](listAliveTriggerBatchSizeDefault, defaultTimeout)
+	fn := func(nCtx contextx.IContext, p types.Page) ([]*trigger.Trigger, error) {
+		return handler.mgr.stgTrigger.ListActiveTrigger(nCtx, p, category)
+	}
+
+	result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list active triggers, category(%s): %w", category, err)
+	}
+
+	return result.Items, nil
+}
+
 // executeTriggerList executes the trigger list.
 func (handler *triggerHandler) executeTriggerList(nCtx contextx.IContext, list []*trigger.Trigger) error {
 	logger.G.Sys().With("count", len(list)).Debug("check trigger list")
@@ -281,6 +296,10 @@ func (handler *triggerHandler) executeTriggerList(nCtx contextx.IContext, list [
 	for idx := range list {
 		trig := list[idx]
 		fn := func(nCtx contextx.IContext) error {
+			handler.triggerExecutionSemaphore <- struct{}{}
+			defer func() {
+				<-handler.triggerExecutionSemaphore
+			}()
 			mutex := handler.globalLocker.NewMutex(trig.TriggerID)
 			if err := mutex.TryLock(); err != nil {
 				logger.G.Sys().WithErr(err).With("trigger-id", trig.TriggerID).Debug("failed to lock trigger")
@@ -402,49 +421,107 @@ func (handler *triggerHandler) doTrigger(nCtx contextx.IContext, trigCtl ITrigge
 	}
 }
 
+const (
+	// instantiateOperationTimeoutRatio reserves one quarter of defaultTimeout for operation instantiation queries.
+	instantiateOperationTimeoutRatio = 4
+	// instantiateOperationListCostLimit is the maximum expected cost of one ListNeedInstantiateOperation page.
+	instantiateOperationListCostLimit = 1 * time.Second
+	// launchOperationInstanceTimeoutRatio reserves one quarter of defaultTimeout for operation instance launches.
+	launchOperationInstanceTimeoutRatio = 4
+	// launchOperationInstanceCostLimit is the maximum expected cost of one LaunchOperationInstance DB operation.
+	launchOperationInstanceCostLimit = 1 * time.Second
+
+	// triggerExecutionConcurrency limits the number of triggers running doTrigger concurrently.
+	triggerExecutionConcurrency = 20
+
+	// instantiateOperationConcurrency limits concurrent MongoDB writes when creating operation instances.
+	instantiateOperationConcurrency = 20
+)
+
+// onceTriggerBatchSize returns the maximum operations instantiated and launched per once trigger cycle.
+func onceTriggerBatchSize() int {
+	return instantiateOperationBatchSize()
+}
+
+// orderedTriggerBatchSize returns the maximum operations instantiated and launched per ordered trigger cycle.
+func orderedTriggerBatchSize() int {
+	return instantiateOperationBatchSize()
+}
+
+func instantiateOperationBatchSize() int {
+	queryBudget := defaultTimeout / instantiateOperationTimeoutRatio
+	pageCount := int(queryBudget / instantiateOperationListCostLimit)
+
+	return pageCount * instantiateOperationConcurrency
+}
+
+// launchOperationInstanceConcurrency returns the concurrent launches needed to finish one once-trigger batch within the launch budget.
+func launchOperationInstanceConcurrency() int {
+	launchBudget := defaultTimeout / launchOperationInstanceTimeoutRatio
+	operationCountPerWorker := max(1, int(launchBudget/launchOperationInstanceCostLimit))
+
+	return (instantiateOperationBatchSize() + operationCountPerWorker - 1) / operationCountPerWorker
+}
+
+// Instantiate operation list queries are expected to finish within one quarter of defaultTimeout.
+// Each paged ListNeedInstantiateOperation call should finish within instantiateOperationListCostLimit.
+
 // instantiateOperation instantiates operations for the trigger.
 func (handler *triggerHandler) instantiateOperation(nCtx contextx.IContext, trigCtl ITriggerCtl, page types.Page) error {
-	operList, err := trigCtl.ListNeedInstantiateOperation(nCtx, page)
-	if err != nil {
-		return err
+	executor := pageexecutor.NewPageExecutor[IOperationCtl](instantiateOperationConcurrency, defaultTimeout)
+	fn := func(nCtx contextx.IContext, p types.Page) ([]IOperationCtl, error) {
+		operList, err := trigCtl.ListNeedInstantiateOperation(nCtx, p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list need instantiate operation: %w", err)
+		}
+
+		return operList, nil
 	}
 
-	logger.G.Sys().With("trigger-id", trigCtl.GetTriggerID(), "operation-count", len(operList)).Debug("instantiate operation")
+	pageResult, err := executor.Execute(nCtx, page, fn)
+	if err != nil {
+		return fmt.Errorf("failed to list need instantiate operation: %w", err)
+	}
+
+	logger.G.Sys().With("trigger-id", trigCtl.GetTriggerID(), "operation-count", len(pageResult.Items)).Debug("instantiate operation")
 
 	gp := gopool.NewPool()
 	gp.SetLimit(instantiateOperationConcurrency)
-	for _, operCtl := range operList {
+	for _, operCtl := range pageResult.Items {
 		ctl := operCtl
 		gp.Go(func() error {
 			operInst, err := ctl.CreateOperationInstance(nCtx)
 			if err != nil {
 				logger.G.Sys().
 					WithErr(err).
-					With("trigger-id", trigCtl.GetTriggerID(), "operation-id", ctl.GetOperationID()).
+					With("trigger-id", trigCtl.GetTriggerID(),
+						"operation-id", ctl.GetOperationID()).
 					Error("failed to create operation instance")
 
 				return err
 			}
 
 			logger.G.Sys().
-				With("trigger-id", trigCtl.GetTriggerID(), "operation-id", ctl.GetOperationID(), "oper-inst-id", operInst.GetOperationInstanceID()).
+				With("trigger-id", trigCtl.GetTriggerID(),
+					"operation-id", ctl.GetOperationID(),
+					"oper-inst-id", operInst.GetOperationInstanceID()).
 				Debug("created operation instance")
 
 			return nil
 		})
 	}
 
-	return gp.Wait()
+	if err := gp.Wait(); err != nil {
+		return err
+	}
+
+	logger.G.Sys().With("trigger-id", trigCtl.GetTriggerID()).Debug("instantiate operation done")
+
+	return nil
 }
 
-const (
-	// onceTriggerBatchSize limits the number of operations instantiated and launched per cycle
-	// to avoid overwhelming MongoDB with too many concurrent writes when a trigger has a large backlog.
-	onceTriggerBatchSize = 200
-)
-
 func (handler *triggerHandler) doOnceTrigger(nCtx contextx.IContext, trigCtl ITriggerCtl) ([]IOperationInstanceCtl, error) {
-	if err := handler.instantiateOperation(nCtx, trigCtl, types.Page{Limit: onceTriggerBatchSize}); err != nil {
+	if err := handler.instantiateOperation(nCtx, trigCtl, types.Page{Limit: onceTriggerBatchSize()}); err != nil {
 		logger.G.Sys().
 			WithErr(err).
 			With("trigger-id", trigCtl.GetTriggerID()).
@@ -482,7 +559,7 @@ func (handler *triggerHandler) doOrderedTrigger(nCtx contextx.IContext, trigCtl 
 	}
 
 	// not idle concurrent num.
-	idleNum := metadata.MaxConcurrencyNum - int(workingCount)
+	idleNum := min(orderedTriggerBatchSize(), metadata.MaxConcurrencyNum-int(workingCount))
 	instanceList := make([]IOperationInstanceCtl, 0)
 	if idleNum > 0 {
 		if err := handler.instantiateOperation(nCtx, trigCtl, types.Page{Limit: idleNum}); err != nil {
@@ -569,7 +646,7 @@ func (handler *triggerHandler) doPeriodicTrigger(nCtx contextx.IContext, trigCtl
 
 func (handler *triggerHandler) launchOperationInstance(nCtx contextx.IContext, trigCtl ITriggerCtl, instanceCtls []IOperationInstanceCtl) error {
 	gp := gopool.NewPool()
-	gp.SetLimit(launchOperationInstanceConcurrency)
+	gp.SetLimit(launchOperationInstanceConcurrency())
 	for _, instanceCtl := range instanceCtls {
 		ctl := instanceCtl
 		gp.Go(func() error {
