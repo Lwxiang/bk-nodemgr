@@ -8,7 +8,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-// Package utils use to provide some common utils for plugin actions.
+// Package utils use to provide some common utils for plugin v2 actions.
 package utils
 
 import (
@@ -19,10 +19,13 @@ import (
 	"slices"
 	"strings"
 
+	pluginStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/plugin"
 	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/discover"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/installer"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/relayhandler"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/winpath"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -169,6 +172,7 @@ func GeneratePluginInstallerServerEndpoints(
 	provider discover.Discover,
 	storageHost topoStg.IStorageHost,
 	storageNetworkUnit topoStg.IStorageNetworkUnit,
+	storageProcess pluginStg.IDaoProcess,
 	hostID int64) ([]discover.Endpoint, []discover.Endpoint, error) {
 
 	// get host.
@@ -188,29 +192,23 @@ func GeneratePluginInstallerServerEndpoints(
 
 	// if networkunit is direct, select endpoints from direct services with discover provider.
 	if networkUnit.IsDirect {
-		callbackEndpoints, err := provider.SelectEndpoints(
-			discover.ServiceNameBackend,
-			discover.EndpointNameBackendCallback,
-			DefaultEndpointSelectionCount,
-			discover.NewRoundRobinSelector())
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to select backend callback endpoints: %w", err)
-		}
-
-		downloadEndpoints, err := provider.SelectEndpoints(
-			discover.ServiceNameFile,
-			discover.EndpointNameFileDownload,
-			DefaultEndpointSelectionCount,
-			discover.NewRoundRobinSelector())
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to select file endpoints: %w", err)
-		}
-
-		return callbackEndpoints, downloadEndpoints, nil
+		return generateDirectServerEndpoints(provider)
 	}
 
+	callbackEndpoints, err := generateInDirectServerEndpoints(nCtx, hostID, networkUnit, storageHost, storageProcess)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to generate in-direct server endpoints: %w", err)
+	}
+
+	// in-direct never use download endpoints.
+	return callbackEndpoints, []discover.Endpoint{}, nil
+}
+
+func generateInDirectServerEndpoints(nCtx contextx.IContext, hostID int64, networkUnit *types.NetworkUnit,
+	storageHost topoStg.IStorageHost, storageProcess pluginStg.IDaoProcess) ([]discover.Endpoint, error) {
+
 	// select relay endpoints for callback.
-	hosts, _, err := storageHost.ListHost(nCtx, types.UnlimitedPage(), &types.HostCondition{
+	proxyHosts, _, err := storageHost.ListHost(nCtx, types.UnlimitedPage(), &types.HostCondition{
 		DynamicExactInclude: &types.HostDynamicExactFields{
 			NetworkUnitID: []int64{networkUnit.ID},
 			NodeRole:      []types.NodeRole{types.NodeRoleProxy},
@@ -218,11 +216,44 @@ func GeneratePluginInstallerServerEndpoints(
 		},
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get running proxy: %w", err)
+		return nil, fmt.Errorf("failed to list running proxy hosts: %w", err)
+	}
+	if len(proxyHosts) == 0 {
+		return []discover.Endpoint{}, nil
+	}
+
+	// check relay service is running.
+	proxyHostIDs := conv.SliceToSlice[*types.Host, int64](proxyHosts, func(host *types.Host) int64 {
+		return host.HostID
+	})
+	relayProcesses, _, err := storageProcess.ListProcesses(nCtx, types.UnlimitedPage(), &types.ProcessCondition{
+		ExactInclude: &types.ProcessExactFields{
+			HostID: proxyHostIDs,
+			InfoStatus: []types.ProcessStatus{
+				types.ProcessStatusRunning,
+			},
+			PluginName: []string{
+				relayhandler.PluginName,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list running relay processes: %w", err)
+	}
+
+	runningRelayProcessMap, err := conv.SliceToMap[int64, *types.Process](relayProcesses,
+		func(p *types.Process) int64 { return p.HostID },
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert running relay processes: %w", err)
 	}
 
 	callbackEndpoints := make([]discover.Endpoint, 0)
-	for _, host := range hosts {
+	for _, host := range proxyHosts {
+		if _, ok := runningRelayProcessMap[host.HostID]; !ok {
+			continue
+		}
+
 		if host.HostID == hostID {
 			continue
 		}
@@ -238,7 +269,7 @@ func GeneratePluginInstallerServerEndpoints(
 		})
 	}
 	if len(callbackEndpoints) == 0 {
-		return callbackEndpoints, nil, nil
+		return []discover.Endpoint{}, nil
 	}
 
 	// shuffle callback endpoints.
@@ -250,6 +281,27 @@ func GeneratePluginInstallerServerEndpoints(
 		callbackEndpoints = callbackEndpoints[:DefaultEndpointSelectionCount]
 	}
 
-	// in-direct never use download endpoints.
-	return callbackEndpoints, nil, nil
+	return callbackEndpoints, nil
+}
+
+func generateDirectServerEndpoints(provider discover.Discover) ([]discover.Endpoint, []discover.Endpoint, error) {
+	callbackEndpoints, err := provider.SelectEndpoints(
+		discover.ServiceNameBackend,
+		discover.EndpointNameBackendCallback,
+		DefaultEndpointSelectionCount,
+		discover.NewRoundRobinSelector())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to select backend callback endpoints: %w", err)
+	}
+
+	downloadEndpoints, err := provider.SelectEndpoints(
+		discover.ServiceNameFile,
+		discover.EndpointNameFileDownload,
+		DefaultEndpointSelectionCount,
+		discover.NewRoundRobinSelector())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to select file endpoints: %w", err)
+	}
+
+	return callbackEndpoints, downloadEndpoints, nil
 }
