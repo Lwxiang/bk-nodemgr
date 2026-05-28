@@ -26,13 +26,13 @@ import (
 )
 
 const (
-	// ActionNameFinishIfPluginProcessV2Alive finish if plugin process v2 alive.
-	ActionNameFinishIfPluginProcessV2Alive = "finish_if_plugin_process_running_v2"
+	// ActionNameFinishIfPluginProcessV2NotAlive finish if plugin process v2 not alive.
+	ActionNameFinishIfPluginProcessV2NotAlive = "finish_if_plugin_process_not_alive_v2"
 )
 
-// NewActionFinishIfPluginProcessV2Alive finish if plugin process v2 alive.
-func NewActionFinishIfPluginProcessV2Alive(capability *Capability) action.Definition {
-	return &actionFinishIfPluginProcessV2Alive{
+// NewActionFinishIfPluginProcessV2NotAlive finish if plugin process v2 not alive.
+func NewActionFinishIfPluginProcessV2NotAlive(capability *Capability) action.Definition {
+	return &actionFinishIfPluginProcessV2NotAlive{
 		daoPluginDeployment:  capability.StoragePlugin,
 		daoOperationInstance: capability.StorageWorkflow,
 		daoActionInstance:    capability.StorageWorkflow,
@@ -41,12 +41,12 @@ func NewActionFinishIfPluginProcessV2Alive(capability *Capability) action.Defini
 	}
 }
 
-// ActParamFinishIfPluginProcessV2Alive defines the parameters for actionFinishIfPluginProcessV2Alive.
-type ActParamFinishIfPluginProcessV2Alive struct {
+// ActParamFinishIfPluginProcessV2NotAlive defines the parameters for actionFinishIfPluginProcessV2NotAlive.
+type ActParamFinishIfPluginProcessV2NotAlive struct {
 	pluginV2Utils.PluginActionStandardParam `json:",inline"`
 }
 
-type actionFinishIfPluginProcessV2Alive struct {
+type actionFinishIfPluginProcessV2NotAlive struct {
 	daoPluginDeployment  pluginStg.IDaoPluginDeployment
 	daoOperationInstance workflow.IStorageOperationInstance
 	daoActionInstance    workflow.IStorageActionInstance
@@ -55,45 +55,45 @@ type actionFinishIfPluginProcessV2Alive struct {
 }
 
 // Name returns the name of the action.
-func (act *actionFinishIfPluginProcessV2Alive) Name() string {
-	return ActionNameFinishIfPluginProcessV2Alive
+func (act *actionFinishIfPluginProcessV2NotAlive) Name() string {
+	return ActionNameFinishIfPluginProcessV2NotAlive
 }
 
 // Version returns the version of the action.
-func (act *actionFinishIfPluginProcessV2Alive) Version() string {
+func (act *actionFinishIfPluginProcessV2NotAlive) Version() string {
 	return "1.0.0" // nolint: goconst
 }
 
 // Description returns the description of the action.
-func (act *actionFinishIfPluginProcessV2Alive) Description() string {
-	return "finish if plugin process v2 alive"
+func (act *actionFinishIfPluginProcessV2NotAlive) Description() string {
+	return "finish if plugin process v2 not alive"
 }
 
 // Timeout returns the timeout of the action.
-func (act *actionFinishIfPluginProcessV2Alive) Timeout() time.Duration {
+func (act *actionFinishIfPluginProcessV2NotAlive) Timeout() time.Duration {
 	return 1 * time.Minute
 }
 
 // Tags returns the tags of the action.
-func (act *actionFinishIfPluginProcessV2Alive) Tags() []action.Tag {
+func (act *actionFinishIfPluginProcessV2NotAlive) Tags() []action.Tag {
 	return []action.Tag{}
 }
 
 // MaxRetryCount returns the max retry count of the action.
-func (act *actionFinishIfPluginProcessV2Alive) MaxRetryCount() uint {
+func (act *actionFinishIfPluginProcessV2NotAlive) MaxRetryCount() uint {
 	return 3 // nolint: mnd
 }
 
 // DelayFn this func define when this action fails, how long to wait before retrying.
-func (act *actionFinishIfPluginProcessV2Alive) DelayFn() func() {
+func (act *actionFinishIfPluginProcessV2NotAlive) DelayFn() func() {
 	return func() {
 		time.Sleep(1 * time.Second)
 	}
 }
 
 // Do this func define what the action will do.
-func (act *actionFinishIfPluginProcessV2Alive) Do(ctx *action.InstanceContext) error {
-	param := new(ActParamFinishIfPluginProcessV2Alive)
+func (act *actionFinishIfPluginProcessV2NotAlive) Do(ctx *action.InstanceContext) error {
+	param := new(ActParamFinishIfPluginProcessV2NotAlive)
 	err := conv.MapToStruct(ctx.Data.Content, param)
 	if err != nil {
 		return err
@@ -128,12 +128,10 @@ func (act *actionFinishIfPluginProcessV2Alive) Do(ctx *action.InstanceContext) e
 		return fmt.Errorf("failed to query process info: %w", err)
 	}
 
-	if processInfo.Status == types.ProcessStatusRunning {
+	if processInfo.Status != types.ProcessStatusRunning {
 		std.InstanceData().Log().
-			Zh("V2 插件进程已正常运行, 跳过后续流程, 主机id(%d), 插件名(%s), 进程状态(%s)",
-				host.HostID, pluginName, processInfo.Status).
-			En("v2 plugin process is already running, host-id(%d), plugin-name(%s), process-status(%s)",
-				host.HostID, pluginName, processInfo.Status).
+			Zh("V2 插件进程未运行, 跳过后续流程, 主机id(%d), 插件名(%s), 进程状态(%s)", host.HostID, pluginName, processInfo.Status).
+			En("v2 plugin process is not running, host-id(%d), plugin-name(%s), process-status(%s)", host.HostID, pluginName, processInfo.Status).
 			Info()
 
 		std.InstanceData().Content = conv.StructToMapIgnoreError(param)
@@ -147,11 +145,11 @@ func (act *actionFinishIfPluginProcessV2Alive) Do(ctx *action.InstanceContext) e
 }
 
 // DisplayNameZh returns the Chinese display name of the action.
-func (act *actionFinishIfPluginProcessV2Alive) DisplayNameZh() string {
-	return "检测 V2 插件进程是否已经存活，如果存活则结束"
+func (act *actionFinishIfPluginProcessV2NotAlive) DisplayNameZh() string {
+	return "检测 V2 插件进程是否已经存活，如果未存活则结束"
 }
 
 // DisplayNameEn returns the English display name of the action.
-func (act *actionFinishIfPluginProcessV2Alive) DisplayNameEn() string {
-	return "check if plugin process is alive, if alive then finish"
+func (act *actionFinishIfPluginProcessV2NotAlive) DisplayNameEn() string {
+	return "check if plugin process is alive, if not alive then finish"
 }
