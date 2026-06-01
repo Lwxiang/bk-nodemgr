@@ -37,6 +37,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/file"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
 )
 
@@ -55,6 +56,7 @@ func NewActionInstallNodeBySSH(capability *Capability) action.Definition {
 		storageHost:           capability.StorageTopo,
 		provider:              capability.DiscoverProvider,
 		passwordVault:         capability.HostPasswordVault,
+		storageActionInstance: capability.StorageWorkflow,
 	}
 }
 
@@ -70,6 +72,7 @@ type actionInstallNodeBySSH struct {
 	storageHostCredit     credit.IStorageHostCredit
 	storageNodeDeployment nodeStg.IDaoNodeDeployment
 	storageHost           topoStg.IStorageHost
+	storageActionInstance workflow.IStorageActionInstance
 	provider              discover.Provider
 	passwordVault         creditvault.IHostPasswordVault
 }
@@ -196,7 +199,7 @@ func (act *actionInstallNodeBySSH) Do(ctx *action.InstanceContext) error {
 	if std.DeployInfo().Host.Dynamic.NodeRole == types.NodeRoleProxy &&
 		std.DeployInfo().Host.Dynamic.ProxyInstallOriginUnitID != std.DeployInfo().Host.Dynamic.NetworkUnitID {
 
-		if err := act.doCrossUnitProxyInstall(std, client, param, installerPath); err != nil {
+		if err := act.doCrossUnitProxyInstall(std, client, installerPath); err != nil {
 			return err
 		}
 
@@ -208,23 +211,17 @@ func (act *actionInstallNodeBySSH) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("failed to execute install cmd: %w", err)
 	}
 
-	if err := std.UpdateInstanceDataContent(ActionWaitInstallerComplete{
-		NodeActionStandardParam: param.NodeActionStandardParam,
-		EnsureAgentID:           true,
-	}); err != nil {
-		return fmt.Errorf("failed to update instance data content: %w", err)
+	if err = saveWaitInstallerPrivateData(std.Context(), act.storageActionInstance,
+		std.InstanceData().OperationInstanceID, false, true); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 // doCrossUnitProxyInstall handles the SSH-only install flow for cross-unit proxy deployment.
-func (act *actionInstallNodeBySSH) doCrossUnitProxyInstall(
-	std *nodeUtils.NodeActionStandarder,
-	client *sshx.Client,
-	param *ActParamInstallAgentBySSH,
-	installerPath string,
-) error {
+func (act *actionInstallNodeBySSH) doCrossUnitProxyInstall(std *nodeUtils.NodeActionStandarder, client *sshx.Client,
+	installerPath string) error {
 
 	std.InstanceData().Log().
 		Zh("检测到跨管控单元 Proxy 安装, 使用 SSH-Only 模式").
@@ -241,13 +238,9 @@ func (act *actionInstallNodeBySSH) doCrossUnitProxyInstall(
 		return fmt.Errorf("failed to execute ssh-only proxy install cmd: %w", err)
 	}
 
-	// pass UseSSHPolling marker to WaitInstallerComplete.
-	if err := std.UpdateInstanceDataContent(ActionWaitInstallerComplete{
-		NodeActionStandardParam: param.NodeActionStandardParam,
-		EnsureAgentID:           true,
-		UseSSHPolling:           true,
-	}); err != nil {
-		return fmt.Errorf("failed to update instance data content: %w", err)
+	if err := saveWaitInstallerPrivateData(std.Context(), act.storageActionInstance,
+		std.InstanceData().OperationInstanceID, true, true); err != nil {
+		return err
 	}
 
 	return nil
