@@ -25,6 +25,8 @@ const (
 	filePrefix           = "bkmgr_relay_"
 	fileSuffix           = ".msg"
 	fileRecoveryinterval = 4 * time.Hour
+	storageDirMode       = 0750
+	processedMarkerMode  = 0600
 )
 
 // FileTracker manages file storage for messages and implements MessageStore interface.
@@ -47,7 +49,7 @@ func NewFileTracker(ctx context.Context, storagePath string) (IMessageTracker, e
 		return nil, err
 	}
 
-	if mkdirErr := os.MkdirAll(storagePath, 0750); mkdirErr != nil {
+	if mkdirErr := os.MkdirAll(storagePath, storageDirMode); mkdirErr != nil {
 		return nil, mkdirErr
 	}
 
@@ -123,14 +125,22 @@ func (fm *FileTracker) TryMarkProcessed(_ context.Context, mid string) (bool, er
 	if _, exists := fm.messageSet[mid]; exists {
 		return false, nil
 	}
-	fm.messageSet[mid] = struct{}{}
 
 	filename := fm.generateFilename(mid)
 	filePath := filepath.Join(fm.storagePath, filename)
-
 	content := []byte(mid + "\n")
 
-	return true, os.WriteFile(filePath, content, 0600) //nolint: mnd
+	if err := os.MkdirAll(fm.storagePath, storageDirMode); err != nil {
+		return false, fmt.Errorf("failed to ensure message tracker storage dir for try mark processed, path(%s): %w", fm.storagePath, err)
+	}
+
+	if err := os.WriteFile(filePath, content, processedMarkerMode); err != nil {
+		return false, fmt.Errorf("failed to write message tracker marker, path(%s): %w", filePath, err)
+	}
+
+	fm.messageSet[mid] = struct{}{}
+
+	return true, nil
 }
 
 // cleanupExpired deletes files older than 24 hours.
