@@ -140,13 +140,36 @@ func (act *actionReconfigNode) Do(ctx *action.InstanceContext) error {
 		return err
 	}
 
-	callbackEndpoints, err := act.provider.SelectEndpoints(
-		discover.ServiceNameBackend,
-		discover.EndpointNameBackendCallback,
-		nodeUtils.DefaultEndpointSelectionCount,
-		discover.NewRoundRobinSelector())
-	if err != nil {
-		return fmt.Errorf("failed to select backend callback endpoints: %w", err)
+	var callbackSvrAddr string
+	if std.DeployInfo().Host.Dynamic.NodeRole == types.NodeRoleProxy {
+		// notice: in the normal case, this branch will not be entered, because the reconfig of Proxy will use ActionNameReconfigProxy.
+		// proxy reconfig: use proxy's own relay callback address,
+		// since proxy is the relay in its own network unit.
+		proxyEndpoint := discover.Endpoint{
+			Port: int(std.DeployInfo().Host.Dynamic.RelayCallbackPort),
+		}
+
+		if len(std.DeployInfo().Host.Static.InnerIPList) > 0 {
+			proxyEndpoint.IPV4 = std.DeployInfo().Host.Static.InnerIPList[0]
+		}
+
+		if len(std.DeployInfo().Host.Static.InnerIPV6List) > 0 {
+			proxyEndpoint.IPV6 = std.DeployInfo().Host.Static.InnerIPV6List[0]
+		}
+
+		callbackSvrAddr = nodeUtils.BuildServerURLs(proxyEndpoint)
+	} else {
+		// direct-link agent upgrade: use discover callback endpoints.
+		callbackEndpoints, err := act.provider.SelectEndpoints(
+			discover.ServiceNameBackend,
+			discover.EndpointNameBackendCallback,
+			nodeUtils.DefaultEndpointSelectionCount,
+			discover.NewRoundRobinSelector())
+		if err != nil {
+			return fmt.Errorf("failed to select backend callback endpoints: %w", err)
+		}
+
+		callbackSvrAddr = nodeUtils.BuildServerURLs(callbackEndpoints...)
 	}
 
 	reconfigParams := &installer.NodeReconfigParams{
@@ -159,7 +182,7 @@ func (act *actionReconfigNode) Do(ctx *action.InstanceContext) error {
 		},
 		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,
-		CallbackSvrAddr:   nodeUtils.BuildServerURLs(callbackEndpoints...),
+		CallbackSvrAddr:   callbackSvrAddr,
 		DeployToken:       std.Token(),
 		OperInstID:        std.InstanceData().OperationInstanceID,
 	}

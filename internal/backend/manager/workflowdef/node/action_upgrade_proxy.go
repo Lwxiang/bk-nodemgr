@@ -31,78 +31,76 @@ import (
 )
 
 const (
-	// ActionNameUpgradeNode defines the action name.
-	ActionNameUpgradeNode = "upgrade_node"
+	// ActionNameUpgradeProxy defines the action name.
+	ActionNameUpgradeProxy = "upgrade_proxy"
 
-	upgradeScriptTimeout = 10 * time.Minute
+	upgradeProxyScriptTimeout = 10 * time.Minute
 )
 
-// NewActionUpgradeNode get a new action.
-func NewActionUpgradeNode(capability *Capability) action.Definition {
-	return &actionUpgradeNode{
+// NewActionUpgradeProxy get a new action.
+func NewActionUpgradeProxy(capability *Capability) action.Definition {
+	return &actionUpgradeProxy{
 		storageNodeDeployment: capability.StorageNode,
 		storageHost:           capability.StorageTopo,
 		gseHandler:            capability.GSEHandler,
-		provider:              capability.DiscoverProvider,
 		storageActionInstance: capability.StorageWorkflow,
 	}
 }
 
-// ActionParamUpgradeNode defines the action param.
-type ActionParamUpgradeNode struct {
+// ActionParamUpgradeProxy defines the action param.
+type ActionParamUpgradeProxy struct {
 	nodeUtils.NodeActionStandardParam `json:",inline"`
 }
 
-type actionUpgradeNode struct {
+type actionUpgradeProxy struct {
 	storageNodeDeployment nodeStg.IDaoNodeDeployment
 	storageHost           topoStg.IStorageHost
 	gseHandler            gse.IHandler
-	provider              discover.Provider
 	storageActionInstance workflow.IStorageActionInstance
 }
 
 // Name returns the name of the action.
-func (act *actionUpgradeNode) Name() string {
-	return ActionNameUpgradeNode
+func (act *actionUpgradeProxy) Name() string {
+	return ActionNameUpgradeProxy
 }
 
 // DisplayNameZh returns the Chinese display name of the action.
-func (act *actionUpgradeNode) DisplayNameZh() string {
-	return "升级节点"
+func (act *actionUpgradeProxy) DisplayNameZh() string {
+	return "升级 Proxy"
 }
 
 // DisplayNameEn returns the English display name of the action.
-func (act *actionUpgradeNode) DisplayNameEn() string {
-	return "Upgrade Node"
+func (act *actionUpgradeProxy) DisplayNameEn() string {
+	return "Upgrade Proxy"
 }
 
 // Version returns the version of the action.
-func (act *actionUpgradeNode) Version() string {
+func (act *actionUpgradeProxy) Version() string {
 	return "v1.0.0" // nolint: goconst
 }
 
 // Description returns the description of the action.
-func (act *actionUpgradeNode) Description() string {
-	return "upgrade node"
+func (act *actionUpgradeProxy) Description() string {
+	return "upgrade proxy"
 }
 
 // Timeout returns the timeout of the action.
-func (act *actionUpgradeNode) Timeout() time.Duration {
+func (act *actionUpgradeProxy) Timeout() time.Duration {
 	return 1 * time.Minute
 }
 
 // Tags returns the tags of the action.
-func (act *actionUpgradeNode) Tags() []action.Tag {
+func (act *actionUpgradeProxy) Tags() []action.Tag {
 	return []action.Tag{}
 }
 
 // MaxRetryCount returns the max retry count of the action.
-func (act *actionUpgradeNode) MaxRetryCount() uint {
+func (act *actionUpgradeProxy) MaxRetryCount() uint {
 	return 3 // nolint: mnd
 }
 
 // DelayFn this func define when this action fails, how long to wait before retrying.
-func (act *actionUpgradeNode) DelayFn() func() {
+func (act *actionUpgradeProxy) DelayFn() func() {
 	return func() {
 		time.Sleep(1 * time.Second)
 	}
@@ -111,8 +109,8 @@ func (act *actionUpgradeNode) DelayFn() func() {
 // Do this func define what the action will do.
 // nolint: funlen,nonamedreturns
 // NOCC: golint/fnsize(func design is not suitable for splitting).
-func (act *actionUpgradeNode) Do(ctx *action.InstanceContext) error {
-	param := new(ActionParamUpgradeNode)
+func (act *actionUpgradeProxy) Do(ctx *action.InstanceContext) error {
+	param := new(ActionParamUpgradeProxy)
 	err := conv.MapToStruct(ctx.Data.Content, param)
 	if err != nil {
 		return err
@@ -140,37 +138,16 @@ func (act *actionUpgradeNode) Do(ctx *action.InstanceContext) error {
 		return err
 	}
 
-	var callbackSvrAddr string
+	proxyEndpoint := discover.Endpoint{
+		Port: int(std.DeployInfo().Host.Dynamic.RelayCallbackPort),
+	}
 
-	if std.DeployInfo().Host.Dynamic.NodeRole == types.NodeRoleProxy {
-		// notice: in the normal case, this branch will not be entered, because the upgrade of Proxy will use ActionNameUpgradeProxy.
-		// proxy upgrade: use proxy's own relay callback address,
-		// since proxy is the relay in its own network unit.
-		proxyEndpoint := discover.Endpoint{
-			Port: int(std.DeployInfo().Host.Dynamic.RelayCallbackPort),
-		}
+	if len(std.DeployInfo().Host.Static.InnerIPList) > 0 {
+		proxyEndpoint.IPV4 = std.DeployInfo().Host.Static.InnerIPList[0]
+	}
 
-		if len(std.DeployInfo().Host.Static.InnerIPList) > 0 {
-			proxyEndpoint.IPV4 = std.DeployInfo().Host.Static.InnerIPList[0]
-		}
-
-		if len(std.DeployInfo().Host.Static.InnerIPV6List) > 0 {
-			proxyEndpoint.IPV6 = std.DeployInfo().Host.Static.InnerIPV6List[0]
-		}
-
-		callbackSvrAddr = nodeUtils.BuildServerURLs(proxyEndpoint)
-	} else {
-		// direct-link agent upgrade: use discover callback endpoints.
-		callbackEndpoints, err := act.provider.SelectEndpoints(
-			discover.ServiceNameBackend,
-			discover.EndpointNameBackendCallback,
-			nodeUtils.DefaultEndpointSelectionCount,
-			discover.NewRoundRobinSelector())
-		if err != nil {
-			return fmt.Errorf("failed to select backend callback endpoints: %w", err)
-		}
-
-		callbackSvrAddr = nodeUtils.BuildServerURLs(callbackEndpoints...)
+	if len(std.DeployInfo().Host.Static.InnerIPV6List) > 0 {
+		proxyEndpoint.IPV6 = std.DeployInfo().Host.Static.InnerIPV6List[0]
 	}
 
 	upgradeParams := &installer.NodeUpgradeParams{
@@ -183,7 +160,7 @@ func (act *actionUpgradeNode) Do(ctx *action.InstanceContext) error {
 		},
 		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,
-		CallbackSvrAddr:   callbackSvrAddr,
+		CallbackSvrAddr:   nodeUtils.BuildServerURLs(proxyEndpoint),
 		DeployToken:       std.Token(),
 		NodeVersion:       std.DeployInfo().Host.Dynamic.NodeVersion,
 		OperInstID:        std.InstanceData().OperationInstanceID,
@@ -205,15 +182,15 @@ func (act *actionUpgradeNode) Do(ctx *action.InstanceContext) error {
 	return act.doUpgradeUnix(std, upgradeParams)
 }
 
-func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder, param *installer.NodeUpgradeParams) error {
+func (act *actionUpgradeProxy) doUpgradeUnix(std *nodeUtils.NodeActionStandarder, param *installer.NodeUpgradeParams) error {
 	_, upgradeCmd, err := param.ToUnixScript()
 	if err != nil {
-		return fmt.Errorf("failed to render node upgrade script: %w", err)
+		return fmt.Errorf("failed to render proxy upgrade script: %w", err)
 	}
 
 	std.InstanceData().Log().
-		Zh("升级节点命令: %s", upgradeCmd).
-		En("upgrade node cmd: %s", upgradeCmd).
+		Zh("升级 Proxy 命令: %s", upgradeCmd).
+		En("upgrade proxy cmd: %s", upgradeCmd).
 		Info()
 
 	taskID, err := act.gseHandler.ExecuteScript(std.Context(),
@@ -223,7 +200,7 @@ func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder,
 			param.InstallWorkDir,
 			param.InstallWorkDir,
 			upgradeCmd),
-		upgradeScriptTimeout,
+		upgradeProxyScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
 				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
@@ -231,26 +208,26 @@ func (act *actionUpgradeNode) doUpgradeUnix(std *nodeUtils.NodeActionStandarder,
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("failed to execute upgrade script: %w", err)
+		return fmt.Errorf("failed to execute proxy upgrade script: %w", err)
 	}
 
 	std.InstanceData().Log().
-		Zh("升级节点 task-id: %s", taskID).
-		En("upgrade node task-id: %s", taskID).
+		Zh("升级 Proxy task-id: %s", taskID).
+		En("upgrade proxy task-id: %s", taskID).
 		Info()
 
 	return nil
 }
 
-func (act *actionUpgradeNode) doUpgradeWindows(std *nodeUtils.NodeActionStandarder, param *installer.NodeUpgradeParams) error {
+func (act *actionUpgradeProxy) doUpgradeWindows(std *nodeUtils.NodeActionStandarder, param *installer.NodeUpgradeParams) error {
 	_, upgradeCmd, err := param.ToWindowsScript()
 	if err != nil {
-		return fmt.Errorf("failed to render node upgrade script: %w", err)
+		return fmt.Errorf("failed to render proxy upgrade script: %w", err)
 	}
 
 	std.InstanceData().Log().
-		Zh("升级节点命令: %s", upgradeCmd).
-		En("upgrade node cmd: %s", upgradeCmd).
+		Zh("升级 Proxy 命令: %s", upgradeCmd).
+		En("upgrade proxy cmd: %s", upgradeCmd).
 		Info()
 
 	taskID, err := act.gseHandler.ExecuteScript(std.Context(),
@@ -259,19 +236,19 @@ func (act *actionUpgradeNode) doUpgradeWindows(std *nodeUtils.NodeActionStandard
 			`cd %s && %s`,
 			param.InstallWorkDir,
 			upgradeCmd),
-		upgradeScriptTimeout,
+		upgradeProxyScriptTimeout,
 		&types.EndpointWithAuth{
 			Endpoint: types.Endpoint{
 				AgentID: std.DeployInfo().Host.Dynamic.AgentID,
 			},
 		})
 	if err != nil {
-		return fmt.Errorf("failed to execute upgrade script: %w", err)
+		return fmt.Errorf("failed to execute proxy upgrade script: %w", err)
 	}
 
 	std.InstanceData().Log().
-		Zh("升级节点 task-id: %s", taskID).
-		En("upgrade node task-id: %s", taskID).
+		Zh("升级 Proxy task-id: %s", taskID).
+		En("upgrade proxy task-id: %s", taskID).
 		Info()
 
 	return nil
