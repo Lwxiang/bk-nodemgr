@@ -58,6 +58,9 @@ type IDynamicGroup interface {
 type IBiz interface {
 	// SearchBusiness search business.
 	SearchBusiness(nCtx contextx.IContext, page types.Page) ([]*types.Business, error)
+
+	// SearchBizInstTopo search business instance topology.
+	SearchBizInstTopo(nCtx contextx.IContext, bizID int64) ([]*types.TopoNodeInfo, error)
 }
 
 // IEnum this interface is used to get enum resource.
@@ -300,6 +303,48 @@ func (h *Handler) SearchBusiness(nCtx contextx.IContext, page types.Page) ([]*ty
 	}
 
 	return bizs, nil
+}
+
+// SearchBizInstTopo search business instance topology.
+func (h *Handler) SearchBizInstTopo(nCtx contextx.IContext, bizID int64) ([]*types.TopoNodeInfo, error) {
+	req := &SearchBizInstTopoReq{BKBizID: bizID}
+	resp, err := h.cli.searchBizInstTopo(nCtx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp == nil {
+		return nil, nil
+	}
+
+	result := make([]*types.TopoNodeInfo, len(*resp))
+	for idx, topo := range *resp {
+		result[idx] = convBizInstTopoToTypes(topo)
+	}
+
+	return result, nil
+}
+
+func convBizInstTopoToTypes(topo *BizInstTopo) *types.TopoNodeInfo {
+	if topo == nil {
+		return nil
+	}
+
+	children := make([]*types.TopoNodeInfo, 0, len(topo.Children))
+	for _, child := range topo.Children {
+		if child == nil {
+			continue
+		}
+		children = append(children, convBizInstTopoToTypes(child))
+	}
+
+	return &types.TopoNodeInfo{
+		InstID:   topo.BKInstID,
+		InstName: topo.BKInstName,
+		ObjID:    topo.BKObjID,
+		ObjName:  topo.BKObjName,
+		Children: children,
+	}
 }
 
 // SearchNetworkArea search network area.
@@ -1372,12 +1417,12 @@ func (h *Handler) executeSetDynamicGroup(nCtx contextx.IContext, bizID int64, gr
 }
 
 const (
-	// topoNodeObjIDBiz topo node object id for biz.
-	topoNodeObjIDBiz = "biz"
-	// topoNodeObjIDHost topo node object id for host.
-	topoNodeObjIDHost = "host"
-	// topoNodeObjIDModule topo node object id for module.
-	topoNodeObjIDModule = "module"
+	// TopoNodeObjIDBiz topo node object id for biz.
+	TopoNodeObjIDBiz = "biz"
+	// TopoNodeObjIDHost topo node object id for host.
+	TopoNodeObjIDHost = "host"
+	// TopoNodeObjIDModule topo node object id for module.
+	TopoNodeObjIDModule = "module"
 )
 
 // FindHostByTopo find host by topo.
@@ -1392,9 +1437,9 @@ func (h *Handler) FindHostByTopo(nCtx contextx.IContext, bizID int64, topoNodes 
 	otherTopoNodes := make([]*types.ScopeTopoNode, 0)
 	for idx := range topoNodes {
 		switch topoNodes[idx].TopoObjID {
-		case topoNodeObjIDBiz:
+		case TopoNodeObjIDBiz:
 			bizTopoNodes = append(bizTopoNodes, topoNodes[idx])
-		case topoNodeObjIDHost:
+		case TopoNodeObjIDHost:
 			hostTopoNodes = append(hostTopoNodes, topoNodes[idx])
 		default:
 			otherTopoNodes = append(otherTopoNodes, topoNodes[idx])
