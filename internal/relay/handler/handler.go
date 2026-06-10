@@ -46,6 +46,7 @@ type IHandler interface {
 // handler is a relay client handler.
 type handler struct {
 	storageTmpDir string
+	storageFS     workspaceFS
 
 	fileManager file.IFileManager
 	client      relayhandler.IClientMessager
@@ -58,9 +59,12 @@ func NewClientHandler(
 	conf *config.RelayService,
 ) IHandler {
 
+	storageTmpDir := filepath.Join(conf.RelayWorkspaceFileGroup.FullPath, storageTmpDirName)
+
 	return &handler{
 		fileManager:   fm,
 		client:        client,
-		storageTmpDir: filepath.Join(conf.RelayWorkspaceFileGroup.FullPath, storageTmpDirName),
+		storageTmpDir: storageTmpDir,
+		storageFS:     newWorkspaceFS(storageTmpDir),
 	}
 }
