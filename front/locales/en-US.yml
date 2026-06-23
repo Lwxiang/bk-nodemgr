@@ -773,6 +773,7 @@ agentStrategy:
   configStrategy: Config Strategy
   deploymentStrategy: Deployment Strategy
   createConfig: Create Config
+  createPluginConfig: Create Plugin Strategy
   previewConfig: Preview Config
   sortAndPreview: Sort & Preview
   loading: Loading...
@@ -784,6 +785,7 @@ agentStrategy:
     version: Version
     business: Business
     remark: Remark
+    pluginName: Plugin Name
     scope: Scope
     operator: Operator
     updateTime: Updated At
@@ -1255,6 +1257,7 @@ route:
   agentStrategy: Agent Strategy
   proxyStrategy: Proxy Strategy
   pluginStrategy: Plugin Strategy
+  pluginStrategySubtitle: Plugin strategy describes plugin node configuration and installation rules
   createPluginOperation: Create Strategy
   pluginOperate: Plugin Operation
   agentPackage: Agent Package
