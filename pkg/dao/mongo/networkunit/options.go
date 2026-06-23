@@ -60,6 +60,15 @@ func WithGeneration(generations ...int64) OptFn {
 	return base.WithInt64Values(FieldKeyGeneration, generations...)
 }
 
+// WithLinkedNetworkUnitID filters by linked networkunit-id.
+func WithLinkedNetworkUnitID(networkUnitIDs ...int64) OptFn {
+	return base.WithAnyFieldValues([]string{
+		FieldKeyLinksClusterNetworkUnitID,
+		FieldKeyLinksFileNetworkUnitID,
+		FieldKeyLinksDataNetworkUnitID,
+	}, networkUnitIDs...)
+}
+
 // WithoutGeneration filters by not contains generation.
 func WithoutGeneration(generations ...int64) OptFn {
 	return base.WithoutInt64Values(FieldKeyGeneration, generations...)
