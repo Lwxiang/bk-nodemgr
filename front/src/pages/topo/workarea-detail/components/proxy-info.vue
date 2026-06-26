@@ -62,6 +62,7 @@
               :has-auth="hasProxyOperateAuth"
               @reinstall="handleReinstall"
               @assign-unit="handleAssignUnit"
+              @ops-setting="handleOpsSetting"
               :is-cross-page-selection="isCrossPageSelection"
               :cross-page-query-params="crossPageQueryParams"
             >
@@ -141,6 +142,7 @@
       @excluded-ids-change="handleExcludedIdsChange"
       @update-search-select-data="handleUpdateSearchSelectData"
       @assign-unit="handleAssignUnit"
+      @ops-setting="handleOpsSetting"
       @auth-click="handleAuthClick">
     </DetailTable>
   </div>
@@ -167,7 +169,7 @@ import type { ISearchItem, ISearchValue } from 'bkui-vue/lib/search-select/utils
 import { debounce } from 'lodash';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import DetailTable from './detail-table.vue';
 import MoreAction from './more-action.vue';
@@ -182,6 +184,7 @@ import ReinstallProxy from '@/pages/topo/install-proxy/reinstall-proxy.vue';
 import AssignUnit from '@/pages/topo/install-proxy/assign-unit.vue';
 import { TopoService } from '@/api/modules/topo';
 import { useMainStore } from '@/stores/main';
+import { useNodeManageStore } from '@/stores/node-manage';
 import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
@@ -192,8 +195,10 @@ const props = defineProps({
 });
 const { t } = useI18n();
 const route = useRoute();
+const router = useRouter();
 const mainStore = useMainStore();
 const authStore = useAuthStore();
+const nodeManageStore = useNodeManageStore();
 
 const isProxyStatus = computed(() => route.name === 'proxy');
 
@@ -406,6 +411,17 @@ const assignUnitData = ref<Host[]>([]);
 const handleAssignUnit = (row?: Host) => {
   assignUnitData.value = row ? [row] : selectTableData.value;
   isShowAssignUnit.value = true;
+};
+
+const handleOpsSetting = (row?: Host) => {
+  const data = row ? [row] : selectTableData.value;
+  nodeManageStore.updateOpsFieldsParams({
+    tableData: data.map((item: any) => ({ ...item })),
+    isCrossPageSelection: !row && isCrossPageSelection.value,
+    nodeType: 'proxy',
+    queryParams: crossPageQueryParams.value,
+  });
+  router.push({ name: 'opsSetting' });
 };
 
 // 计算属性：是否有勾选主机
