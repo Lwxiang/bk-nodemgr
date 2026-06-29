@@ -150,6 +150,7 @@ func (mgr *Manager) registerDefSyncData() error {
 		DiscoverProvider:    mgr.conf.Provider,
 		Cache:               mgr.conf.Cache,
 		WorkflowCtl:         mgr.workflowMgr,
+		SyncIface:           mgr,
 	}
 
 	// register action defs.
@@ -165,6 +166,7 @@ func (mgr *Manager) registerDefSyncData() error {
 		syncdata.NewActionGenOperSyncAgentState(syncdataCap),
 		syncdata.NewActionSyncAgentInfo(syncdataCap),
 		syncdata.NewActionGenOperSyncAgentInfo(syncdataCap),
+		syncdata.NewActionSyncCorrectAgentID(syncdataCap),
 		syncdata.NewActionWatchCMDBResource(syncdataCap),
 		syncdata.NewActionSyncAlivePluginProcessInfo(syncdataCap),
 		syncdata.NewActionGenOperSyncAlivePluginProcessInfo(syncdataCap),
