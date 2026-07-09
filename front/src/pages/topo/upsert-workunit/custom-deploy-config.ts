@@ -2,8 +2,6 @@
 // keyed by os_type for efficient per-OS lookup.
 type DeployConfig = CustomDeployConfig & { os_type?: string };
 type DeployConfigMap = Record<string, DeployConfig>;
-const WINDOWS_OS = 'windows';
-
 const createEmptyInstallerRuntime = (): InstallerRuntime => ({
   base_work_dir: '',
 });
@@ -67,19 +65,7 @@ const getAllConfigValues = (config: CustomDeployConfig): string[] => [
   config.plugin_runtime.log_dir,
 ];
 
-const getValidationValues = (config: CustomDeployConfig): string[] => {
-  if ((config as DeployConfig).os_type?.toLowerCase() !== WINDOWS_OS) {
-    return [
-      config.installer_runtime.base_work_dir,
-      config.node_runtime.base_deploy_dir,
-      config.node_runtime.log_dir,
-      config.plugin_runtime.base_deploy_dir,
-      config.plugin_runtime.log_dir,
-    ];
-  }
-
-  return getAllConfigValues(config);
-};
+const getValidationValues = (_config: CustomDeployConfig): string[] => getAllConfigValues(_config);
 
 const hasEffectiveValue = (config: DeployConfig): boolean => (
   getAllConfigValues(config).some(value => trimConfigValue(value) !== '')

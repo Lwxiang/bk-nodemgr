@@ -107,7 +107,6 @@ const props = defineProps({
 });
 const { t } = useI18n();
 const DEFAULT_CUSTOM_DEPLOY_OS = 'linux';
-const WINDOWS_OS = 'windows';
 
 const osLabelMap = computed<Record<string, string>>(() => ({
   linux: t('topoManager.workUnit.form.osOptions.linux'),
@@ -133,17 +132,11 @@ const pluginFields = computed<Array<{ key: keyof PluginRuntime; label: string }>
   { key: 'log_dir', label: t('topoManager.workUnit.form.logDir') },
 ]));
 
-const ipcNodeFieldKeys: Array<keyof NodeRuntime> = ['data_ipc', 'plugin_ipc'];
-
-const isWindowsOs = computed(() => activeOs.value.toLowerCase() === WINDOWS_OS);
-
-const isReadonlyIpcField = (fieldKey: keyof NodeRuntime): boolean => (
-  ipcNodeFieldKeys.includes(fieldKey) && !isWindowsOs.value
-);
+const isReadonlyIpcField = (_fieldKey: keyof NodeRuntime): boolean => false;
 
 const getNodeFieldPlaceholder = (fieldKey: keyof NodeRuntime): string => {
-  if (isReadonlyIpcField(fieldKey)) {
-    return t('topoManager.workUnit.form.windowsOnlyIpcEditable');
+  if (fieldKey === 'zone_id' || fieldKey === 'city_id') {
+    return 'default';
   }
   return props.defaultConfig?.node_runtime?.[fieldKey] || '';
 };
