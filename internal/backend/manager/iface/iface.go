@@ -36,6 +36,9 @@ type INodeManager interface {
 	// LaunchAssignProxyUnit launch a task to assign proxy unit. returns the workflow-id.
 	LaunchAssignProxyUnit(ctx contextx.IContext, param types.AssignProxyUnitParam) (string, error)
 
+	// AssignAgentNetworkUnit assigns a network unit to agent hosts.
+	AssignAgentNetworkUnit(nCtx contextx.IContext, param types.NodeAgentAssignUnitParam) (*types.NodeAgentAssignUnitResult, error)
+
 	// LaunchRetryOperationFromLastInstance launch a task to retry operation from last instance.
 	LaunchRetryNodeOperationFromLastInstance(ctx contextx.IContext, param types.RetryNodeWorkflowOperationParam) error
 
