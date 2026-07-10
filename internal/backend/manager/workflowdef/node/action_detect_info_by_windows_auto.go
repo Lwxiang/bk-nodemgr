@@ -11,10 +11,8 @@
 package node
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	nodeUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/node/utils"
@@ -23,23 +21,22 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/release"
 	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/creditvault"
-	platfmt "github.com/TencentBlueKing/bk-nodemgr/pkg/format/platform"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/sshx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/wmix"
-
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/workflow/action"
 )
 
 const (
-	// ActionNameDetectInfoByWMI defines the action name.
-	ActionNameDetectInfoByWMI = "detect_info_by_wmi"
+	// ActionNameDetectInfoByWindowsAuto defines the action name.
+	ActionNameDetectInfoByWindowsAuto = "detect_info_by_windows_auto"
 )
 
-// NewActionDetectInfoByWMI get a new action.
-func NewActionDetectInfoByWMI(capability *Capability) action.Definition {
-	return &actionDetectInfoByWMI{
+// NewActionDetectInfoByWindowsAuto get a new action.
+func NewActionDetectInfoByWindowsAuto(capability *Capability) action.Definition {
+	return &actionDetectInfoByWindowsAuto{
 		storageHostCredit:     capability.StorageHostCredit,
 		storageNodeDeployment: capability.StorageNode,
 		storageHost:           capability.StorageTopo,
@@ -48,12 +45,12 @@ func NewActionDetectInfoByWMI(capability *Capability) action.Definition {
 	}
 }
 
-// ActParamDetectInfoByWMI ...
-type ActParamDetectInfoByWMI struct {
+// ActParamDetectInfoByWindowsAuto defines the action parameter.
+type ActParamDetectInfoByWindowsAuto struct {
 	nodeUtils.NodeActionStandardParam `json:",inline"`
 }
 
-type actionDetectInfoByWMI struct {
+type actionDetectInfoByWindowsAuto struct {
 	storageHostCredit     credit.IStorageHostCredit
 	storageNodeDeployment nodeStg.IDaoNodeDeployment
 	storageHost           topoStg.IStorageHost
@@ -61,67 +58,68 @@ type actionDetectInfoByWMI struct {
 	passwordVault         creditvault.IHostPasswordVault
 }
 
+type windowsAutoDetectResult struct {
+	osType  criteria.OSType
+	cpuArch criteria.CPUArch
+}
+
 // Name returns the name of the action.
-func (act *actionDetectInfoByWMI) Name() string {
-	return ActionNameDetectInfoByWMI
+func (act *actionDetectInfoByWindowsAuto) Name() string {
+	return ActionNameDetectInfoByWindowsAuto
 }
 
 // DisplayNameZh returns the Chinese display name of the action.
-func (act *actionDetectInfoByWMI) DisplayNameZh() string {
-	return "通过 WMI 探测主机信息"
+func (act *actionDetectInfoByWindowsAuto) DisplayNameZh() string {
+	return "自动探测 Windows 主机信息"
 }
 
 // DisplayNameEn returns the English display name of the action.
-func (act *actionDetectInfoByWMI) DisplayNameEn() string {
-	return "Detect Host Info via WMI"
+func (act *actionDetectInfoByWindowsAuto) DisplayNameEn() string {
+	return "Detect Windows Host Info Automatically"
 }
 
 // Version returns the version of the action.
-func (act *actionDetectInfoByWMI) Version() string {
+func (act *actionDetectInfoByWindowsAuto) Version() string {
 	return "v1.0.0" // nolint: goconst
 }
 
 // Description returns the description of the action.
-func (act *actionDetectInfoByWMI) Description() string {
-	return "Use wmi to connect to the target machine, transfer files through sftp, and execute the installation command"
+func (act *actionDetectInfoByWindowsAuto) Description() string {
+	return "Use Windows SSH first to detect host info, and fallback to WMI when SSH detection fails."
 }
 
 // Timeout returns the timeout of the action.
-func (act *actionDetectInfoByWMI) Timeout() time.Duration {
-	return 1 * time.Minute
+func (act *actionDetectInfoByWindowsAuto) Timeout() time.Duration {
+	return 10 * time.Minute // nolint: mnd
 }
 
 // Tags returns the tags of the action.
-func (act *actionDetectInfoByWMI) Tags() []action.Tag {
+func (act *actionDetectInfoByWindowsAuto) Tags() []action.Tag {
 	return []action.Tag{}
 }
 
 // MaxRetryCount returns the max retry count of the action.
-func (act *actionDetectInfoByWMI) MaxRetryCount() uint {
+func (act *actionDetectInfoByWindowsAuto) MaxRetryCount() uint {
 	return 3 // nolint: mnd
 }
 
 // DelayFn this func define when this action fails, how long to wait before retrying.
-func (act *actionDetectInfoByWMI) DelayFn(_ int) func() {
+func (act *actionDetectInfoByWindowsAuto) DelayFn(_ int) func() {
 	return func() {
 		time.Sleep(5 * time.Second) // nolint: mnd
 	}
 }
 
 // Do this func define what the action will do.
-// To ensure readability, this action uses fmt.Sprintf to concatenate characters.
 // nolint: perfsprint,funlen,gocognit
 // NOCC: golint/fnsize(func design is not suitable for splitting).
-func (act *actionDetectInfoByWMI) Do(ctx *action.InstanceContext) (err error) {
-	param := new(ActParamDetectInfoByWMI)
+func (act *actionDetectInfoByWindowsAuto) Do(ctx *action.InstanceContext) (err error) {
+	param := new(ActParamDetectInfoByWindowsAuto)
 	err = conv.MapToStruct(ctx.Data.Content, param)
 	if err != nil {
-		err = fmt.Errorf("failed to convert param: %w", err)
-
-		return err
+		return fmt.Errorf("failed to convert param: %w", err)
 	}
 
-	// initialize standard data.
 	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment, act.storageHost)
 	if err = std.Initialize(ctx, param.NodeActionStandardParam); err != nil {
 		return err
@@ -132,11 +130,23 @@ func (act *actionDetectInfoByWMI) Do(ctx *action.InstanceContext) (err error) {
 		}
 	}()
 
-	// get wmi credit.
-	credit := nodeUtils.NewCreditHandler(act.storageHostCredit, act.passwordVault)
-	cMethod, cKey, err := credit.GetWMICredit(std)
+	result, err := act.detectWindowsAutoInfo(std)
 	if err != nil {
-		return fmt.Errorf("failed to get wmi credit: %w", err)
+		return err
+	}
+
+	if err = act.applyWindowsAutoDetectResult(std, result); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (act *actionDetectInfoByWindowsAuto) detectByWindowsSSH(std *nodeUtils.NodeActionStandarder) (windowsSSHDetectResult, error) {
+	credit := nodeUtils.NewCreditHandler(act.storageHostCredit, act.passwordVault)
+	cMethod, cKey, err := credit.GetSSHCredit(std)
+	if err != nil {
+		return windowsSSHDetectResult{}, fmt.Errorf("failed to get ssh credit: %w", err)
 	}
 
 	std.InstanceData().Log().
@@ -144,7 +154,51 @@ func (act *actionDetectInfoByWMI) Do(ctx *action.InstanceContext) (err error) {
 		En("credit loaded, auth-method(%s), credential-length(%d)", cMethod, len(cKey)).
 		Info()
 
-	// generate the wmi client.
+	client, err := sshx.NewClient(std.Context(), &sshx.Config{
+		Network:    sshx.NetworkTCP,
+		IP:         std.DeployInfo().Host.Dynamic.LoginIP,
+		Port:       int(std.DeployInfo().Host.Dynamic.LoginPort),
+		User:       std.DeployInfo().Host.Dynamic.LoginUser,
+		AuthMethod: cMethod,
+		Password: func() string {
+			if cMethod == sshx.AuthMethodPassword {
+				return cKey
+			}
+
+			return ""
+		}(),
+		PrivateKey: func() []byte {
+			if cMethod == sshx.AuthMethodPrivateKey {
+				return []byte(cKey)
+			}
+
+			return nil
+		}(),
+		Ciphers: sshx.WindowsCompatibleCiphers(),
+		MACs:    sshx.WindowsCompatibleMACs(),
+	}, sshx.DefaultTimeout)
+	if err != nil {
+		return windowsSSHDetectResult{}, fmt.Errorf("failed to generate new ssh client: %w", err)
+	}
+	defer func() {
+		_ = client.Close()
+	}()
+
+	return detectWindowsSSHInfo(std.InstanceData(), client)
+}
+
+func (act *actionDetectInfoByWindowsAuto) detectByWMI(std *nodeUtils.NodeActionStandarder) (windowsWMIDetectResult, error) {
+	credit := nodeUtils.NewCreditHandler(act.storageHostCredit, act.passwordVault)
+	cMethod, cKey, err := credit.GetWMICredit(std)
+	if err != nil {
+		return windowsWMIDetectResult{}, fmt.Errorf("failed to get wmi credit: %w", err)
+	}
+
+	std.InstanceData().Log().
+		Zh("凭证获取成功, 认证方式(%s), 凭证长度(%d)", cMethod, len(cKey)).
+		En("credit loaded, auth-method(%s), credential-length(%d)", cMethod, len(cKey)).
+		Info()
+
 	client, err := wmix.NewClient(&wmix.Config{
 		IP:         std.DeployInfo().Host.Dynamic.LoginIP,
 		User:       std.DeployInfo().Host.Dynamic.LoginUser,
@@ -159,14 +213,15 @@ func (act *actionDetectInfoByWMI) Do(ctx *action.InstanceContext) (err error) {
 		Timeout: wmix.DefaultTimeout,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to generate new wmi client: %w", err)
+		return windowsWMIDetectResult{}, fmt.Errorf("failed to generate new wmi client: %w", err)
 	}
 
-	result, err := detectWindowsWMIInfo(std.Context(), client)
-	if err != nil {
-		return err
-	}
-	logWindowsWMIInfo(std.InstanceData(), result)
+	return detectWindowsWMIInfo(std.Context(), client)
+}
+
+func (act *actionDetectInfoByWindowsAuto) applyWindowsAutoDetectResult(
+	std *nodeUtils.NodeActionStandarder, result windowsAutoDetectResult,
+) error {
 
 	std.DeployInfo().Host.Dynamic.NodeOsType = result.osType
 	std.DeployInfo().Host.Dynamic.NodeCPUArch = result.cpuArch
@@ -207,7 +262,7 @@ func (act *actionDetectInfoByWMI) Do(ctx *action.InstanceContext) (err error) {
 			Info()
 	}
 
-	err = checkVersionAvailability(
+	if err = checkVersionAvailability(
 		std.Context(), CheckAndSelectVersionParam{
 			daoRelease:  act.storageRelease,
 			ReleaseType: releaseType,
@@ -215,64 +270,40 @@ func (act *actionDetectInfoByWMI) Do(ctx *action.InstanceContext) (err error) {
 			OSType:      std.DeployInfo().Host.Dynamic.NodeOsType,
 			CPUArch:     std.DeployInfo().Host.Dynamic.NodeCPUArch,
 			Version:     std.DeployInfo().Host.Dynamic.NodeVersion,
-		})
-	if err != nil {
+		}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-type windowsWMIDetectResult struct {
-	osType  criteria.OSType
-	cpuArch criteria.CPUArch
-}
+func (act *actionDetectInfoByWindowsAuto) detectWindowsAutoInfo(
+	std *nodeUtils.NodeActionStandarder,
+) (windowsAutoDetectResult, error) {
 
-type windowsWMICommandRunner interface {
-	RunCommand(ctx context.Context, cmd string) (string, string, error)
-}
-
-func detectWindowsWMIInfo(ctx context.Context, runner windowsWMICommandRunner) (windowsWMIDetectResult, error) {
-	osTypeStr, _, err := runner.RunCommand(ctx, "ver")
-	if err != nil {
-		return windowsWMIDetectResult{}, fmt.Errorf("failed to run ver: %w", err)
-	}
-	osTypeStr = strings.TrimFunc(strings.ToLower(osTypeStr), func(r rune) bool {
-		return r == '\n'
-	})
-	osType, err := platfmt.NormalizeOS(osTypeStr)
-	if err != nil {
-		return windowsWMIDetectResult{}, fmt.Errorf("failed to detect info: %w", err)
+	sshResult, sshErr := act.detectByWindowsSSH(std)
+	if sshErr == nil {
+		return windowsAutoDetectResult{
+			osType:  sshResult.osType,
+			cpuArch: sshResult.cpuArch,
+		}, nil
 	}
 
-	switch osType {
-	case criteria.OSWindows:
-	default:
-		return windowsWMIDetectResult{}, fmt.Errorf("unsupported os type, os-type(%s)", osType)
-	}
+	std.InstanceData().Log().
+		Zh("Windows SSH 探测失败，切换到 WMI 兜底: %s", sshErr.Error()).
+		En("windows ssh detect failed, fallback to wmi: %s", sshErr.Error()).
+		Warn()
 
-	cpuArchStr, _, err := runner.RunCommand(ctx, "echo %PROCESSOR_ARCHITECTURE%")
-	if err != nil {
-		return windowsWMIDetectResult{}, fmt.Errorf("failed to run uname -m: %w", err)
+	wmiResult, wmiErr := act.detectByWMI(std)
+	if wmiErr != nil {
+		return windowsAutoDetectResult{}, fmt.Errorf(
+			"failed to detect windows info by auto, ssh detect error(%v), wmi detect error: %w", sshErr, wmiErr,
+		)
 	}
-	cpuArchStr = strings.TrimFunc(strings.ToLower(cpuArchStr), func(r rune) bool {
-		return r == '\n'
-	})
-	cpuArch, err := platfmt.NormalizeArch(cpuArchStr)
-	if err != nil {
-		return windowsWMIDetectResult{}, fmt.Errorf("failed to detect info: %w", err)
-	}
+	logWindowsWMIInfo(std.InstanceData(), wmiResult)
 
-	return windowsWMIDetectResult{osType: osType, cpuArch: cpuArch}, nil
-}
-
-func logWindowsWMIInfo(data *action.InstanceData, result windowsWMIDetectResult) {
-	data.Log().
-		Zh("主机操作系统类型(%s)", result.osType).
-		En("host-os-type(%s)", result.osType).
-		Info()
-	data.Log().
-		Zh("主机CPU架构(%s)", result.cpuArch).
-		En("host-cpu-arch(%s)", result.cpuArch).
-		Info()
+	return windowsAutoDetectResult{
+		osType:  wmiResult.osType,
+		cpuArch: wmiResult.cpuArch,
+	}, nil
 }
