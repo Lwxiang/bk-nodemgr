@@ -1337,11 +1337,20 @@ func convertHostFieldSelectionToFields(selection *types.HostFieldSelection) []st
 	if selection.Topo {
 		fields = append(fields, FieldKeyStaticTopo)
 	}
+	if selection.NodeRole {
+		fields = append(fields, FieldKeyDynamicNodeRole)
+	}
 	if selection.LoginUser {
 		fields = append(fields, FieldKeyDynamicLoginUser)
 	}
 	if selection.AgentID {
 		fields = append(fields, FieldKeyDynamicAgentID)
+	}
+	if selection.AdvertiseIP {
+		fields = append(fields, FieldKeyDynamicAdvertiseIP)
+	}
+	if selection.AdvertiseIPV6 {
+		fields = append(fields, FieldKeyDynamicAdvertiseIPV6)
 	}
 
 	return fields
