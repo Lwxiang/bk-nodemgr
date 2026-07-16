@@ -12,6 +12,7 @@
 package options
 
 import (
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/distinctcache"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/frontsetting"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/storage/cptemplate"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
@@ -53,23 +54,34 @@ type Capability struct {
 
 	// ConfigPolicyOptionSet is the config policy option set.
 	ConfigPolicyOptionSet types.ConfigPolicyOptionSet
+
+	// DistinctCache holds the in-memory host and process distinct results
+	// synced from the backend, used to serve distinct queries without hitting
+	// the DB per request.
+	DistinctCache *distinctcache.Cache
 }
 
 // Start starts all services in capability.
-func (c *Capability) Start(nCtx contextx.IContext) error {
-	if err := c.DiscoverProvider.Start(nCtx); err != nil {
+func (capability *Capability) Start(nCtx contextx.IContext) error {
+	if err := capability.DiscoverProvider.Start(nCtx); err != nil {
 		return err
 	}
 
-	if err := c.StorageConfigPolicyTemplate.Start(nCtx); err != nil {
+	if err := capability.StorageConfigPolicyTemplate.Start(nCtx); err != nil {
 		return err
+	}
+
+	if capability.DistinctCache != nil {
+		if err := capability.DistinctCache.Start(nCtx); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 // GracefulShutdown graceful shutdown all services in capability.
-func (c *Capability) GracefulShutdown() error {
+func (capability *Capability) GracefulShutdown() error {
 	if err := tracing.G().ShutdownAll(contextx.Background()); err != nil {
 		return err
 	}

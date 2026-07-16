@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/application/distinctcache"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/frontsetting"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/options"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/router/admin"
@@ -344,6 +345,11 @@ func (svc *Service) initialStorages() error {
 	if err != nil {
 		return fmt.Errorf("failed to create config policy template storage: %w", err)
 	}
+
+	svc.Cap.DistinctCache = distinctcache.New(
+		svc.Cap.BackendHandler,
+		svc.Cap.MongoClient.Database(svc.conf.MongoDB.Database),
+	)
 
 	return nil
 }
