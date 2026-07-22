@@ -33,16 +33,26 @@ import (
 const (
 	// ActionNameUninstallNode defines the action name.
 	ActionNameUninstallNode = "uninstall_node"
+	// ActionNameUninstallNodeSkipReport defines the action name for uninstall without installer report.
+	ActionNameUninstallNodeSkipReport = "uninstall_node_skip_report"
 
 	uninstallScriptTimeout = 10 * time.Minute
 )
 
 // NewActionUninstallNode get a new action.
 func NewActionUninstallNode(capability *Capability) action.Definition {
-	return &actionUninstallNode{
+	return &actionUninstallNode{actionUninstallNodeBase: newActionUninstallNodeBase(capability)}
+}
+
+// NewActionUninstallNodeSkipReport get a new action that skips installer report.
+func NewActionUninstallNodeSkipReport(capability *Capability) action.Definition {
+	return &actionUninstallNodeSkipReport{actionUninstallNodeBase: newActionUninstallNodeBase(capability)}
+}
+
+func newActionUninstallNodeBase(capability *Capability) actionUninstallNodeBase {
+	return actionUninstallNodeBase{
 		storageNodeDeployment: capability.StorageNode,
 		storageHost:           capability.StorageTopo,
-		storageNetworkUnit:    capability.StorageTopo,
 		gseHandler:            capability.GSEHandler,
 		provider:              capability.DiscoverProvider,
 		storageActionInstance: capability.StorageWorkflow,
@@ -54,13 +64,20 @@ type ActionParamUninstallNode struct {
 	nodeUtils.NodeActionStandardParam `json:",inline"`
 }
 
-type actionUninstallNode struct {
+type actionUninstallNodeBase struct {
 	storageNodeDeployment nodeStg.IDaoNodeDeployment
 	storageHost           topoStg.IStorageHost
-	storageNetworkUnit    topoStg.IStorageNetworkUnit
 	gseHandler            gse.IHandler
 	provider              discover.Provider
 	storageActionInstance workflow.IStorageActionInstance
+}
+
+type actionUninstallNode struct {
+	actionUninstallNodeBase
+}
+
+type actionUninstallNodeSkipReport struct {
+	actionUninstallNodeBase
 }
 
 // Name returns the name of the action.
@@ -68,43 +85,48 @@ func (act *actionUninstallNode) Name() string {
 	return ActionNameUninstallNode
 }
 
+// Name returns the name of the action.
+func (act *actionUninstallNodeSkipReport) Name() string {
+	return ActionNameUninstallNodeSkipReport
+}
+
 // DisplayNameZh returns the Chinese display name of the action.
-func (act *actionUninstallNode) DisplayNameZh() string {
+func (act *actionUninstallNodeBase) DisplayNameZh() string {
 	return "卸载节点"
 }
 
 // DisplayNameEn returns the English display name of the action.
-func (act *actionUninstallNode) DisplayNameEn() string {
+func (act *actionUninstallNodeBase) DisplayNameEn() string {
 	return "Uninstall Node"
 }
 
 // Version returns the version of the action.
-func (act *actionUninstallNode) Version() string {
+func (act *actionUninstallNodeBase) Version() string {
 	return "v1.0.0" // nolint: goconst
 }
 
 // Description returns the description of the action.
-func (act *actionUninstallNode) Description() string {
+func (act *actionUninstallNodeBase) Description() string {
 	return "uninstall node"
 }
 
 // Timeout returns the timeout of the action.
-func (act *actionUninstallNode) Timeout() time.Duration {
+func (act *actionUninstallNodeBase) Timeout() time.Duration {
 	return 1 * time.Minute
 }
 
 // Tags returns the tags of the action.
-func (act *actionUninstallNode) Tags() []action.Tag {
+func (act *actionUninstallNodeBase) Tags() []action.Tag {
 	return []action.Tag{}
 }
 
 // MaxRetryCount returns the max retry count of the action.
-func (act *actionUninstallNode) MaxRetryCount() uint {
+func (act *actionUninstallNodeBase) MaxRetryCount() uint {
 	return 3 // nolint: mnd
 }
 
 // DelayFn this func define when this action fails, how long to wait before retrying.
-func (act *actionUninstallNode) DelayFn(_ int) func() {
+func (act *actionUninstallNodeBase) DelayFn(_ int) func() {
 	return func() {
 		time.Sleep(1 * time.Second)
 	}
@@ -114,15 +136,8 @@ func (act *actionUninstallNode) DelayFn(_ int) func() {
 // nolint: funlen,nonamedreturns
 // NOCC: golint/fnsize(func design is not suitable for splitting).
 func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
-	param := new(ActionParamUninstallNode)
-	err := conv.MapToStruct(ctx.Data.Content, param)
+	std, err := act.initializeStandarder(ctx)
 	if err != nil {
-		return err
-	}
-
-	// initialize standard data.
-	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment, act.storageHost)
-	if err = std.Initialize(ctx, param.NodeActionStandardParam); err != nil {
 		return err
 	}
 	defer func() {
@@ -136,8 +151,7 @@ func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("failed to save blocking action name: %w", err)
 	}
 
-	// select matching tools.
-	toolName, err := tool.FormatInstallerName(std.DeployInfo().Host.Dynamic.NodeOsType, std.DeployInfo().Host.Dynamic.NodeCPUArch)
+	uninstallParams, err := act.buildUninstallParamsBase(std)
 	if err != nil {
 		return err
 	}
@@ -148,7 +162,67 @@ func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("failed to generate node installer server endpoints: %w", err)
 	}
 
-	uninstallParams := &installer.NodeUninstallParams{
+	uninstallParams.CallbackSvrAddr = nodeUtils.BuildServerURLs(callbackEndpoints...)
+	err = saveWaitInstallerPrivateData(
+		std.Context(), act.storageActionInstance, std.InstanceData().OperationInstanceID,
+		false, false)
+	if err != nil {
+		return err
+	}
+
+	return act.doUninstall(std, uninstallParams)
+}
+
+// Do this func define what the action will do.
+func (act *actionUninstallNodeSkipReport) Do(ctx *action.InstanceContext) error {
+	std, err := act.initializeStandarder(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if storeErr := std.Save(); storeErr != nil {
+			err = errors.Join(storeErr, err)
+		}
+	}()
+
+	uninstallParams, err := act.buildUninstallParamsBase(std)
+	if err != nil {
+		return err
+	}
+	uninstallParams.SkipCallback = true
+
+	return act.doUninstall(std, uninstallParams)
+}
+
+func (act *actionUninstallNodeBase) initializeStandarder(
+	ctx *action.InstanceContext) (*nodeUtils.NodeActionStandarder, error) {
+
+	param := new(ActionParamUninstallNode)
+	err := conv.MapToStruct(ctx.Data.Content, param)
+	if err != nil {
+		return nil, err
+	}
+
+	std := nodeUtils.NewNodeActionStandarder(act.storageNodeDeployment, act.storageHost)
+	if err = std.Initialize(ctx, param.NodeActionStandardParam); err != nil {
+		return nil, err
+	}
+
+	return std, nil
+}
+
+func (act *actionUninstallNodeBase) buildUninstallParamsBase(
+	std *nodeUtils.NodeActionStandarder) (*installer.NodeUninstallParams, error) {
+
+	toolName, err := tool.FormatInstallerName(
+		std.DeployInfo().Host.Dynamic.NodeOsType,
+		std.DeployInfo().Host.Dynamic.NodeCPUArch,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &installer.NodeUninstallParams{
 		NodeCommonParams: installer.NodeCommonParams{
 			DeployEnv:     system.GetEnv(),
 			Generation:    int(std.DeployInfo().Host.Dynamic.NodeGeneration),
@@ -158,28 +232,25 @@ func (act *actionUninstallNode) Do(ctx *action.InstanceContext) error {
 		},
 		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,
-		CallbackSvrAddr:   nodeUtils.BuildServerURLs(callbackEndpoints...),
 		DeployToken:       std.Token(),
 		OperInstID:        std.InstanceData().OperationInstanceID,
-	}
+	}, nil
+}
 
-	err = saveWaitInstallerPrivateData(
-		std.Context(), act.storageActionInstance, std.InstanceData().OperationInstanceID,
-		false, false)
-	if err != nil {
-		return err
-	}
+func (act *actionUninstallNodeBase) doUninstall(
+	std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
 
-	// exec uninstall command
 	if std.DeployInfo().Host.Dynamic.NodeOsType == criteria.OSWindows {
-		return act.doUninstallWindows(std, uninstallParams)
+		return act.doUninstallWindows(std, param)
 	}
 
-	return act.doUninstallUnix(std, uninstallParams)
+	return act.doUninstallUnix(std, param)
 }
 
 // nolint: perfsprint
-func (act *actionUninstallNode) doUninstallUnix(std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
+func (act *actionUninstallNodeBase) doUninstallUnix(
+	std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
+
 	_, uninstallCmd, err := param.ToUnixScript()
 	if err != nil {
 		return fmt.Errorf("failed to render node uninstall script: %w", err)
@@ -214,7 +285,9 @@ func (act *actionUninstallNode) doUninstallUnix(std *nodeUtils.NodeActionStandar
 }
 
 // nolint: perfsprint
-func (act *actionUninstallNode) doUninstallWindows(std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
+func (act *actionUninstallNodeBase) doUninstallWindows(
+	std *nodeUtils.NodeActionStandarder, param *installer.NodeUninstallParams) error {
+
 	_, uninstallCmd, err := param.ToWindowsScript()
 	if err != nil {
 		return fmt.Errorf("failed to render node uninstall script: %w", err)
