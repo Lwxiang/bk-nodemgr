@@ -992,6 +992,7 @@ func cloneScanAllFilter(filter bson.D) bson.D {
 
 func (orm *Orm[P, T]) scanAllBatch(
 	nCtx contextx.IContext, cursor *mongo.Cursor, lastID *any, dataPoints *[]P) (batchCount int64, advanced bool, err error) {
+
 	defer func() {
 		if closeErr := cursor.Close(nCtx); closeErr != nil {
 			logger.G.Sys().Ctx(nCtx).WithErr(closeErr).With("table", orm.dao.GetTableName()).Warn("failed to close scan all cursor")
@@ -1618,9 +1619,9 @@ func buildUpdateField(key string, value any) bson.D {
 		{
 			Key: "$set",
 			Value: bson.M{
-				"basic.is_deleted": false,
-				"basic.updated_at": nowTime,
-				key:                value,
+				FieldKeyIsDeleted: false,
+				FieldKeyUpdatedAt: nowTime,
+				key:               value,
 			},
 		},
 	}
@@ -1632,8 +1633,8 @@ func buildUpdateField(key string, value any) bson.D {
 func buildUpdateFields(fields map[string]any) bson.D {
 	nowTime := time.Now()
 	updateFields := bson.M{
-		"basic.is_deleted": false,
-		"basic.updated_at": nowTime,
+		FieldKeyIsDeleted: false,
+		FieldKeyUpdatedAt: nowTime,
 	}
 
 	for key, value := range fields {
