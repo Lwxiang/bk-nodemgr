@@ -136,7 +136,6 @@ func (act *actionAssignProxyInfo) Do(ctx *action.InstanceContext) error {
 		deployInfo.Host.Dynamic.RelayDownloadPort = defaultRelayDownloadPort
 	}
 
-	// Set proxy tags.
 	if len(param.ProxyTags) > 0 {
 		deployInfo.Host.Dynamic.ProxyTags = types.StringListToProxyTagList(param.ProxyTags)
 	} else {
