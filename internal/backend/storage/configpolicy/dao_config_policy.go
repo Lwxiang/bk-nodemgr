@@ -17,7 +17,6 @@ import (
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/dao/mongo/configpolicy"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -290,11 +289,6 @@ func (s *Storage) previewConfigPolicy(nCtx contextx.IContext,
 	for _, host := range hosts {
 		policies := findMatchedPolicies(allPolicies, host)
 		matchResult := buildMatchResult(host.HostID, policies)
-
-		logger.G.Sys().Info("DEBUG: generate host configpolicy preview, %+v, %+v", host, constraints)
-		for _, p := range policies {
-			logger.G.Sys().Info("DEBUG: generate host configpolicy preview, %+v", p)
-		}
 
 		if isPreviewReliable(host, constraints) {
 			result.ReliableResults = append(result.ReliableResults, matchResult)
