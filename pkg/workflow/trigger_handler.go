@@ -498,7 +498,7 @@ func (handler *triggerHandler) instantiateOperation(nCtx contextx.IContext, trig
 						"operation-id", ctl.GetOperationID()).
 					Error("failed to create operation instance")
 
-				return err
+				return nil
 			}
 
 			logger.G.Sys().
