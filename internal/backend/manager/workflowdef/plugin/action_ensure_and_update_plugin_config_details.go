@@ -263,7 +263,7 @@ type ContextPreDefinitionConstants struct {
 type ContextNodeInfoStatic struct {
 	BizID         int64    `json:"BizID"`
 	NetworkAreaID int64    `json:"NetworkAreaID"`
-	ZoneID        string   `json:"ZoneID"`
+	ZoneID        int64    `json:"ZoneID"`
 	CityID        string   `json:"CityID"`
 	HostName      string   `json:"HostName"`
 	DeptName      string   `json:"DeptName"`

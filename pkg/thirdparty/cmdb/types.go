@@ -101,7 +101,7 @@ type HostInfo struct {
 	// 操作系统类型
 	BKOSType string `json:"bk_os_type"`
 	// IDC区域ID
-	BKIDCAreaID string `json:"bk_idc_area_id"`
+	BKIDCAreaID int64 `json:"bk_idc_area_id"`
 	// CPU逻辑核心数
 	BKCpu float64 `json:"bk_cpu"`
 	// 内网Mac 地址
@@ -209,9 +209,9 @@ const (
 // IsFailed check the response is ok.
 func (resp *BaseBroker[T]) IsFailed() error {
 	switch {
-	case resp.Result == true && resp.Code == codeOK:
+	case resp.Result && resp.Code == codeOK:
 		return nil
-	case (resp.Result == false && resp.Code == codeNoPermission) || resp.Permission != nil:
+	case (!resp.Result && resp.Code == codeNoPermission) || resp.Permission != nil:
 		return fmt.Errorf("no permission, please check your permission, permission(%v)", resp.Permission)
 	default:
 		return fmt.Errorf("result(%v), code(%d) , msg(%s)", resp.Result, resp.Code, resp.Message)

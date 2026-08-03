@@ -42,7 +42,7 @@ type HostStatic struct {
 	OSTypeCCID    string     `json:"os_type_ccid" bson:"os_type_ccid"`
 	Arch          string     `json:"arch" bson:"arch"`
 	Addressing    string     `json:"addressing" bson:"addressing"`
-	ZoneID        string     `json:"zone_id" bson:"zone_id"`
+	ZoneID        int64      `json:"zone_id" bson:"zone_id"`
 	CityID        string     `json:"city_id" bson:"city_id"`
 	CPUNum        float64    `json:"cpu_num" bson:"cpu_num"`
 	MemCap        float64    `json:"mem_cap" bson:"mem_cap"`

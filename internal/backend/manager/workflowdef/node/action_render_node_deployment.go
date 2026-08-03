@@ -158,16 +158,16 @@ func (act *actionRenderNodeDeployment) Do(ctx *action.InstanceContext) error {
 			return err
 		}
 
-		nodeConf.PreSetting = rlsAgent.ReleaseAdditionInfoAgent.ConfigEnviron
-		nodeConf.ConfigTemplate = rlsAgent.ReleaseAdditionInfoAgent.ConfigTemplate
+		nodeConf.PreSetting = rlsAgent.ConfigEnviron
+		nodeConf.ConfigTemplate = rlsAgent.ConfigTemplate
 	case types.ReleaseTypeProxy:
 		rlsProxy, err := act.getReleaseProxyForRender(std)
 		if err != nil {
 			return err
 		}
 
-		nodeConf.PreSetting = rlsProxy.ReleaseAdditionInfoProxy.ConfigEnviron
-		nodeConf.ConfigTemplate = rlsProxy.ReleaseAdditionInfoProxy.ConfigTemplate
+		nodeConf.PreSetting = rlsProxy.ConfigEnviron
+		nodeConf.ConfigTemplate = rlsProxy.ConfigTemplate
 	default:
 		return fmt.Errorf("unsupported release type: %s", releaseType)
 	}
@@ -572,7 +572,10 @@ func (act *actionRenderNodeDeployment) renderLogicSettingRuntime(std *nodeUtils.
 
 	nodeConf.PreSetting[GseTemplateKeyRunMode] = std.DeployInfo().Host.Dynamic.NodeRole
 	nodeConf.PreSetting[GseTemplateKeyCloudID] = std.DeployInfo().Host.Static.NetworkAreaID
-	nodeConf.PreSetting[GseTemplateKeyZoneID] = conv.NonEmptyOr(std.DeployInfo().Host.Static.ZoneID, std.DeployInfo().BaseRuntime.ZoneID)
+	nodeConf.PreSetting[GseTemplateKeyZoneID] = std.DeployInfo().BaseRuntime.ZoneID
+	if std.DeployInfo().Host.Static.ZoneID != 0 {
+		nodeConf.PreSetting[GseTemplateKeyZoneID] = strconv.FormatInt(std.DeployInfo().Host.Static.ZoneID, 10)
+	}
 	nodeConf.PreSetting[GseTemplateKeyCityID] = conv.NonEmptyOr(std.DeployInfo().Host.Static.CityID, std.DeployInfo().BaseRuntime.CityID)
 
 	homeDir := std.DeployInfo().BaseRuntime.HomeDir
