@@ -12,8 +12,11 @@
 package tenant
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 )
 
 // Mode tenant mode.
@@ -62,34 +65,55 @@ func GetMode() Mode {
 const (
 	// SingleModeTenantID tenant id for single mode.
 	SingleModeTenantID = "default"
+
+	// SystemTenantID tenant id for system in multiple mode.
+	SystemTenantID = "system"
 )
 
-// ITenantIDStorage tenant id storage.
-type ITenantIDStorage interface {
-	GetAllTenantIDs() []string
+// ITenantIDProvider tenant id provider.
+type ITenantIDProvider interface {
+	ListTenantIDs(nCtx contextx.IContext) ([]string, error)
 }
 
-var _ ITenantIDStorage = &singleModeTenantIDStorage{}
+var _ ITenantIDProvider = &singleModeTenantIDProvider{}
 
-type singleModeTenantIDStorage struct {
+type singleModeTenantIDProvider struct {
 }
 
-// GetAllTenantIDs get all tenant ids.
-func (stg *singleModeTenantIDStorage) GetAllTenantIDs() []string {
+// ListTenantIDs lists all tenant ids.
+func (stg *singleModeTenantIDProvider) ListTenantIDs(_ contextx.IContext) ([]string, error) {
 	return []string{
 		SingleModeTenantID,
-	}
+	}, nil
 }
 
 // nolint: gochecknoglobals
 var tenantStorage = struct {
-	storage ITenantIDStorage
+	provider ITenantIDProvider
 	sync.Once
 }{
-	storage: new(singleModeTenantIDStorage),
+	provider: new(singleModeTenantIDProvider),
 }
 
-// GetAllTenantIDs get all tenant ids.
-func GetAllTenantIDs() []string {
-	return tenantStorage.storage.GetAllTenantIDs()
+// SetTenantIDProvider sets the tenant id provider only once.
+func SetTenantIDProvider(provider ITenantIDProvider) error {
+	if provider == nil {
+		return errors.New("tenant id provider is nil")
+	}
+
+	set := false
+	tenantStorage.Once.Do(func() {
+		tenantStorage.provider = provider
+		set = true
+	})
+	if !set {
+		return errors.New("tenant id provider is already set")
+	}
+
+	return nil
+}
+
+// ListTenantIDs lists all tenant ids.
+func ListTenantIDs(nCtx contextx.IContext) ([]string, error) {
+	return tenantStorage.provider.ListTenantIDs(nCtx)
 }
