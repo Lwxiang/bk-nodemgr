@@ -13,6 +13,7 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"net"
 	"path/filepath"
 	"strings"
 	"time"
@@ -540,19 +541,32 @@ func (act *actionEnsureAndUpdatePluginConfigDetails) generateJinja2SystemConfigC
 		return nil, fmt.Errorf("check subconfig dir safe failed, dir(%s): %w", std.DeployInfo().BaseRuntime.SubConfigDir, err)
 	}
 
+	dataEndpoint := renderIPCEndpoint(
+		std.DeployInfo().Process.Platform.OS,
+		std.DeployInfo().BaseRuntime.DataIPC,
+		hostInfo.Static.InnerIPList,
+		hostInfo.Static.InnerIPV6List,
+	)
+	pluginEndpoint := renderIPCEndpoint(
+		std.DeployInfo().Process.Platform.OS,
+		std.DeployInfo().BaseRuntime.PluginIPC,
+		hostInfo.Static.InnerIPList,
+		hostInfo.Static.InnerIPV6List,
+	)
+
 	pluginPath := map[string]any{
 		keyLogPath:       std.DeployInfo().BaseRuntime.LogDir,
 		keyDataPath:      std.DeployInfo().BaseRuntime.DataDir,
 		keyPidPath:       std.DeployInfo().BaseRuntime.RunDir,
 		keySetupPath:     std.DeployInfo().BaseRuntime.PluginHomeDir,
-		keyEndpoint:      std.DeployInfo().BaseRuntime.DataIPC,
+		keyEndpoint:      dataEndpoint,
 		keyHostID:        std.DeployInfo().BaseRuntime.HostIDPath,
 		keySubConfigPath: std.DeployInfo().BaseRuntime.SubConfigDir,
 	}
 
 	controlInfo := map[string]any{
-		keyPluginIPC:    std.DeployInfo().BaseRuntime.PluginIPC,
-		keyDataIPC:      std.DeployInfo().BaseRuntime.DataIPC,
+		keyPluginIPC:    pluginEndpoint,
+		keyDataIPC:      dataEndpoint,
 		keyGSEAgentHome: std.DeployInfo().BaseRuntime.GSEHomeDir,
 		keyGroupID:      std.DeployInfo().Process.PluginGroup,
 		keyLogPath:      std.DeployInfo().BaseRuntime.LogDir,
@@ -571,6 +585,19 @@ func (act *actionEnsureAndUpdatePluginConfigDetails) generateJinja2SystemConfigC
 		keyTarget:       cmdbInstance,
 		keyControlInfo:  controlInfo,
 	}, nil
+}
+
+func renderIPCEndpoint(osType criteria.OSType, ipc string, innerIPs, innerIPv6s []string) string {
+	if osType != criteria.OSWindows {
+		return ipc
+	}
+
+	host := "127.0.0.1"
+	if len(innerIPs) == 0 && len(innerIPv6s) > 0 {
+		host = "::1"
+	}
+
+	return net.JoinHostPort(host, ipc)
 }
 
 func getBlacklistKeys() map[string]struct{} {
