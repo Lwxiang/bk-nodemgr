@@ -639,7 +639,7 @@ func (ctl *controller) generateOperationInstance(nCtx contextx.IContext) (*opera
 		return nil, err
 	}
 
-	ctl.oper.InstanceIDs = append(ctl.oper.InstanceIDs, inst.InstanceBriefData.Metadata.OperationInstanceID)
+	ctl.oper.InstanceIDs = append(ctl.oper.InstanceIDs, inst.Metadata.OperationInstanceID)
 	if len(ctl.oper.InstanceIDs) > operation.MaxInstanceNum {
 		ctl.oper.InstanceIDs = ctl.oper.InstanceIDs[len(ctl.oper.InstanceIDs)-operation.MaxInstanceNum:]
 	}
@@ -687,7 +687,7 @@ func (ctl *controller) generateRetryOperationInstance(nCtx contextx.IContext) (*
 		return nil, err
 	}
 
-	ctl.oper.InstanceIDs = append(ctl.oper.InstanceIDs, retryInstance.InstanceBriefData.Metadata.OperationInstanceID)
+	ctl.oper.InstanceIDs = append(ctl.oper.InstanceIDs, retryInstance.Metadata.OperationInstanceID)
 	if len(ctl.oper.InstanceIDs) > operation.MaxInstanceNum {
 		ctl.oper.InstanceIDs = ctl.oper.InstanceIDs[len(ctl.oper.InstanceIDs)-operation.MaxInstanceNum:]
 	}
@@ -752,6 +752,15 @@ func (ctl *controller) findPartialRetryStartIndex(prevInstance *operation.Instan
 		}
 	}
 	if failed == nil {
+		// operation-level failure (e.g. operation extra execution failed before/after actions)
+		// leaves no failed action anchor, fall back to retrying the operation from the beginning.
+		if prevInstance.Lifecycle.IsFailed() {
+			logger.G.Sys().With("oper-inst-id", prevInstance.Metadata.OperationInstanceID).
+				Info("operation failed at operation level, no failed action found, retry from beginning")
+
+			return 0, nil
+		}
+
 		return -1, errors.New("all actions succeeded, nothing to retry")
 	}
 
