@@ -468,3 +468,43 @@ func TestRedis_Validate_InvalidType(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid redis type")
 }
+
+func TestDownloader_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  Downloader
+		wantErr bool
+	}{
+		{
+			name:    "empty allow hosts",
+			config:  Downloader{},
+			wantErr: false,
+		},
+		{
+			name:    "valid allow hosts",
+			config:  Downloader{AllowHosts: []string{"github.com"}},
+			wantErr: false,
+		},
+		{
+			name:    "invalid allow hosts",
+			config:  Downloader{AllowHosts: []string{""}},
+			wantErr: true,
+		},
+		{
+			name:    "invalid block hosts",
+			config:  Downloader{BlockHosts: []string{" "}},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

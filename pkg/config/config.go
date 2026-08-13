@@ -14,6 +14,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Etcd the config of etcd.
@@ -914,4 +915,29 @@ type IAMV3 struct {
 	CallbackPath string `yaml:"callbackPath" usage:"callback path for IAM resource provider"`
 	// CMDBSystemID is the system identifier registered in IAM for CMDB, used for fetching CMDB resources from IAM.
 	CMDBSystemID string `yaml:"cmdbSystemID" usage:"system ID registered in IAM v3"`
+}
+
+// Downloader defines the shared remote package downloader configuration.
+type Downloader struct {
+	AllowHosts   []string `yaml:"allowHosts" usage:"download host allow list, exact hostname match, no wildcard or subdomain"`
+	BlockHosts   []string `yaml:"blockHosts" usage:"download host block list"`
+	MaxBytes     int64    `yaml:"maxBytes" usage:"max bytes of download file, default is 1 GiB"`
+	TraceService `yaml:",inline"`
+}
+
+// Validate validates the downloader configuration.
+func (conf Downloader) Validate() error {
+	for _, host := range conf.AllowHosts {
+		if strings.TrimSpace(host) == "" {
+			return errors.New("allow host must not be empty")
+		}
+	}
+
+	for _, host := range conf.BlockHosts {
+		if strings.TrimSpace(host) == "" {
+			return errors.New("block host must not be empty")
+		}
+	}
+
+	return nil
 }
