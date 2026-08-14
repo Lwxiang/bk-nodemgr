@@ -43,3 +43,10 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 	h.rg.POST("/bintool", restserver.FileHandler(h.BinTool))
 	h.rg.POST("/plugin_bintool", restserver.FileHandler(h.PluginBinTool))
 }
+
+// LoadRemoteFile load remote file handler.
+func LoadRemoteFile(rg *gin.RouterGroup, capability *options.Capability) {
+	h := newHandler(rg, capability)
+
+	h.rg.POST("/remote_file", restserver.FileHandler(h.Remote))
+}
