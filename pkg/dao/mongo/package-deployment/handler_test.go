@@ -39,19 +39,36 @@ func testContext() contextx.IContext {
 
 func testPackageDeployment() *types.PackageDeployment {
 	token := uuid.NewString()
+	platform := platfmt.NewPlatform(criteria.OSLinux, criteria.CPUArchAmd64)
+	uploadID := uuid.NewString()
 	return &types.PackageDeployment{
 		Token: token,
 		Info: &types.PackageDeploymentInfo{
-			UploadID: uuid.NewString(),
 			ImportPluginPkgOptions: types.PackageImportPluginPkgOptions{
 				FileSourceType: types.FileSourceTypeDownload,
 				FileSource:     "https://example.com/packages/gse_plugin-1.0.0.tgz",
+				FileName:       "gse_plugin-1.0.0.tgz",
 				MD5:            "4d96767dd3f2c09e19101d0da9ce251f",
-				PluginName:     "gse_plugin",
-				PluginPkgName:  "gse_plugin.tgz",
-				Version:        "1.0.0",
-				Platforms: []platfmt.Platform{
-					platfmt.NewPlatform(criteria.OSLinux, criteria.CPUArchAmd64),
+			},
+			Upload: types.PackageDeploymentUploadInfo{
+				UploadID:  uploadID,
+				Name:      "gse_plugin",
+				Version:   "1.0.0",
+				Platforms: []platfmt.Platform{platform},
+			},
+			Release: []types.Release{
+				{
+					Name:         "gse_plugin",
+					Generation:   types.Generation2,
+					Type:         types.ReleaseTypePlugin,
+					Version:      "1.0.0",
+					Platform:     platform,
+					Labels:       []string{"plugin"},
+					FileName:     "gse_plugin-1.0.0.tgz",
+					MD5:          "4d96767dd3f2c09e19101d0da9ce251f",
+					Enabled:      true,
+					Operator:     "admin",
+					AdditionInfo: map[string]any{"description": "test plugin"},
 				},
 			},
 		},
@@ -80,14 +97,15 @@ func TestHandler_ListPackageDeployment(t *testing.T) {
 	nCtx := testContext()
 	pluginDeployment := testPackageDeployment()
 	agentDeployment := testPackageDeployment()
-	agentDeployment.Info.UploadID = uuid.NewString()
+	agentPlatform := platfmt.NewPlatform(criteria.OSWindows, criteria.CPUArchAmd64)
+	agentDeployment.Info.Upload.UploadID = uuid.NewString()
+	agentDeployment.Info.Upload.Name = "gse_agent"
+	agentDeployment.Info.Upload.Version = "2.0.0"
+	agentDeployment.Info.Upload.Platforms = []platfmt.Platform{agentPlatform}
+	agentDeployment.Info.Release[0].Name = "gse_agent"
+	agentDeployment.Info.Release[0].Version = "2.0.0"
+	agentDeployment.Info.Release[0].Platform = agentPlatform
 	agentDeployment.Info.ImportPluginPkgOptions.FileSource = "https://example.com/packages/gse_agent-2.0.0.tgz"
-	agentDeployment.Info.ImportPluginPkgOptions.PluginName = "gse_agent"
-	agentDeployment.Info.ImportPluginPkgOptions.PluginPkgName = "gse_agent.tgz"
-	agentDeployment.Info.ImportPluginPkgOptions.Version = "2.0.0"
-	agentDeployment.Info.ImportPluginPkgOptions.Platforms = []platfmt.Platform{
-		platfmt.NewPlatform(criteria.OSWindows, criteria.CPUArchAmd64),
-	}
 
 	for _, deployment := range []*types.PackageDeployment{pluginDeployment, agentDeployment} {
 		if err := h.CreatePackageDeployment(nCtx, deployment); err != nil {
@@ -96,9 +114,11 @@ func TestHandler_ListPackageDeployment(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		opts      []OptFn
-		wantTotal int64
+		name         string
+		opts         []OptFn
+		wantTotal    int64
+		wantToken    string
+		wantUploadID string
 	}{
 		{
 			name:      "all package deployments",
@@ -108,11 +128,13 @@ func TestHandler_ListPackageDeployment(t *testing.T) {
 			name:      "by token",
 			opts:      []OptFn{WithToken(pluginDeployment.Token)},
 			wantTotal: 1,
+			wantToken: pluginDeployment.Token,
 		},
 		{
-			name:      "by upload ID",
-			opts:      []OptFn{WithUploadID(agentDeployment.Info.UploadID)},
-			wantTotal: 1,
+			name:         "by upload ID",
+			opts:         []OptFn{WithUploadID(agentDeployment.Info.Upload.UploadID)},
+			wantTotal:    1,
+			wantUploadID: agentDeployment.Info.Upload.UploadID,
 		},
 	}
 
@@ -128,6 +150,16 @@ func TestHandler_ListPackageDeployment(t *testing.T) {
 			if int64(len(got)) != tt.wantTotal {
 				t.Fatalf("ListPackageDeployment() len = %d, want %d", len(got), tt.wantTotal)
 			}
+			if tt.wantToken != "" {
+				if got[0].Token != tt.wantToken {
+					t.Fatalf("ListPackageDeployment() token = %s, want %s", got[0].Token, tt.wantToken)
+				}
+			}
+			if tt.wantUploadID != "" {
+				if got[0].Info == nil || got[0].Info.Upload.UploadID != tt.wantUploadID {
+					t.Fatalf("ListPackageDeployment() upload id = %v, want %s", got[0].Info, tt.wantUploadID)
+				}
+			}
 		})
 	}
 }
@@ -141,17 +173,31 @@ func TestHandler_UpdatePackageDeploymentInfo(t *testing.T) {
 		t.Fatalf("CreatePackageDeployment() error = %v", err)
 	}
 
+	platform := platfmt.NewPlatform(criteria.OSLinux, criteria.CPUArchArm64)
 	want := &types.PackageDeploymentInfo{
-		UploadID: uuid.NewString(),
 		ImportPluginPkgOptions: types.PackageImportPluginPkgOptions{
 			FileSourceType: types.FileSourceTypeDownload,
 			FileSource:     "https://example.com/packages/gse_plugin-1.1.0.tgz",
+			FileName:       "gse_plugin-1.1.0.tgz",
 			MD5:            "482f46fa4999054774412e3a8f9dfca0",
-			PluginName:     "gse_plugin",
-			PluginPkgName:  "gse_plugin.tgz",
-			Version:        "1.1.0",
-			Platforms: []platfmt.Platform{
-				platfmt.NewPlatform(criteria.OSLinux, criteria.CPUArchArm64),
+		},
+		Upload: types.PackageDeploymentUploadInfo{
+			UploadID:  uuid.NewString(),
+			Name:      "gse_plugin",
+			Version:   "1.1.0",
+			Platforms: []platfmt.Platform{platform},
+		},
+		Release: []types.Release{
+			{
+				Name:       "gse_plugin",
+				Generation: types.Generation2,
+				Type:       types.ReleaseTypePlugin,
+				Version:    "1.1.0",
+				Platform:   platform,
+				FileName:   "gse_plugin-1.1.0.tgz",
+				MD5:        "482f46fa4999054774412e3a8f9dfca0",
+				Enabled:    true,
+				Operator:   "admin",
 			},
 		},
 	}
@@ -171,13 +217,7 @@ func TestHandler_UpdatePackageDeploymentInfo(t *testing.T) {
 func assertPackageDeploymentInfoEqual(t *testing.T, got, want *types.PackageDeploymentInfo) {
 	t.Helper()
 
-	if got == nil {
-		t.Fatal("got nil package deployment info")
-	}
-	if got.UploadID != want.UploadID {
-		t.Fatalf("UploadID = %s, want %s", got.UploadID, want.UploadID)
-	}
-	if !reflect.DeepEqual(got.ImportPluginPkgOptions, want.ImportPluginPkgOptions) {
-		t.Fatalf("ImportPluginPkgOptions = %#v, want %#v", got.ImportPluginPkgOptions, want.ImportPluginPkgOptions)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("PackageDeploymentInfo = %#v, want %#v", got, want)
 	}
 }
