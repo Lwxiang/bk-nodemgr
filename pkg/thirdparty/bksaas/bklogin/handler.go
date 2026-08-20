@@ -25,6 +25,8 @@ import (
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	restclient "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/tenant"
+	apigwclient "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw/client"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
@@ -60,8 +62,9 @@ func (h *Handler) GetAuthType() string {
 
 // Config the config of bkoa.
 type Config struct {
-	LoginURL string
-	AuthType string
+	LoginURL        string
+	AuthType        string
+	APIGWUserConfig apigwclient.UserConfig
 }
 
 // Validate validates the config.
@@ -77,6 +80,12 @@ func (conf *Config) Validate() error {
 		return fmt.Errorf("failed to validate bklogin config: unsupported auth type: %s", conf.AuthType)
 	}
 
+	if tenant.GetMode() == tenant.ModeMultiple && conf.AuthType == CookieKeyBKToken {
+		if err := conf.APIGWUserConfig.Validate(); err != nil {
+			return fmt.Errorf("failed to validate bklogin api-gateway config: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -85,12 +94,11 @@ type OptionFn func(*Handler)
 
 // New initialize a new cmdb Handler.
 func New(c *restclient.Capability, conf *Config, opts ...OptionFn) (IHandler, error) {
-	cli, err := newClient(c)
-	if err != nil {
+	if err := conf.Validate(); err != nil {
 		return nil, err
 	}
 
-	err = conf.Validate()
+	cli, err := newClient(c, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -121,14 +129,29 @@ func (h *Handler) Verify(nCtx contextx.IContext, token string) (tenantID string,
 			return "", "", "", fmt.Errorf("failed to verify bk_ticket: %w", err)
 		}
 
-		return "default", resp.Username, resp.Username, nil
+		return tenant.SingleModeTenantID, resp.Username, resp.Username, nil
 	case CookieKeyBKToken:
-		resp, err := h.cli.getUserInfoByBKToken(nCtx, &GetUserInfoByBKTokenReq{BKToken: token})
-		if err != nil {
-			return "", "", "", fmt.Errorf("failed to verify bk_token: %w", err)
-		}
+		tenantMode := tenant.GetMode()
+		switch tenantMode {
+		case tenant.ModeSingle:
+			req := &GetUserInfoByBKTokenSingleTenantModeReq{BKToken: token}
+			resp, err := h.cli.getUserInfoByBKTokenSingleTenantMode(nCtx, req)
+			if err != nil {
+				return "", "", "", fmt.Errorf("failed to verify bk_token: %w", err)
+			}
 
-		return "default", resp.Username, resp.Username, nil
+			return tenant.SingleModeTenantID, resp.Username, resp.Username, nil
+		case tenant.ModeMultiple:
+			req := &GetUserInfoByBKTokenMultipleTenantModeReq{BKToken: token}
+			resp, err := h.cli.getUserInfoByBKTokenMultipleTenantMode(nCtx, req)
+			if err != nil {
+				return "", "", "", fmt.Errorf("failed to verify bk_token: %w", err)
+			}
+
+			return resp.TenantID, resp.BKUsername, resp.LoginName, nil
+		default:
+			return "", "", "", fmt.Errorf("failed to verify token: unsupported tenant mode: %s", tenantMode)
+		}
 	default:
 		return "", "", "", fmt.Errorf("failed to verify token: unsupported auth type: %s", h.conf.AuthType)
 	}
@@ -163,12 +186,28 @@ func (h *Handler) GetWebUserInfo(nCtx contextx.IContext, token string) (*types.W
 		info.BKUsername = resp.Username
 		info.LoginName = resp.Username
 	case CookieKeyBKToken:
-		resp, err := h.cli.getUserInfoByBKToken(nCtx, &GetUserInfoByBKTokenReq{BKToken: token})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get web user info by bk_token: %w", err)
+		tenantMode := tenant.GetMode()
+		switch tenantMode {
+		case tenant.ModeSingle:
+			req := &GetUserInfoByBKTokenSingleTenantModeReq{BKToken: token}
+			resp, err := h.cli.getUserInfoByBKTokenSingleTenantMode(nCtx, req)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get web user info by bk_token: %w", err)
+			}
+			info.BKUsername = resp.Username
+			info.LoginName = resp.Username
+		case tenant.ModeMultiple:
+			req := &GetUserInfoByBKTokenMultipleTenantModeReq{BKToken: token}
+			resp, err := h.cli.getUserInfoByBKTokenMultipleTenantMode(nCtx, req)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get web user info by bk_token: %w", err)
+			}
+			info.BKUsername = resp.BKUsername
+			info.LoginName = resp.LoginName
+			info.TimeZone = resp.TimeZone
+		default:
+			return nil, fmt.Errorf("failed to get web user info: unsupported tenant mode: %s", tenantMode)
 		}
-		info.BKUsername = resp.Username
-		info.LoginName = resp.Username
 
 	default:
 		return nil, fmt.Errorf("failed to get web user info: unsupported auth type: %s", h.conf.AuthType)

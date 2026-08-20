@@ -763,19 +763,20 @@ type BKLogin struct {
 	// LoginURL defines the login url of bklogin.
 	LoginURL string `yaml:"loginURL" usage:"login url of bklogin"`
 
+	APIGatewayClient `yaml:",inline" usage:"api-gateway config of bklogin backend api"`
+
 	// AuthType defines the auth type of bklogin, support 'bk_token' and 'bk_ticket'.
 	AuthType LoginAuthType `yaml:"authType" usage:"auth type of bklogin, support 'bk_token' and 'bk_ticket'"`
-
-	// TLS defines the tls config of bklogin.
-	TLS TLSConfig `yaml:"tls" usage:"tls config of bklogin"`
-
-	TraceService `yaml:",inline"`
 }
 
 // Validate validates the config.
 func (bklogin *BKLogin) Validate() error {
 	if bklogin.LoginURL == "" {
 		return errors.New("login url of bkLogin is empty")
+	}
+
+	if len(bklogin.Endpoints) == 0 {
+		return errors.New("endpoints of bkLogin is empty")
 	}
 
 	if err := bklogin.TLS.Validate(); err != nil {

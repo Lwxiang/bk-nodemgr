@@ -51,6 +51,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/gopool"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/ssl"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/system"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/tenant"
 	apigwclient "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw/client"
 	apigwserver "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw/server"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/backend"
@@ -112,6 +113,8 @@ type Service struct {
 
 // NewService creates a new application service.
 func NewService(conf *config.ApplicationService) (*Service, error) {
+	tenant.SetMode(conf.TenantMode)
+
 	svc := &Service{
 		conf:     conf,
 		Cap:      &options.Capability{},
@@ -624,7 +627,7 @@ func newBKLoginHandler(conf config.BKLogin) (bksaasbklogin.IHandler, error) {
 	clientCap := &restclient.Capability{
 		Name:                 clientNameBKLogin,
 		HTTPClient:           httpClient,
-		Discover:             restdiscovery.NewDiscovery(clientNameBKLogin, []string{conf.LoginURL}),
+		Discover:             restdiscovery.NewDiscovery(clientNameBKLogin, conf.Endpoints),
 		ToleranceLatencyTime: restclient.ToleranceLatencyTimeDefault,
 		MetricOpts:           restclient.MetricOption{},
 		TraceSvc:             traceSvc,
@@ -632,7 +635,16 @@ func newBKLoginHandler(conf config.BKLogin) (bksaasbklogin.IHandler, error) {
 
 	bkloginHandler, err := bksaasbklogin.New(
 		clientCap,
-		&bksaasbklogin.Config{LoginURL: conf.LoginURL, AuthType: conf.AuthType.String()},
+		&bksaasbklogin.Config{
+			LoginURL: conf.LoginURL,
+			AuthType: conf.AuthType.String(),
+			APIGWUserConfig: apigwclient.UserConfig{
+				AppConfig:   newAPIGWAppConfig(&conf.APIGatewayClient),
+				AuthMode:    apigwclient.AuthMode(conf.AuthMode),
+				BKUsername:  conf.User,
+				AccessToken: conf.AccessToken,
+			},
+		},
 	)
 	if err != nil {
 		return nil, err
