@@ -189,6 +189,23 @@ func (x *PluginUninstallReq_UninstallInfo) AutoConvert() {}
 
 // Validate check body.
 // nolint: protogetter
+func (x *PluginStartReq_StartInfo) Validate() error {
+	if x.GetBkHostId() < 0 {
+		return errors.New("bk_host_id can not be negative")
+	}
+
+	if x.GetPluginName() == "" {
+		return errors.New("plugin_name can not be empty")
+	}
+
+	return nil
+}
+
+// AutoConvert auto convert.
+func (x *PluginStartReq_StartInfo) AutoConvert() {}
+
+// Validate check body.
+// nolint: protogetter
 func (x *PluginRestartReq_RestartInfo) Validate() error {
 	if x.GetBkHostId() < 0 {
 		return errors.New("bk_host_id can not be negative")
@@ -490,6 +507,51 @@ func (x *PluginListPermittedOperationResp) ConvertPluginPermittedOperationsFromT
 		}
 
 		return item
+	})
+}
+
+// Validate check body.
+func (x *PluginStartReq) Validate() error {
+	plugins := x.GetPlugin()
+	if len(plugins) == 0 {
+		return errors.New("plugins can not be empty")
+	}
+
+	for idx := range plugins {
+		if err := plugins[idx].Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// AutoConvert auto convert.
+func (x *PluginStartReq) AutoConvert() {
+	plugin := x.GetPlugin()
+	for idx := range plugin {
+		plugin[idx].AutoConvert()
+	}
+}
+
+// ConvertParamFromTypes converts param from types.
+func (x *PluginStartReq) ConvertParamFromTypes(startParam ...*types.PluginDeploymentParam) {
+	x.Plugin = conv.SliceToSlice(startParam, func(param *types.PluginDeploymentParam) *PluginStartReq_StartInfo {
+		item := &PluginStartReq_StartInfo{}
+		item.BkHostId = param.HostID
+		item.PluginName = param.PluginName
+
+		return item
+	})
+}
+
+// ConvertParamToTypes converts param to types.
+func (x *PluginStartReq) ConvertParamToTypes() []*types.PluginDeploymentParam {
+	return conv.SliceToSlice(x.GetPlugin(), func(plugin *PluginStartReq_StartInfo) *types.PluginDeploymentParam {
+		return &types.PluginDeploymentParam{
+			HostID:     plugin.GetBkHostId(),
+			PluginName: plugin.GetPluginName(),
+		}
 	})
 }
 
