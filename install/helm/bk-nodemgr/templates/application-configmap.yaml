@@ -32,6 +32,15 @@ data:
 
     backend: {{ .Values.application.config.backend | toYaml | nindent 6 }}
 
+    userManager: {{ .Values.application.config.userManager | toYaml | nindent 6 }}
+
+    access:
+      {{- if hasKey (.Values.application.config.access | default dict) "virtualUser" }}
+      virtualUser: {{ .Values.application.config.access.virtualUser | quote }}
+      {{- else }}
+      virtualUser: {{ ternary "admin" "bk_admin" (eq .Values.application.config.tenantMode "single") | quote }}
+      {{- end }}
+
     log: {{ .Values.application.config.log | toYaml | nindent 6 }}
 
     file: {{ .Values.application.config.file | toYaml | nindent 6 }}

@@ -39,6 +39,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/router/healthz"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/router/web"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/application/storage/cptemplate"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/access"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/config"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/discover"
@@ -59,6 +60,7 @@ import (
 	bksaasheader "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bksaas/header"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/file"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/notice"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/usermanager"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tracing"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/version"
@@ -70,10 +72,11 @@ import (
 )
 
 const (
-	clientNameBackend = "backend"
-	clientNameBKLogin = "bklogin"
-	clientNameFile    = "file"
-	clientNameNotice  = "notice"
+	clientNameBackend     = "backend"
+	clientNameUserManager = "usermanager"
+	clientNameBKLogin     = "bklogin"
+	clientNameFile        = "file"
+	clientNameNotice      = "notice"
 
 	mongoMaxPoolSize     = uint64(500)
 	mongoMinPoolSize     = uint64(5)
@@ -149,6 +152,7 @@ func (svc *Service) initialStaticsConfigs() error {
 		config.AuthIdentityNone:    {},
 		config.AuthIdentityBKLogin: {},
 	}
+	access.SetVirtualUser(svc.conf.Access.VirtualUser)
 
 	return nil
 }
@@ -161,6 +165,12 @@ func (svc *Service) initialCapability() error {
 	svc.Cap.DiscoverProvider = etcddiscover.NewProviderEtcd(&svc.conf.Etcd,
 		etcddiscover.WithWatch(discover.ServiceNameBackend, discover.ServiceNameFile),
 	)
+
+	// initial user manager handler.
+	svc.Cap.UserManagerHandler, err = svc.newUserManagerHandler()
+	if err != nil {
+		return fmt.Errorf("failed to create user manager handler: %w", err)
+	}
 
 	// initial bklogin handler.
 	svc.bkloginHandler, err = newBKLoginHandler(svc.conf.BKSaas.BKLogin)
@@ -247,6 +257,48 @@ func (svc *Service) newBackendHandler() (backend.IHandler, error) {
 	}
 
 	return backendHandler, nil
+}
+
+func (svc *Service) newUserManagerHandler() (usermanager.IHandler, error) {
+	apiGWUserConfig := newAPIGWUserConfig(&svc.conf.UserManager.APIGatewayClient)
+	apiGwClientCapability, err := newAPIGwClientCapability(
+		clientNameUserManager,
+		&svc.conf.UserManager.APIGatewayClient,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to new apigw client for user manager: %w", err)
+	}
+
+	var usermgrHandler usermanager.IHandler
+	if tenant.GetMode() == tenant.ModeSingle {
+		usermgrHandler, err = usermanager.NewHandlerSingle(
+			apiGwClientCapability,
+			&usermanager.Config{
+				APIGWUserConfig: apiGWUserConfig,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		usermgrHandler, err = usermanager.NewHandlerMultiTenant(
+			apiGwClientCapability,
+			&usermanager.Config{
+				APIGWUserConfig: apiGWUserConfig,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tenant.SetTenantIDProvider(usermgrHandler); err != nil {
+		return nil, fmt.Errorf("failed to set tenant id provider: %w", err)
+	}
+
+	tenant.SetTenantUserResolver(usermgrHandler)
+
+	return usermgrHandler, nil
 }
 
 func (svc *Service) newNoticeHandler() (notice.IHandler, error) {
@@ -600,6 +652,15 @@ func newAPIGWAppConfig(conf *config.APIGatewayClient) apigwclient.AppConfig {
 	apigwAppConf := apigwclient.NewAppConfig(conf.Endpoints, conf.AppCode, conf.AppSecret)
 
 	return apigwAppConf
+}
+
+func newAPIGWUserConfig(conf *config.APIGatewayClient) apigwclient.UserConfig {
+	return apigwclient.UserConfig{
+		AppConfig:   apigwclient.NewAppConfig(conf.Endpoints, conf.AppCode, conf.AppSecret),
+		AuthMode:    apigwclient.AuthMode(conf.AuthMode),
+		LoginName:   conf.User,
+		AccessToken: conf.AccessToken,
+	}
 }
 
 // newBKLoginHandler creates a new bklogin handler.
