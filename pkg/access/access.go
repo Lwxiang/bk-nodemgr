@@ -30,27 +30,23 @@ const (
 	defaultVirtualUser = "bk-nodemgr"
 )
 
+// nolint: gochecknoglobals // virtual user is configured once during service initialization.
 var virtualUser = struct {
-	sync.Once
+	once sync.Once
 	user string
 }{
 	user: defaultVirtualUser,
 }
 
-// GetBKUsernameByLoginName gets the tenant-scoped bk username by virtual user login name.
-func GetBKUsernameByLoginName(ctx contextx.IContext, loginName string) (string, error) {
-	return tenant.GetBKUsernameByLoginName(ctx, loginName)
-}
-
 // GetVirtualUserBKUsername gets the tenant-scoped bk username for the system virtual user.
 func GetVirtualUserBKUsername(ctx contextx.IContext) (string, error) {
-	return GetBKUsernameByLoginName(ctx, GetVirtualUser())
+	return tenant.GetBKUsernameByLoginName(ctx, GetVirtualUser())
 }
 
 // GetVirtualUser gets the system user.
-// system user is used to execute the system
+// System user is used to execute the system.
 func GetVirtualUser() string {
-	virtualUser.Once.Do(func() {
+	virtualUser.once.Do(func() {
 		virtualUser.user = defaultVirtualUser
 	})
 
@@ -58,9 +54,9 @@ func GetVirtualUser() string {
 }
 
 // SetVirtualUser sets the system user.
-// system user is used to execute the system
+// System user is used to execute the system.
 func SetVirtualUser(user string) {
-	virtualUser.Once.Do(func() {
+	virtualUser.once.Do(func() {
 		virtualUser.user = user
 	})
 }
