@@ -87,7 +87,8 @@ const (
 	defaultApplicationAdvertiseIPv4 = "127.0.0.1"
 	defaultApplicationAdvertiseIPv6 = "::1"
 
-	defaultApplicationTracingExporterType = "stdout"
+	defaultApplicationTracingExporterType    = "stdout"
+	defaultApplicationGlobalTraceServiceName = "application"
 
 	defaultApplicationBKLoginTraceServiceName = "application-client-bklogin"
 
@@ -259,6 +260,10 @@ func NewApplicationService() *ApplicationService {
 		},
 		Tracing: Tracing{
 			ExporterType: defaultApplicationTracingExporterType,
+			GlobalService: TraceService{
+				TraceServiceName: defaultApplicationGlobalTraceServiceName,
+				TraceSampleRate:  0,
+			},
 		},
 		ConfigPolicyOption: ConfigPolicyOption{
 			FilePath: defaultApplicationConfigPolicyOptionFilePath,

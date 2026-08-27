@@ -1010,6 +1010,10 @@ application:
       otlpInsecure: false
       # otlp headers
       otlpHeaders: {}
+      # global fallback trace service config
+      globalService:
+        traceServiceName: "application"
+        traceSampleRate: 0
 
     # defines the config policy option settings.
     configPolicyOption:
@@ -1512,6 +1516,10 @@ backend:
       otlpInsecure: false
       # otlp headers
       otlpHeaders: {}
+      # global fallback trace service config
+      globalService:
+        traceServiceName: "backend"
+        traceSampleRate: 0
 
 ## Nodemgr file
 ##
@@ -1743,6 +1751,10 @@ file:
       otlpInsecure: false
       # otlp headers
       otlpHeaders: {}
+      # global fallback trace service config
+      globalService:
+        traceServiceName: "file"
+        traceSampleRate: 0
 
 ## Nodemgr apigw-sync
 apigwSync:

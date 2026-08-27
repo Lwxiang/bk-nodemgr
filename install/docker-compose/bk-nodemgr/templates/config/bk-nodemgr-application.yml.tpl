@@ -179,6 +179,9 @@ tracing:
   otlpEndpoint: ""
   otlpInsecure: false
   otlpHeaders: {}
+  globalService:
+    traceServiceName: "application"
+    traceSampleRate: 0
 
 # config policy option settings.
 configPolicyOption:

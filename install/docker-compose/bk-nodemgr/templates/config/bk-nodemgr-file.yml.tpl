@@ -168,3 +168,6 @@ tracing:
   otlpEndpoint: ""
   otlpInsecure: false
   otlpHeaders: {}
+  globalService:
+    traceServiceName: "file"
+    traceSampleRate: 0

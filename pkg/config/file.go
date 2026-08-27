@@ -90,7 +90,8 @@ const (
 	defaultFileTempExpirationHours = 24
 	defaultFileTempGCIntervalHours = 1
 
-	defaultFileTracingExporterType = "stdout"
+	defaultFileTracingExporterType    = "stdout"
+	defaultFileGlobalTraceServiceName = "file"
 
 	defaultFileGSETraceServiceName  = "file-client-gse"
 	defaultFileRepoTraceServiceName = "file-client-bkrepo"
@@ -205,6 +206,10 @@ func NewFileService() *FileService {
 		},
 		Tracing: Tracing{
 			ExporterType: defaultFileTracingExporterType,
+			GlobalService: TraceService{
+				TraceServiceName: defaultFileGlobalTraceServiceName,
+				TraceSampleRate:  0,
+			},
 		},
 		MongoDB: MongoDB{
 			AppName: defaultFileMongoDBAppName,
