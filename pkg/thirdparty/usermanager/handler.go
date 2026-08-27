@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/access"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	restclient "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/client"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tenant"
@@ -32,7 +33,7 @@ import (
 // IHandler handler interface.
 type IHandler interface {
 	tenant.ITenantIDProvider
-	tenant.ITenantUserResolver
+	access.ITenantVirtualUserResolver
 
 	ListALLTenants(nCtx contextx.IContext) ([]*types.Tenant, error)
 }
@@ -41,7 +42,7 @@ var _ IHandler = &HandlerMultiTenant{}
 
 // Config handler config of user manager.
 type Config struct {
-	APIGWUserConfig apigwclient.UserConfig
+	VirtualUserConfig apigwclient.VirtualUserConfig
 }
 
 // Validate validate config.
@@ -75,6 +76,7 @@ func NewHandlerMultiTenant(c *restclient.Capability, conf *Config, opts ...Optio
 	return handler, nil
 }
 
+// ListTenantIDs lists enabled tenant IDs from bk-user in multi-tenant mode.
 func (h HandlerMultiTenant) ListTenantIDs(nCtx contextx.IContext) ([]string, error) {
 	// Tenant listing is a platform-level bk-user call; hold the system tenant to avoid caller-tenant permission denial.
 	systemTenantCtx := contextx.From(nCtx, contextx.WithTenantID(tenant.SystemTenantID))
@@ -178,6 +180,7 @@ type HandlerSingle struct {
 	cli *cli
 }
 
+// ListTenantIDs returns the default tenant ID in single-tenant mode.
 func (h HandlerSingle) ListTenantIDs(_ contextx.IContext) ([]string, error) {
 	return []string{tenant.SingleModeTenantID}, nil
 }

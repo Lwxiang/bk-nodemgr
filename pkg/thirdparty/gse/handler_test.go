@@ -37,14 +37,14 @@ import (
 )
 
 // LoadAuthHeader load auth header from environment variables.
-func LoadAuthHeader() (apigwclient.UserConfig, error) {
+func LoadAuthHeader() (apigwclient.VirtualUserConfig, error) {
 	apigwAuthHeader := os.Getenv("BK_APIGW_AUTHHEADER")
 	header := make(map[string]string)
 	if err := json.Unmarshal([]byte(apigwAuthHeader), &header); err != nil {
-		return apigwclient.UserConfig{}, err
+		return apigwclient.VirtualUserConfig{}, err
 	}
 
-	apigwClientConfig := apigwclient.UserConfig{
+	virtualUserConfig := apigwclient.VirtualUserConfig{
 		AppConfig: apigwclient.NewAppConfig(
 			[]string{os.Getenv("BK_APIGW_ENDPOINT")},
 			header["bk_app_code"],
@@ -53,7 +53,7 @@ func LoadAuthHeader() (apigwclient.UserConfig, error) {
 		AuthMode:  apigwclient.AuthModeUn,
 	}
 
-	return apigwClientConfig, nil
+	return virtualUserConfig, nil
 }
 
 type testContext struct {
@@ -115,13 +115,13 @@ func testClient(t *testing.T) IHandler {
 		MetricOpts:           restclient.MetricOption{},
 	}
 
-	apigwClientConfig, err := LoadAuthHeader()
+	virtualUserConfig, err := LoadAuthHeader()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	h, err := New(clientCap, &Config{
-		APIGWUserConfig: apigwClientConfig,
+		VirtualUserConfig: virtualUserConfig,
 	})
 	if err != nil {
 		t.Fatal(err)

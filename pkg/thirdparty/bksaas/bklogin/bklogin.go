@@ -39,8 +39,8 @@ type cli struct {
 }
 
 // newClient initialize a new bkoa client.
-func newClient(c *restclient.Capability, conf *Config) (*cli, error) {
-	restCli, err := restclient.NewClient(c, "/", restclient.WithURLQueryMasker(CookieKeyBKTicket, CookieKeyBKToken))
+func newClient(capability *restclient.Capability, conf *Config) (*cli, error) {
+	restCli, err := restclient.NewClient(capability, "/", restclient.WithURLQueryMasker(CookieKeyBKTicket, CookieKeyBKToken))
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +54,9 @@ func newClient(c *restclient.Capability, conf *Config) (*cli, error) {
 	}
 
 	client.client, err = apigwclient.NewClient(
-		c,
+		capability,
 		"/login/api/v3",
-		conf.APIGWUserConfig,
+		conf.VirtualUserConfig,
 		restclient.WithURLQueryMasker(CookieKeyBKTicket, CookieKeyBKToken),
 	)
 	if err != nil {
@@ -142,7 +142,7 @@ func (c *cli) getUserInfoByBKTokenMultipleTenantMode(
 	// This is a special logic: the API gateway is required to take a tenant ID, but this API does not differentiate tenants.
 	apigwHeader := http.Header{}
 	apigwHeader.Set(apigwheader.BKGWTenantIDKey, tenant.SystemTenantID)
-	apigwHeader.Set(apigwheader.BKGWAuthKey, c.config.APIGWUserConfig.GetAuthHeader(nCtx))
+	apigwHeader.Set(apigwheader.BKGWAuthKey, c.config.VirtualUserConfig.GetAuthHeader(nCtx))
 
 	resp := new(BKTokenMultipleTenantModeBroker)
 	err := c.client.Get().
