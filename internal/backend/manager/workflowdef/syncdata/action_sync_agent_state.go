@@ -135,6 +135,8 @@ func (act *actionSyncAgentState) Do(ctx *action.InstanceContext) error {
 	}
 
 	upsertHosts := make([]*types.Host, 0, len(param.Hosts))
+	touchHostIDs := make([]int64, 0, len(param.Hosts))
+	lastSyncAt := time.Now()
 	for _, host := range param.Hosts {
 		agentState, ok := agentStates[host.AgentID]
 		if !ok {
@@ -142,30 +144,45 @@ func (act *actionSyncAgentState) Do(ctx *action.InstanceContext) error {
 		}
 
 		if !shouldSyncAgentStateHost(host, agentState, param.CompareCurrentState) {
+			touchHostIDs = append(touchHostIDs, host.HostID)
 			continue
 		}
 
-		upsertHosts = append(upsertHosts, newHostWithAgentState(host.HostID, agentState))
+		upsertHosts = append(upsertHosts, newHostWithAgentState(host.HostID, agentState, lastSyncAt))
 	}
 
-	if len(upsertHosts) == 0 {
+	if len(upsertHosts) == 0 && len(touchHostIDs) == 0 {
 		logger.G.Sys().Ctx(std.Context()).Info("no hosts to upsert")
 
 		return nil
 	}
 
-	err = batchHandleHosts(std.Context(), upsertHosts, func(hosts ...*types.Host) error {
-		return act.topoStg.UpdateHostDynamicFields(std.Context(), types.HostDynamicFields{
-			NodeRole:       true,
-			NodeGeneration: true,
-			NodeVersion:    true,
-			NodeStatus:     true,
-		}, hosts...)
-	})
-	if err != nil {
-		logger.G.Sys().Ctx(std.Context()).WithErr(err).Error("failed to update host dynamic")
+	if len(upsertHosts) > 0 {
+		err = batchHandleHosts(std.Context(), upsertHosts, func(hosts ...*types.Host) error {
+			return act.topoStg.UpdateHostDynamicFields(std.Context(), types.HostDynamicFields{
+				NodeRole:       true,
+				NodeGeneration: true,
+				NodeVersion:    true,
+				NodeStatus:     true,
+				LastSyncAt:     true,
+			}, hosts...)
+		})
+		if err != nil {
+			logger.G.Sys().Ctx(std.Context()).WithErr(err).Error("failed to update host dynamic")
 
-		return err
+			return err
+		}
+	}
+
+	if len(touchHostIDs) > 0 {
+		err = batchHandleHostIDs(std.Context(), touchHostIDs, func(hostIDs ...int64) error {
+			return act.topoStg.TouchHostDynamicLastSyncAt(std.Context(), lastSyncAt, hostIDs...)
+		})
+		if err != nil {
+			logger.G.Sys().Ctx(std.Context()).WithErr(err).Error("failed to update host last sync time")
+
+			return err
+		}
 	}
 
 	return nil
@@ -187,7 +204,7 @@ func shouldSyncAgentStateHost(host *HostIDAgentID, agentState *types.AgentState,
 		*host.CurrentNodeGeneration != agentState.NodeGeneration
 }
 
-func newHostWithAgentState(hostID int64, agentState *types.AgentState) *types.Host {
+func newHostWithAgentState(hostID int64, agentState *types.AgentState, lastSyncAt time.Time) *types.Host {
 	return &types.Host{
 		HostID: hostID,
 		Dynamic: &types.HostDynamic{
@@ -195,6 +212,7 @@ func newHostWithAgentState(hostID int64, agentState *types.AgentState) *types.Ho
 			NodeGeneration: agentState.NodeGeneration,
 			NodeVersion:    agentState.Version,
 			NodeStatus:     agentState.NodeStatus,
+			LastSyncAt:     lastSyncAt,
 		},
 	}
 }
