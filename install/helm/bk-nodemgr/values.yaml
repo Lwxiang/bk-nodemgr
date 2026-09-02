@@ -703,6 +703,13 @@ application:
     certID: ""
     ## HTTPS domain
     domain: "nodemgr.example.com"
+    ## route path, default is root path.
+    path: "/"
+    ## standard kubernetes ingress class name, e.g. nginx.
+    ## empty means using bk-bcs network extension ingress.
+    className: ""
+    ## TLS secret name when using standard kubernetes ingress (className mode).
+    tlsSecretName: ""
 
   ## @param configs module configs
   ##
@@ -1765,7 +1772,7 @@ file:
 ## Nodemgr apigw-sync
 apigwSync:
   enabled: false
-  ttlSecondsAfterFinished: 60
+  ttlSecondsAfterFinished: 600
   backoffLimit: 10
   parallelism: 1
   extraEnvVars:
@@ -1862,7 +1869,7 @@ initPackages:
 iamV3:
   enabled: false
   syncJob:
-    ttlSecondsAfterFinished: 60
+    ttlSecondsAfterFinished: 600
     backoffLimit: 3
     parallelism: 1
   system:
