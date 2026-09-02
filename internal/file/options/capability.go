@@ -28,6 +28,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/file/storage/upload"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/discover"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/token"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/bkrepo"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tracing"
@@ -65,6 +66,9 @@ type Capability struct {
 
 	// Manager provides manager handler.
 	Manager manager.IManager
+
+	// TokenGenerator provides token generator.
+	TokenGenerator *token.Generator
 }
 
 // Start start the capability.
