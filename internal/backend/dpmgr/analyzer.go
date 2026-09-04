@@ -92,6 +92,8 @@ func (analyzer *Analyzer) analyze(nCtx contextx.IContext, params *AnalyzeParams)
 		return analyzer.analyzeSpecifyPluginSubConfig(nCtx, params)
 	case types.DeploySpecTypeSpecifyPluginPkg:
 		return analyzer.analyzeSpecifyPluginPkg(nCtx, params)
+	case types.DeploySpecTypeProjectPluginPkgToHosts:
+		return analyzer.analyzeProjectPluginPkgToHosts(nCtx, params)
 	case types.DeploySpecTypeSpecifyPluginSubConfigTemplate:
 		return analyzer.analyzeSpecifyPluginSubConfigTemplate(nCtx, params)
 	default:
@@ -145,6 +147,7 @@ func (analyzer *Analyzer) analyzeSpecifyPlugin(nCtx contextx.IContext, params *A
 				Action:         ChangeActionPluginInstall,
 				Spec:           params.Spec,
 				Target:         target,
+				ConfigSource:   target,
 			})
 
 			continue
@@ -157,6 +160,7 @@ func (analyzer *Analyzer) analyzeSpecifyPlugin(nCtx contextx.IContext, params *A
 				Action:         ChangeActionPluginUpgrade,
 				Spec:           params.Spec,
 				Target:         target,
+				ConfigSource:   target,
 			})
 
 			continue
@@ -221,6 +225,7 @@ func (analyzer *Analyzer) analyzeSpecifyPluginSubConfig(nCtx contextx.IContext, 
 			Action:         ChangeActionPluginApplySubConfig,
 			Spec:           applySpec,
 			Target:         target,
+			ConfigSource:   target,
 		})
 	}
 
@@ -423,11 +428,13 @@ func genDeleteSubConfigTasks(
 			return nil, fmt.Errorf("failed to create specify plugin sub config delete spec: %w", err)
 		}
 
+		target := selectSubConfigTarget(hostID, targetMap)
 		changeTasks = append(changeTasks, &ChangeTask{
 			DeployPolicyID: deployPolicyID,
 			Action:         ChangeActionPluginDeleteSubConfig,
 			Spec:           deleteSpec,
-			Target:         selectSubConfigTarget(hostID, targetMap),
+			Target:         target,
+			ConfigSource:   target,
 		})
 	}
 

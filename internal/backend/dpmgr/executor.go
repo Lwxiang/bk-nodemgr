@@ -56,6 +56,13 @@ type ExecutorConfig struct {
 	DaoProcessConfig plugin.IDaoProcessConfig
 }
 
+type pluginPkgTaskParam struct {
+	pluginName          string
+	pluginPkgName       string
+	version             string
+	customConfigContext map[string]any
+}
+
 // NewExecutor create a new executor.
 func NewExecutor(conf *ExecutorConfig) *Executor {
 	return &Executor{
@@ -409,6 +416,7 @@ func (executor *Executor) executeChangeActionPluginInstall(nCtx contextx.IContex
 				HostID:     task.Target.Host.HostID,
 				PluginName: param.PluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 			InstallOptions: types.PluginDeploymentInstallOptions{
 				Version: param.Version,
 			},
@@ -458,6 +466,7 @@ func (executor *Executor) executeChangeActionPluginUninstall(nCtx contextx.ICont
 				HostID:     task.Target.Host.HostID,
 				PluginName: param.PluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 		}, &types.PluginDeploymentPluginConf{})
 
 		hostMap[task.Target.Host.HostID] = struct{}{}
@@ -501,6 +510,7 @@ func (executor *Executor) executeChangeActionPluginUpgrade(nCtx contextx.IContex
 				HostID:     task.Target.Host.HostID,
 				PluginName: param.PluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 			InstallOptions: types.PluginDeploymentInstallOptions{
 				Version: param.Version,
 			},
@@ -553,6 +563,7 @@ func (executor *Executor) executeChangeActionPluginApplySubConfig(nCtx contextx.
 				HostID:     task.Target.Host.HostID,
 				PluginName: param.PluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 		}, &types.PluginDeploymentPluginConf{
 			Set:                 genDeployPolicyProcessConfigSet(task.DeployPolicyID),
 			ConfigFilesDetail:   param.ConfigFilesDetail,
@@ -604,6 +615,7 @@ func (executor *Executor) executeChangeActionPluginDeleteSubConfig(nCtx contextx
 				HostID:     task.Target.Host.HostID,
 				PluginName: param.PluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 		}, &types.PluginDeploymentPluginConf{
 			RemoveConfigFileName: removeConfigFileNames,
 		})
@@ -670,15 +682,15 @@ func (executor *Executor) executeChangeActionPluginPkgInstall(nCtx contextx.ICon
 	pluginDeployments := make([]*types.PluginDeployment, len(tasks))
 	hostMap := make(map[int64]struct{})
 	for idx, task := range tasks {
-		param, err := task.Spec.GetSpecifyPluginPkgParam()
+		param, err := getPluginPkgTaskParam(task)
 		if err != nil {
-			return fmt.Errorf("failed to get specify plugin pkg param for task: %w", err)
+			return fmt.Errorf("failed to get plugin pkg task param: %w", err)
 		}
 
 		plugins[idx] = &types.Plugin{
 			TenantID: nCtx.TenantID(),
-			Name:     genPluginNameForSpecifyPluginPkg(param.PluginPkgName, task.DeployPolicyID, task.Target.ServiceInstance.ModuleID),
-			PkgName:  param.PluginPkgName,
+			Name:     param.pluginName,
+			PkgName:  param.pluginPkgName,
 			Group:    fmt.Sprintf("%d", task.DeployPolicyID),
 			Memo:     fmt.Sprintf("this plugin is created by deploy policy %d", task.DeployPolicyID),
 		}
@@ -689,11 +701,12 @@ func (executor *Executor) executeChangeActionPluginPkgInstall(nCtx contextx.ICon
 				HostID:     task.Target.Host.HostID,
 				PluginName: plugins[idx].Name,
 			},
+			ConfigSource: getTaskConfigSource(task),
 			InstallOptions: types.PluginDeploymentInstallOptions{
-				Version: param.Version,
+				Version: param.version,
 			},
 		}, &types.PluginDeploymentPluginConf{
-			CustomConfigContext: param.CustomConfigContext,
+			CustomConfigContext: param.customConfigContext,
 		})
 
 		hostMap[task.Target.Host.HostID] = struct{}{}
@@ -734,22 +747,23 @@ func (executor *Executor) executeChangeActionPluginPkgUpgrade(nCtx contextx.ICon
 	pluginDeployments := make([]*types.PluginDeployment, len(tasks))
 	hostMap := make(map[int64]struct{})
 	for idx, task := range tasks {
-		param, err := task.Spec.GetSpecifyPluginPkgParam()
+		param, err := getPluginPkgTaskParam(task)
 		if err != nil {
-			return fmt.Errorf("failed to get specify plugin pkg param for task: %w", err)
+			return fmt.Errorf("failed to get plugin pkg task param: %w", err)
 		}
 
 		pluginDeployments[idx] = types.NewPluginDeployment(&types.PluginDeploymentInfo{
 			Process: types.Process{
 				TenantID:   nCtx.TenantID(),
 				HostID:     task.Target.Host.HostID,
-				PluginName: genPluginNameForSpecifyPluginPkg(param.PluginPkgName, task.DeployPolicyID, task.Target.ServiceInstance.ModuleID),
+				PluginName: param.pluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 			InstallOptions: types.PluginDeploymentInstallOptions{
-				Version: param.Version,
+				Version: param.version,
 			},
 		}, &types.PluginDeploymentPluginConf{
-			CustomConfigContext: param.CustomConfigContext,
+			CustomConfigContext: param.customConfigContext,
 		})
 
 		hostMap[task.Target.Host.HostID] = struct{}{}
@@ -784,17 +798,18 @@ func (executor *Executor) executeChangeActionPluginPkgUninstall(nCtx contextx.IC
 	pluginDeployments := make([]*types.PluginDeployment, len(tasks))
 	hostMap := make(map[int64]struct{})
 	for idx, task := range tasks {
-		param, err := task.Spec.GetSpecifyPluginPkgParam()
+		param, err := getPluginPkgTaskParam(task)
 		if err != nil {
-			return fmt.Errorf("failed to get specify plugin pkg param for task: %w", err)
+			return fmt.Errorf("failed to get plugin pkg task param: %w", err)
 		}
 
 		pluginDeployments[idx] = types.NewPluginDeployment(&types.PluginDeploymentInfo{
 			Process: types.Process{
 				TenantID:   nCtx.TenantID(),
 				HostID:     task.Target.Host.HostID,
-				PluginName: genPluginNameForSpecifyPluginPkg(param.PluginPkgName, task.DeployPolicyID, task.Target.ServiceInstance.ModuleID),
+				PluginName: param.pluginName,
 			},
+			ConfigSource: getTaskConfigSource(task),
 		}, &types.PluginDeploymentPluginConf{})
 
 		hostMap[task.Target.Host.HostID] = struct{}{}
@@ -817,6 +832,86 @@ func (executor *Executor) executeChangeActionPluginPkgUninstall(nCtx contextx.IC
 	logger.G.Sys().With("workflow-id", workflowID).Info("successful to execute change action plugin pkg uninstall")
 
 	return nil
+}
+
+func getPluginPkgTaskParam(task *ChangeTask) (*pluginPkgTaskParam, error) {
+	if task == nil {
+		return nil, fmt.Errorf("task is nil")
+	}
+
+	if task.Spec == nil {
+		return nil, fmt.Errorf("task spec is nil")
+	}
+
+	switch task.Spec.Type() {
+	case types.DeploySpecTypeSpecifyPluginPkg:
+		return getSpecifyPluginPkgTaskParam(task)
+	case types.DeploySpecTypeProjectPluginPkgToHosts:
+		return getProjectPluginPkgToHostsTaskParam(task)
+	default:
+		return nil, fmt.Errorf("unsupported plugin pkg spec type, type(%s)", task.Spec.Type())
+	}
+}
+
+func getSpecifyPluginPkgTaskParam(task *ChangeTask) (*pluginPkgTaskParam, error) {
+	param, err := task.Spec.GetSpecifyPluginPkgParam()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get specify plugin pkg param: %w", err)
+	}
+
+	return &pluginPkgTaskParam{
+		pluginName: genPluginNameForSpecifyPluginPkg(
+			param.PluginPkgName,
+			task.DeployPolicyID,
+			task.Target.ServiceInstance.ModuleID,
+		),
+		pluginPkgName:       param.PluginPkgName,
+		version:             param.Version,
+		customConfigContext: param.CustomConfigContext,
+	}, nil
+}
+
+func getProjectPluginPkgToHostsTaskParam(task *ChangeTask) (*pluginPkgTaskParam, error) {
+	param, err := task.Spec.GetProjectPluginPkgToHostsParam()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project plugin pkg to hosts param: %w", err)
+	}
+
+	return &pluginPkgTaskParam{
+		pluginName: genPluginNameForProjectPluginPkgToHosts(
+			param.PluginPkgName,
+			task.DeployPolicyID,
+			task.Target.ServiceInstance.ModuleID,
+			task.Target.ServiceInstance.HostID,
+		),
+		pluginPkgName:       param.PluginPkgName,
+		version:             param.Version,
+		customConfigContext: param.CustomConfigContext,
+	}, nil
+}
+
+func getTaskConfigSource(task *ChangeTask) types.Target {
+	if !needPluginDeploymentConfigSource(task) {
+		return types.Target{}
+	}
+
+	return *task.ConfigSource
+}
+
+func needPluginDeploymentConfigSource(task *ChangeTask) bool {
+	if task == nil || task.ConfigSource == nil {
+		return false
+	}
+
+	configSource := task.ConfigSource
+	if configSource.Host.HostID <= 0 {
+		return false
+	}
+	if task.Target == nil || configSource.Host.HostID != task.Target.Host.HostID {
+		return true
+	}
+
+	return configSource.ServiceInstance.ID > 0 || len(configSource.MatchedTopoRelations) > 0
 }
 
 // ===============================================================================
