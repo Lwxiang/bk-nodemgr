@@ -38,12 +38,6 @@ const (
 func (h *handler) CheckPkgStats(nCtx contextx.IContext, payload []byte) {
 	logger.G.Biz(nCtx).Info("handler check pkg state event")
 
-	if err := h.storageFS.ensure("check package stats"); err != nil {
-		logger.G.Biz(nCtx).WithErr(err).Error("failed to ensure transfer-file dir")
-
-		return
-	}
-
 	var event protoRelay.CheckPkgStateReq
 	if err := json.Unmarshal(payload, &event); err != nil {
 		logger.G.Biz(nCtx).WithErr(err).Error("failed to unmarshal check pkg stat event")
@@ -51,12 +45,24 @@ func (h *handler) CheckPkgStats(nCtx contextx.IContext, payload []byte) {
 		return
 	}
 
+	// Each operation instance gets its own staging directory, reported back so the transfer
+	// lands there. Concurrent installations of the same package then never share a path.
+	stagingDir, err := h.storageFS.instanceDir(event.OperInstID)
+	if err != nil {
+		logger.G.Biz(nCtx).WithErr(err).With("oper-inst-id", event.OperInstID).Error("failed to resolve staging dir")
+
+		return
+	}
+
 	fileStates := make([]fileState, 0)
+	needsTransfer := false
 
 	for _, fileInfo := range event.FileList {
 		statePkg := relayconstant.RelayReportPkgInComplete
 		if exists := h.fileManager.FileExists(nCtx, fileInfo.FileName, fileInfo.FileMD5); exists {
 			statePkg = relayconstant.RelayReportPkgComplete
+		} else {
+			needsTransfer = true
 		}
 
 		logger.G.Biz(nCtx).With("filename", fileInfo.FileName, "md5", fileInfo.FileMD5, "exists", statePkg).Info("check package status")
@@ -67,10 +73,22 @@ func (h *handler) CheckPkgStats(nCtx contextx.IContext, payload []byte) {
 		})
 	}
 
+	// Only materialize the directory when something will actually be transferred into it.
+	// The backend skips the store step entirely when every package is already cached, and it
+	// is that step which removes the directory, so creating it eagerly would leave an empty
+	// directory behind on every cache hit until the orphan gc reclaims it.
+	if needsTransfer {
+		if _, err := h.storageFS.ensureInstanceDir(event.OperInstID); err != nil {
+			logger.G.Biz(nCtx).WithErr(err).With("oper-inst-id", event.OperInstID).Error("failed to ensure staging dir")
+
+			return
+		}
+	}
+
 	req := reportRelayFileState{
 		ActionName:    event.ActionName,
 		OperInstID:    event.OperInstID,
-		StorageTmpDir: h.storageTmpDir,
+		StorageTmpDir: stagingDir,
 		FileState:     fileStates,
 	}
 
@@ -85,12 +103,6 @@ func (h *handler) CheckPkgStats(nCtx contextx.IContext, payload []byte) {
 func (h *handler) StoragePkg(nCtx contextx.IContext, payload []byte) {
 	logger.G.Biz(nCtx).Info("handler storage pkg event")
 
-	if err := h.storageFS.ensure("storage package"); err != nil {
-		logger.G.Biz(nCtx).WithErr(err).Error("failed to ensure transfer-file dir")
-
-		return
-	}
-
 	var event protoRelay.NotifyReceiveReq
 
 	if err := json.Unmarshal(payload, &event); err != nil {
@@ -99,30 +111,19 @@ func (h *handler) StoragePkg(nCtx contextx.IContext, payload []byte) {
 		return
 	}
 
+	stagingDir, err := h.storageFS.instanceDir(event.OperInstID)
+
 	var errMsg string
-	for _, pkgName := range event.PkgName {
-		if err := validateWorkspaceFilename(pkgName); err != nil {
-			logger.G.Biz(nCtx).
-				AssignWhenLogging(&errMsg).
-				WithErr(err).
-				With("dest-dir", h.storageTmpDir, "pkgname", pkgName).
-				Error("failed to validate package filename")
-
-			break
-		}
-
-		fileInfo, err := h.fileManager.StoreFile(nCtx, h.storageTmpDir, pkgName)
-		if err != nil {
-			logger.G.Biz(nCtx).
-				AssignWhenLogging(&errMsg).
-				WithErr(err).
-				With("dest-dir", h.storageTmpDir, "pkgname", pkgName).
-				Error("failed to store file")
-
-			break
-		}
-
-		logger.G.Biz(nCtx).With("filename", fileInfo.Name, "md5", fileInfo.MD5, "size", fileInfo.Size).Info("storage package successfully")
+	if err != nil {
+		// Report instead of returning silently: the backend is blocked waiting for this result
+		// and would otherwise only learn about the failure when its timeout expires.
+		logger.G.Biz(nCtx).
+			AssignWhenLogging(&errMsg).
+			WithErr(err).
+			With("oper-inst-id", event.OperInstID).
+			Error("failed to resolve staging dir")
+	} else {
+		errMsg = h.storeTransferredPkgs(nCtx, stagingDir, event.FileList)
 	}
 
 	req := reportRelayStorageResult{
@@ -134,11 +135,76 @@ func (h *handler) StoragePkg(nCtx contextx.IContext, payload []byte) {
 		logger.G.Biz(nCtx).WithErr(err).Error("failed to report relay storage result")
 	}
 
-	for _, pkgName := range event.PkgName {
-		if err := h.storageFS.removeFile(pkgName); err != nil {
-			logger.G.Biz(nCtx).WithErr(err).With("dest-dir", h.storageTmpDir, "pkgname", pkgName).Error("failed to remove file")
-		}
+	if stagingDir == "" {
+		return
+	}
+
+	// The staging directory belongs to this operation instance alone, so dropping it wholesale
+	// cannot disturb a concurrent installation.
+	if err := h.storageFS.removeInstanceDir(event.OperInstID); err != nil {
+		logger.G.Biz(nCtx).WithErr(err).With("staging-dir", stagingDir).Error("failed to remove staging dir")
 	}
 
 	logger.G.Biz(nCtx).Info("storage package event successfully")
+}
+
+// storeTransferredPkgs promotes every transferred package into the cache and returns the
+// error message to report back, empty when all packages were stored.
+//
+// A missing or malformed MD5 is refused instead of being stored unverified: the staging file
+// is produced by an external transfer, so without the expected MD5 there is no way to tell a
+// complete package from a truncated one, and caching a truncated one would serve a corrupt
+// package to every node that follows.
+func (h *handler) storeTransferredPkgs(
+	nCtx contextx.IContext, stagingDir string, files []protoRelay.FileInfo) string {
+
+	if len(files) == 0 {
+		var errMsg string
+		logger.G.Biz(nCtx).
+			AssignWhenLogging(&errMsg).
+			With("staging-dir", stagingDir).
+			Error("storage pkg event carries no file list, refusing to store unverified packages")
+
+		return errMsg
+	}
+
+	var errMsg string
+
+	for _, file := range files {
+		if err := validateWorkspaceFilename(file.FileName); err != nil {
+			logger.G.Biz(nCtx).
+				AssignWhenLogging(&errMsg).
+				WithErr(err).
+				With("staging-dir", stagingDir, "pkgname", file.FileName).
+				Error("failed to validate package filename")
+
+			return errMsg
+		}
+
+		if file.FileMD5 == "" {
+			logger.G.Biz(nCtx).
+				AssignWhenLogging(&errMsg).
+				With("staging-dir", stagingDir, "pkgname", file.FileName).
+				Error("package md5 is empty, refusing to store unverified package")
+
+			return errMsg
+		}
+
+		fileInfo, err := h.fileManager.StoreFile(nCtx, stagingDir, file.FileName, file.FileMD5)
+		if err != nil {
+			logger.G.Biz(nCtx).
+				AssignWhenLogging(&errMsg).
+				WithErr(err).
+				With("staging-dir", stagingDir, "pkgname", file.FileName).
+				Error("failed to store file")
+
+			return errMsg
+		}
+
+		logger.G.Biz(nCtx).
+			With("filename", fileInfo.Name, "md5", fileInfo.MD5, "size", fileInfo.Size).
+			Info("storage package successfully")
+	}
+
+	return errMsg
 }
