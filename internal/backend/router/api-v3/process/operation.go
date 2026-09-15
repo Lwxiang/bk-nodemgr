@@ -44,9 +44,16 @@ func (h *handler) List(rCtx restserver.IContext) (interface{}, error) {
 		logger.G.Biz(rCtx).WithErr(authErr).Error("failed to list processes, permission denied")
 		return nil, resterrf.ErrWrap(resterrf.PermissionDenied, authErr)
 	}
-	condition = narrowProcessCondition(condition, narrowedBizIDs, scopeIsAny)
+	condition = applyAuthorizedProcessCondition(condition, narrowedBizIDs, scopeIsAny)
 
 	if req.GetOnlyCount() {
+		if !scopeIsAny && len(narrowedBizIDs) == 0 {
+			resp := new(protoBackend.ProcessListResp)
+			resp.ConvertProcessFromTypes(0, nil)
+
+			return resp.GetData(), nil
+		}
+
 		cnt, err := h.daoProcess.CountProcesses(
 			rCtx,
 			condition)
@@ -65,6 +72,13 @@ func (h *handler) List(rCtx restserver.IContext) (interface{}, error) {
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to list processes, invalid page info.")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+
+	if !scopeIsAny && len(narrowedBizIDs) == 0 {
+		resp := new(protoBackend.ProcessListResp)
+		resp.ConvertProcessFromTypes(0, nil)
+
+		return resp.GetData(), nil
 	}
 
 	processes, cnt, err := h.daoProcess.ListProcesses(rCtx, page, condition)
