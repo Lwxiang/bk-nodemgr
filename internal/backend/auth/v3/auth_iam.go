@@ -42,6 +42,7 @@ const iamCacheTTL = 5 * time.Minute
 // NewProviderHandler registers the IAM V3 resource providers.
 func NewProviderHandler(topoStorage topo.IStorage, releaseStorage file.IPkgReleaseHandler) providerV3.IHandler {
 	handler := providerV3.NewHandler()
+	handler.RegisterProvider(providerV3.ResourceTypeBiz, providerV3.NewBizProvider(topoStorage))
 	handler.RegisterProvider(providerV3.ResourceTypeNetworkArea, providerV3.NewNetworkAreaProvider(topoStorage))
 	handler.RegisterProvider(providerV3.ResourceTypeNetworkUnit, providerV3.NewNetworkUnitProvider(topoStorage))
 	handler.RegisterProvider(providerV3.ResourceTypePackageType, providerV3.NewPackageTypeProvider())
@@ -91,6 +92,7 @@ type iamv3Authorizer struct {
 	handler           iamv3.IHandler
 	attributeEnricher providerV3.IAttributeEnricher
 	resolver          providerV3.IResolver
+	resourceProvider  providerV3.IDispatcher
 }
 
 // NewIAMV3Authorizer creates an IAuthorizer backed by the IAM v3 handler.
@@ -101,6 +103,7 @@ func NewIAMV3Authorizer(
 	handler iamv3.IHandler,
 	attributeEnricher providerV3.IAttributeEnricher,
 	resolver providerV3.IResolver,
+	resourceProvider providerV3.IDispatcher,
 ) auth.IAuthorizer {
 
 	return &iamv3Authorizer{
@@ -108,6 +111,7 @@ func NewIAMV3Authorizer(
 		handler:           handler,
 		attributeEnricher: attributeEnricher,
 		resolver:          resolver,
+		resourceProvider:  resourceProvider,
 	}
 }
 
@@ -444,12 +448,50 @@ func (authorizer *iamv3Authorizer) newPermissionDeniedError(
 		applyURL = ""
 	}
 
-	return auth.PermissionDeniedError{
+	permErr := auth.PermissionDeniedError{
 		ApplyURL:   applyURL,
 		SystemID:   authorizer.systemID,
 		SystemName: types.SystemDisplayName(authorizer.systemID),
 		Actions:    deniedActions,
 	}
+	permErr.FillResourceNames(ctx, authorizer.fetchResourceNames)
+
+	return permErr
+}
+
+func (authorizer *iamv3Authorizer) fetchResourceNames(
+	ctx contextx.IContext, systemID, resourceType string, ids []string,
+) (map[string]string, error) {
+
+	names := make(map[string]string)
+	if authorizer.resourceProvider == nil {
+		return names, nil
+	}
+	resourceSystemID := types.SystemIDNodeMgr
+	if resourceType == string(types.AuthResourceTypeBiz) {
+		resourceSystemID = types.SystemIDCMDB
+	}
+	if systemID != resourceSystemID {
+		return names, nil
+	}
+	resourceProvider, ok := authorizer.resourceProvider.GetProvider(resourceType)
+	if !ok {
+		return names, nil
+	}
+	instances, err := resourceProvider.FetchInstanceInfo(ctx, &providerV3.Request[providerV3.FetchInstanceFilter]{
+		Filter: providerV3.FetchInstanceFilter{IDs: ids},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch resource names: %w", err)
+	}
+	if instances == nil {
+		return nil, errors.New("provider returned nil instance info")
+	}
+	for _, instance := range *instances {
+		names[instance.ID] = instance.DisplayName
+	}
+
+	return names, nil
 }
 
 func (authorizer *iamv3Authorizer) Check(ctx contextx.IContext, action auth.Action, resources []types.AuthResource) error {

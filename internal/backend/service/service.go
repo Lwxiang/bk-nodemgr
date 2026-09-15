@@ -490,6 +490,7 @@ func (svc *Service) newAuthorizer() (auth.IAuthorizer, error) {
 			svc.Cap.IAMV3Handler,
 			svc.Cap.AuthProviderV3Handler, // IAttributeEnricher
 			svc.Cap.AuthProviderV3Handler, // IResolver
+			svc.Cap.AuthProviderV3Handler, // IDispatcher
 		), nil
 	case svc.conf.IAMV4.Enable:
 		iamHandler, err := svc.newIAMV4Handler()
@@ -503,6 +504,7 @@ func (svc *Service) newAuthorizer() (auth.IAuthorizer, error) {
 		return v4.NewIAMV4Authorizer(
 			svc.conf.IAMV4.SystemID,
 			svc.Cap.IAMV4Handler,
+			svc.Cap.AuthProviderV4Handler,
 			svc.Cap.AuthProviderV4Handler,
 			svc.Cap.AuthProviderV4Handler,
 		), nil
