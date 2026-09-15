@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/dpmgr"
 	deployPolicyUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/deploypolicy/utils"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/deploypolicy"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
@@ -42,8 +43,9 @@ const (
 // NewActionGenOperExecuteDeployPolicy creates a new actionGenOperExecuteDeployPolicy.
 func NewActionGenOperExecuteDeployPolicy(capability *Capability) action.Definition {
 	return &actionGenOperExecuteDeployPolicy{
-		daoDeployPolicy: capability.StorageDeployPolicy,
-		workflowCtl:     capability.WorkflowCtl,
+		daoDeployPolicy:         capability.StorageDeployPolicy,
+		daoDeployPolicyWorkflow: capability.StorageDeployPolicy,
+		workflowCtl:             capability.WorkflowCtl,
 	}
 }
 
@@ -53,8 +55,9 @@ type ActionParamGenOperExecuteDeployPolicy struct {
 }
 
 type actionGenOperExecuteDeployPolicy struct {
-	daoDeployPolicy deploypolicy.IDaoDeployPolicy
-	workflowCtl     workflow.IController
+	daoDeployPolicy         deploypolicy.IDaoDeployPolicy
+	daoDeployPolicyWorkflow deploypolicy.IDaoDeployPolicyWorkflow
+	workflowCtl             workflow.IController
 }
 
 // Name returns the name of the action.
@@ -199,6 +202,15 @@ func (act *actionGenOperExecuteDeployPolicy) executeOper(std *deployPolicyUtils.
 			With("action", act.Name(), "tenant-id", std.TenantID()).
 			Error("failed to create execute deploy policy operation")
 
+		return err
+	}
+
+	execution := dpmgr.ExecutionParam{
+		OperationID: operCtl.GetOperationID(),
+		TriggerID:   trigCtl.GetTriggerID(),
+		WorkflowIDs: make(map[int64]string, len(policyIDs)),
+	}
+	if err := ensurePolicyWorkflows(std.Context(), act.daoDeployPolicyWorkflow, execution, std.Operator(), policyIDs); err != nil {
 		return err
 	}
 

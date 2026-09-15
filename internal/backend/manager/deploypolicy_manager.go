@@ -19,6 +19,8 @@
 package manager
 
 import (
+	"fmt"
+
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/deploypolicy"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
@@ -32,7 +34,6 @@ func (mgr *Manager) LaunchExecuteDeployPolicy(nCtx contextx.IContext, param type
 	if err != nil {
 		return "", err
 	}
-
 	operationDef := deploypolicy.NewOperExecuteDeployPolicy(deploypolicy.OperParamExecuteDeployPolicy{
 		TenantID:        nCtx.TenantID(),
 		Operator:        param.Operator,
@@ -41,6 +42,12 @@ func (mgr *Manager) LaunchExecuteDeployPolicy(nCtx contextx.IContext, param type
 	operCtl, err := triggerCtl.CreateOperation(nCtx, operationDef, operationDef.DefaultParameters())
 	if err != nil {
 		return "", err
+	}
+	for _, policyID := range param.DeployPolicyIDs {
+		if _, err := mgr.conf.StorageDeployPolicy.EnsureDeployPolicyWorkflow(nCtx,
+			operCtl.GetOperationID(), triggerCtl.GetTriggerID(), policyID, param.Operator); err != nil {
+			return "", fmt.Errorf("failed to ensure policy %d workflow: %w", policyID, err)
+		}
 	}
 
 	if err = triggerCtl.ActivateTrigger(nCtx); err != nil {

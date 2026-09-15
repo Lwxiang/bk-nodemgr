@@ -20,6 +20,7 @@
 package dpmgr
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,7 +31,8 @@ import (
 
 // IHandler defines the handler interface.
 type IHandler interface {
-	Do(nCtx contextx.IContext, deployPolicies ...*types.DeployPolicy) error
+	// Do executes policies and records their participating workflows.
+	Do(nCtx contextx.IContext, execution ExecutionParam, deployPolicies ...*types.DeployPolicy) error
 }
 
 var _ IHandler = &Handler{}
@@ -47,7 +49,8 @@ type Handler struct {
 	analyzer IAnalyzer
 	executor IExecutor
 
-	domainDeployPolicyMgr deploypolicy.IDomainDeployPolicyMgr
+	domainDeployPolicyMgr   deploypolicy.IDomainDeployPolicyMgr
+	daoDeployPolicyWorkflow deploypolicy.IDaoDeployPolicyWorkflow
 }
 
 const (
@@ -72,28 +75,47 @@ func NewHandler(conf *Config) *Handler {
 		DaoHost:          conf.DaoHost,
 	})
 	executor := NewExecutor(&ExecutorConfig{
-		NodeManager:      conf.NodeManager,
-		PluginManager:    conf.PluginManager,
-		DaoPlugin:        conf.DaoPlugin,
-		DaoProcessConfig: conf.DaoProcessConfig,
+		NodeManager:             conf.NodeManager,
+		PluginManager:           conf.PluginManager,
+		DaoPlugin:               conf.DaoPlugin,
+		DaoProcessConfig:        conf.DaoProcessConfig,
+		DaoDeployPolicyWorkflow: conf.DaoDeployPolicyWorkflow,
 	})
 
 	return &Handler{
-		domainDeployPolicyMgr: conf.DomainDeployPolicyMgr,
-		policyDiscovery:       policyDiscovery,
-		calculator:            calculator,
-		conflictResolver:      conflictResolver,
-		analyzer:              analyzer,
-		executor:              executor,
+		domainDeployPolicyMgr:   conf.DomainDeployPolicyMgr,
+		daoDeployPolicyWorkflow: conf.DaoDeployPolicyWorkflow,
+		policyDiscovery:         policyDiscovery,
+		calculator:              calculator,
+		conflictResolver:        conflictResolver,
+		analyzer:                analyzer,
+		executor:                executor,
 	}
 }
 
-// Do does the handler.
-func (h *Handler) Do(nCtx contextx.IContext, originDeployPolicies ...*types.DeployPolicy) error {
+// Do executes policies and records their participating workflows.
+func (h *Handler) Do(nCtx contextx.IContext, execution ExecutionParam,
+	originDeployPolicies ...*types.DeployPolicy) error {
+
+	if execution.OperationID == "" || execution.WorkflowIDs == nil {
+		return errors.New("deploy policy operation identity and workflow map are required")
+	}
+	if h.daoDeployPolicyWorkflow == nil {
+		return errors.New("deploy policy workflow storage is required")
+	}
+
 	// 1. discover these deploy policies's related deploy policies.
 	relatedDeployPolicies, err := h.policyDiscovery.Discover(nCtx, originDeployPolicies...)
 	if err != nil {
 		return fmt.Errorf("failed to discover related deploy policies: %w", err)
+	}
+
+	execution.PolicyGroups = make(map[int64]int64, len(relatedDeployPolicies))
+	for _, policy := range relatedDeployPolicies {
+		execution.PolicyGroups[policy.DeployPolicyID] = policy.DsuID
+	}
+	if err := h.ensureDiscoveredWorkflows(nCtx, execution, relatedDeployPolicies); err != nil {
+		return err
 	}
 
 	originDeployWorkUnits := make([]*DeployUnit, len(relatedDeployPolicies))
@@ -126,7 +148,7 @@ func (h *Handler) Do(nCtx contextx.IContext, originDeployPolicies ...*types.Depl
 	}
 
 	// 5. executor and execute the change tasks.
-	if err := h.executor.Execute(nCtx, changeTasks...); err != nil {
+	if err := h.executor.Execute(nCtx, execution, changeTasks...); err != nil {
 		return fmt.Errorf("failed to execute change tasks: %w", err)
 	}
 
@@ -141,4 +163,22 @@ func (h *Handler) Do(nCtx contextx.IContext, originDeployPolicies ...*types.Depl
 	}
 
 	return nil
+}
+
+func (h *Handler) ensureDiscoveredWorkflows(nCtx contextx.IContext, execution ExecutionParam,
+	policies []*types.DeployPolicy) error {
+
+	var recordErr error
+	for _, policy := range policies {
+		parent, err := h.daoDeployPolicyWorkflow.EnsureDeployPolicyWorkflow(nCtx,
+			execution.OperationID, execution.TriggerID, policy.DeployPolicyID, nCtx.BKUsername())
+		if err != nil {
+			recordErr = errors.Join(recordErr, fmt.Errorf("failed to ensure policy %d workflow: %w", policy.DeployPolicyID, err))
+
+			continue
+		}
+		execution.WorkflowIDs[policy.DeployPolicyID] = parent.WorkflowID
+	}
+
+	return recordErr
 }

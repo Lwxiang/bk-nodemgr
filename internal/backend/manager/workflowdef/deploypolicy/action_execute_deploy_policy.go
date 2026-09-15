@@ -19,12 +19,14 @@
 package deploypolicy
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/dpmgr"
 	deployPolicyUtils "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/workflowdef/deploypolicy/utils"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/deploypolicy"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -39,8 +41,9 @@ const (
 // NewActionExecuteDeployPolicy creates a new actionExecuteDeployPolicy.
 func NewActionExecuteDeployPolicy(capability *Capability) action.Definition {
 	return &actionExecuteDeployPolicy{
-		dpMgr:           capability.DPMgr,
-		daoDeployPolicy: capability.StorageDeployPolicy,
+		dpMgr:                   capability.DPMgr,
+		daoDeployPolicy:         capability.StorageDeployPolicy,
+		daoDeployPolicyWorkflow: capability.StorageDeployPolicy,
 	}
 }
 
@@ -51,8 +54,9 @@ type ActionParamExecuteDeployPolicy struct {
 }
 
 type actionExecuteDeployPolicy struct {
-	dpMgr           dpmgr.IHandler
-	daoDeployPolicy deploypolicy.IDaoDeployPolicy
+	dpMgr                   dpmgr.IHandler
+	daoDeployPolicy         deploypolicy.IDaoDeployPolicy
+	daoDeployPolicyWorkflow deploypolicy.IDaoDeployPolicyWorkflow
 }
 
 // Name returns the name of the action.
@@ -113,6 +117,14 @@ func (act *actionExecuteDeployPolicy) Do(ctx *action.InstanceContext) error {
 	}
 
 	nCtx := std.Context()
+	execution := dpmgr.ExecutionParam{
+		OperationID: ctx.Data.OperationID,
+		TriggerID:   ctx.Data.TriggerID,
+		WorkflowIDs: make(map[int64]string),
+	}
+	if err := ensurePolicyWorkflows(nCtx, act.daoDeployPolicyWorkflow, execution, std.Operator(), param.DeployPolicyIDs); err != nil {
+		return err
+	}
 	cond := &types.DeployPolicyCondition{
 		ExactInclude: &types.DeployPolicyExactFields{
 			DeployPolicyID: param.DeployPolicyIDs,
@@ -123,6 +135,7 @@ func (act *actionExecuteDeployPolicy) Do(ctx *action.InstanceContext) error {
 	if err != nil {
 		logger.G.Sys().Ctx(nCtx).WithErr(err).With("tenant-id", std.TenantID()).
 			Error("failed to list deploy policies")
+
 		return fmt.Errorf("failed to list deploy policies: %w", err)
 	}
 
@@ -133,7 +146,7 @@ func (act *actionExecuteDeployPolicy) Do(ctx *action.InstanceContext) error {
 		return fmt.Errorf("no deploy policy found")
 	}
 
-	if err := act.dpMgr.Do(nCtx, deployPolicies...); err != nil {
+	if err := act.dpMgr.Do(nCtx, execution, deployPolicies...); err != nil {
 		logger.G.Sys().Ctx(nCtx).WithErr(err).With("tenant-id", std.TenantID()).
 			Error("failed to execute deploy policy")
 
@@ -144,4 +157,21 @@ func (act *actionExecuteDeployPolicy) Do(ctx *action.InstanceContext) error {
 		Info("executed deploy policy")
 
 	return nil
+}
+
+func ensurePolicyWorkflows(nCtx contextx.IContext, storage deploypolicy.IDaoDeployPolicyWorkflow,
+	execution dpmgr.ExecutionParam, operator string, policyIDs []int64) error {
+
+	var recordErr error
+	for _, policyID := range policyIDs {
+		parent, err := storage.EnsureDeployPolicyWorkflow(nCtx, execution.OperationID, execution.TriggerID, policyID, operator)
+		if err != nil {
+			recordErr = errors.Join(recordErr, fmt.Errorf("failed to ensure policy %d workflow: %w", policyID, err))
+
+			continue
+		}
+		execution.WorkflowIDs[policyID] = parent.WorkflowID
+	}
+
+	return recordErr
 }
