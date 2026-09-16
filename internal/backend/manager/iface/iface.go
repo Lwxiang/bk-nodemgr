@@ -120,6 +120,7 @@ type iPluginManagerPluginV2 interface {
 }
 
 // ISyncManager defines the SyncManager interface.
+// nolint: interfacebloat
 type ISyncManager interface {
 	// LaunchSyncBizAndHost launch a task to sync biz and host. returns the trigger-id.
 	LaunchSyncBizAndHost(ctx contextx.IContext) (string, error)
@@ -150,6 +151,12 @@ type ISyncManager interface {
 
 	// LaunchSyncAllAlivePluginProcessInfo launch a task to sync all alive plugin process info. returns the workflow-id.
 	LaunchSyncAllAlivePluginProcessInfo(ctx contextx.IContext) (string, error)
+
+	// LaunchEnsureDefaultPlugin launches default plugin reconciliation and returns the workflow ID.
+	LaunchEnsureDefaultPlugin(ctx contextx.IContext) (string, error)
+
+	// LaunchSyncSharedReleases launches shared release synchronization and returns the workflow ID.
+	LaunchSyncSharedReleases(ctx contextx.IContext) (string, error)
 }
 
 // IDeployPolicyManager defines the DeployPolicyManager interface.
