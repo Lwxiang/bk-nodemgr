@@ -36,6 +36,8 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/rediscache"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/retrier"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/tenant"
+	apigwheader "github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/apigw/header"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -106,9 +108,21 @@ func (m *serverMessager) Start(_ contextx.IContext) error {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: m.config.SkipTLSVerify},
 	}}
 
+	// GSE does not partition cluster message slots by tenant, but multi-tenant apigw
+	// rejects requests without X-Bk-Tenant-Id, so dispatching declares the system tenant.
+	// Single mode declares the default tenant, matching what pkg/thirdparty/gse sends.
+	tenantID := tenant.SingleModeTenantID
+	if tenant.GetMode() == tenant.ModeMultiple {
+		tenantID = tenant.SystemTenantID
+	}
+
+	baseHeader := http.Header{}
+	baseHeader.Set(apigwheader.BKGWTenantIDKey, tenantID)
+
 	client, err := serverapi.New(
 		serverapi.WithBaseURL(m.config.GSEBaseURL),
 		serverapi.WithClient(httpClient),
+		serverapi.WithBaseHeader(baseHeader),
 		serverapi.WithClusterAuth(m.config.SlotID, m.config.Token),
 		serverapi.WithAPIGwAuth(m.config.AppCode, m.config.AppSecret),
 		serverapi.WithLogger(logger.G.Sys()))
