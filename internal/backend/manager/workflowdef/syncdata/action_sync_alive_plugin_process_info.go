@@ -29,6 +29,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/batchexecutor"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/pageexecutor"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/gse"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -38,6 +39,8 @@ import (
 const (
 	// ActionNameSyncAlivePluginProcessInfo defines the action name.
 	ActionNameSyncAlivePluginProcessInfo = "sync_alive_plugin_process_info"
+
+	processSyncListMaxPageSize = 500
 )
 
 // NewActionSyncAlivePluginProcessInfo creates a new syncAgentInfo.
@@ -125,13 +128,7 @@ func (act *actionSyncAlivePluginProcessInfo) Do(ctx *action.InstanceContext) err
 		return nil
 	}
 
-	cond := &types.ProcessCondition{
-		ExactInclude: &types.ProcessExactFields{
-			HostID:     param.HostIDs,
-			InfoStatus: []types.ProcessStatus{types.ProcessStatusRunning},
-		},
-	}
-	aliveProcess, _, err := act.processStg.ListProcesses(std.Context(), types.UnlimitedPage(), cond)
+	aliveProcess, err := act.listProcessesToSync(std.Context(), param.HostIDs)
 	if err != nil {
 		return err
 	}
@@ -171,6 +168,58 @@ func (act *actionSyncAlivePluginProcessInfo) Do(ctx *action.InstanceContext) err
 	}
 
 	return nil
+}
+
+func (act *actionSyncAlivePluginProcessInfo) listProcessesToSync(nCtx contextx.IContext, hostIDs []int64) ([]*types.Process, error) {
+	executor := pageexecutor.NewPageExecutor[*types.Process](processSyncListMaxPageSize, act.Timeout())
+	listProcesses := func(cond *types.ProcessCondition) ([]*types.Process, error) {
+		fn := func(nCtx contextx.IContext, p types.Page) ([]*types.Process, error) {
+			processes, _, err := act.processStg.ListProcesses(nCtx, p, cond)
+			return processes, err
+		}
+		result, err := executor.Execute(nCtx, types.UnlimitedPage(), fn)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Items, nil
+	}
+
+	runningProcess, err := listProcesses(&types.ProcessCondition{
+		ExactInclude: &types.ProcessExactFields{
+			HostID:     hostIDs,
+			InfoStatus: []types.ProcessStatus{types.ProcessStatusRunning},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	unknownAutoStartProcess, err := listProcesses(&types.ProcessCondition{
+		ExactInclude: &types.ProcessExactFields{
+			HostID:          hostIDs,
+			InfoStatus:      []types.ProcessStatus{types.ProcessStatusUnknown},
+			InfoTrusteeship: []bool{true},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	aliveProcess := make([]*types.Process, 0, len(runningProcess)+len(unknownAutoStartProcess))
+	aliveProcessMap := make(map[types.ProcessUniqueKey]struct{}, len(runningProcess)+len(unknownAutoStartProcess))
+	for _, processes := range [][]*types.Process{runningProcess, unknownAutoStartProcess} {
+		for _, proc := range processes {
+			if _, ok := aliveProcessMap[proc.GetUniqueKey()]; ok {
+				continue
+			}
+
+			aliveProcessMap[proc.GetUniqueKey()] = struct{}{}
+			aliveProcess = append(aliveProcess, proc)
+		}
+	}
+
+	return aliveProcess, nil
 }
 
 func (act *actionSyncAlivePluginProcessInfo) checkAliveProcess(
@@ -286,7 +335,7 @@ func newUnknownProcessInfoDelta(proc *types.Process, agentID string) *types.Proc
 			Pid:        0,
 			Version:    "",
 			AgentID:    agentID,
-			AutoStart:  false,
+			AutoStart:  proc.Info.AutoStart,
 			Status:     types.ProcessStatusUnknown,
 			LastSyncAt: time.Now(),
 		},
