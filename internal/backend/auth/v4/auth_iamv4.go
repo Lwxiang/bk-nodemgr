@@ -23,10 +23,12 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth/v4/provider"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/batchexecutor"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/conv"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/file"
@@ -36,6 +38,7 @@ import (
 
 const (
 	iamv4BatchLimit      = 20
+	iamv4BatchTimeout    = 30 * time.Second
 	iamv4AuthorizedAnyID = "*"
 )
 
@@ -170,28 +173,33 @@ func (authorizer *iamv4Authorizer) collectDeniedResources(
 		return nil, !allowed, nil
 	}
 
-	denied := make([]types.AuthResource, 0, len(resources))
-	for start := 0; start < len(resources); start += iamv4BatchLimit {
-		end := start + iamv4BatchLimit
-		if end > len(resources) {
-			end = len(resources)
-		}
-
-		batch := resources[start:end]
-		allowedByResource, err := authorizer.handler.ResourcesAllowed(ctx, authorizer.newCheckRequest(ctx, action, batch))
-		if err != nil {
-			return nil, false, err
-		}
-
-		for _, resource := range batch {
-			if allowed, ok := allowedByResource[resource.ID]; ok && allowed {
-				continue
+	result, err := batchexecutor.Collect(
+		ctx,
+		resources,
+		func(ctx contextx.IContext, batch []types.AuthResource) ([]types.AuthResource, error) {
+			allowedByResource, err := authorizer.handler.ResourcesAllowed(ctx, authorizer.newCheckRequest(ctx, action, batch))
+			if err != nil {
+				return nil, err
 			}
-			denied = append(denied, resource)
-		}
+
+			denied := make([]types.AuthResource, 0, len(batch))
+			for _, resource := range batch {
+				if allowed, ok := allowedByResource[resource.ID]; ok && allowed {
+					continue
+				}
+				denied = append(denied, resource)
+			}
+
+			return denied, nil
+		},
+		batchexecutor.WithBatchSize(iamv4BatchLimit),
+		batchexecutor.WithTimeout(iamv4BatchTimeout),
+	)
+	if err != nil {
+		return nil, false, err
 	}
 
-	return denied, len(denied) != 0, nil
+	return result.Items, len(result.Items) != 0, nil
 }
 
 func (authorizer *iamv4Authorizer) newPermissionDeniedError(
@@ -379,6 +387,11 @@ func (authorizer *iamv4Authorizer) ListAuthorizedInstances(
 		return auth.AuthorizedScope{}, errors.New("auth: ListAuthorizedInstances called with nil context")
 	}
 
+	parentType, hasParent := iamv4ScopeParentType(resourceType)
+	if hasParent {
+		return authorizer.listAuthorizedInstancesByResourceChecks(ctx, action, resourceType, parentType)
+	}
+
 	results, err := authorizer.handler.ListAuthorizedResources(ctx, types.IAMAuthorizedInstancesRequest{
 		SystemID:     authorizer.systemID,
 		Username:     ctx.BKUsername(),
@@ -395,6 +408,86 @@ func (authorizer *iamv4Authorizer) ListAuthorizedInstances(
 	}
 
 	return auth.AuthorizedScope{IsAny: isAny, Resources: resources}, nil
+}
+
+func (authorizer *iamv4Authorizer) listAuthorizedInstancesByResourceChecks(
+	ctx contextx.IContext,
+	action auth.Action,
+	resourceType types.AuthResourceType,
+	parentType types.AuthResourceType,
+) (auth.AuthorizedScope, error) {
+
+	expectedParent, hasParent := iamv4ScopeParentType(resourceType)
+	if !hasParent || expectedParent != parentType {
+		return auth.AuthorizedScope{}, fmt.Errorf(
+			"invalid lower-level resource scope chain: %s -> %s", parentType, resourceType,
+		)
+	}
+
+	ids, err := authorizer.listAllResourceIDs(ctx, resourceType, nil)
+	if err != nil {
+		return auth.AuthorizedScope{}, fmt.Errorf("failed to list %s candidates: %w", resourceType, err)
+	}
+
+	resources := buildIAMV4ScopeResources(resourceType, ids)
+	enrichedResources := authorizer.enrichResourceAttributes(ctx, resources)
+	allowedResources, err := authorizer.filterAllowedResources(ctx, action, enrichedResources)
+	if err != nil {
+		return auth.AuthorizedScope{}, err
+	}
+
+	return auth.AuthorizedScope{Resources: allowedResources}, nil
+}
+
+func buildIAMV4ScopeResources(resourceType types.AuthResourceType, ids []string) []types.AuthResource {
+	resources := make([]types.AuthResource, 0, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+
+		resources = append(resources, types.AuthResource{
+			SystemID: types.AuthResourceTypeToSystemID(resourceType),
+			Type:     resourceType,
+			ID:       id,
+		})
+	}
+
+	return resources
+}
+
+func (authorizer *iamv4Authorizer) filterAllowedResources(
+	ctx contextx.IContext,
+	action auth.Action,
+	resources []types.AuthResource,
+) ([]types.AuthResource, error) {
+
+	result, err := batchexecutor.Collect(
+		ctx,
+		resources,
+		func(ctx contextx.IContext, batch []types.AuthResource) ([]types.AuthResource, error) {
+			allowedByResource, err := authorizer.handler.ResourcesAllowed(ctx, authorizer.newCheckRequest(ctx, action, batch))
+			if err != nil {
+				return nil, err
+			}
+
+			allowedResources := make([]types.AuthResource, 0, len(batch))
+			for _, resource := range batch {
+				if allowed, ok := allowedByResource[resource.ID]; ok && allowed {
+					allowedResources = append(allowedResources, resource)
+				}
+			}
+
+			return allowedResources, nil
+		},
+		batchexecutor.WithBatchSize(iamv4BatchLimit),
+		batchexecutor.WithTimeout(iamv4BatchTimeout),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Items, nil
 }
 
 func (authorizer *iamv4Authorizer) resolveAuthorizedResources(
@@ -495,13 +588,18 @@ func (authorizer *iamv4Authorizer) expandAuthorizedResources(
 }
 
 func canExpandAuthorizedParent(parentType, targetType types.AuthResourceType) bool {
-	switch targetType {
+	expectedParent, hasParent := iamv4ScopeParentType(targetType)
+	return hasParent && parentType == expectedParent
+}
+
+func iamv4ScopeParentType(resourceType types.AuthResourceType) (types.AuthResourceType, bool) {
+	switch resourceType {
 	case types.AuthResourceTypeNetworkUnit:
-		return parentType == types.AuthResourceTypeNetworkArea
+		return types.AuthResourceTypeNetworkArea, true
 	case types.AuthResourceTypePackage:
-		return parentType == types.AuthResourceTypePackageType
+		return types.AuthResourceTypePackageType, true
 	default:
-		return false
+		return "", false
 	}
 }
 
