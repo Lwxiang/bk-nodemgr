@@ -3,8 +3,12 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 RUN corepack enable
 
+COPY front/package.json front/.npmrc ./
+COPY front/scripts/ ./scripts/
+RUN CYPRESS_INSTALL_BINARY=0 pnpm install
+
 COPY front/ .
-RUN pnpm i && pnpm build
+RUN pnpm build
 
 FROM alpine:3.21
 
