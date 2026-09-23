@@ -19,6 +19,9 @@
 package upload
 
 import (
+	"errors"
+
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/filex"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/logger"
 	protoFile "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/file/api/v3"
 	resterrf "github.com/TencentBlueKing/bk-nodemgr/pkg/rest/errf"
@@ -26,7 +29,7 @@ import (
 )
 
 // UploadOriginAgent upload origin agent.
-func (h *handler) UploadOriginAgent(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginAgent(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginAgentReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -35,14 +38,17 @@ func (h *handler) UploadOriginAgent(rCtx restserver.IContext) (interface{}, erro
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload agent, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginAgent(rCtx, file)
@@ -61,7 +67,7 @@ func (h *handler) UploadOriginAgent(rCtx restserver.IContext) (interface{}, erro
 }
 
 // UploadOriginServer upload origin server.
-func (h *handler) UploadOriginServer(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginServer(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginServerReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -70,14 +76,17 @@ func (h *handler) UploadOriginServer(rCtx restserver.IContext) (interface{}, err
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload server, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginServer(rCtx, file)
@@ -96,7 +105,7 @@ func (h *handler) UploadOriginServer(rCtx restserver.IContext) (interface{}, err
 }
 
 // UploadOriginProxy upload origin proxy.
-func (h *handler) UploadOriginProxy(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginProxy(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginProxyReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -105,14 +114,17 @@ func (h *handler) UploadOriginProxy(rCtx restserver.IContext) (interface{}, erro
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload proxy, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginProxy(rCtx, file)
@@ -131,7 +143,7 @@ func (h *handler) UploadOriginProxy(rCtx restserver.IContext) (interface{}, erro
 }
 
 // UploadOriginCert upload origin cert.
-func (h *handler) UploadOriginCert(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginCert(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginCertReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -140,14 +152,17 @@ func (h *handler) UploadOriginCert(rCtx restserver.IContext) (interface{}, error
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload cert, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginCert(rCtx, file)
@@ -166,7 +181,7 @@ func (h *handler) UploadOriginCert(rCtx restserver.IContext) (interface{}, error
 }
 
 // UploadOriginBinTool upload origin bin tool.
-func (h *handler) UploadOriginBinTool(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginBinTool(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginBinToolReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -175,14 +190,17 @@ func (h *handler) UploadOriginBinTool(rCtx restserver.IContext) (interface{}, er
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload origin bintool, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginBinTool(rCtx, file)
@@ -201,7 +219,7 @@ func (h *handler) UploadOriginBinTool(rCtx restserver.IContext) (interface{}, er
 }
 
 // UploadOriginPluginBinTool upload origin plugin bin tool.
-func (h *handler) UploadOriginPluginBinTool(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginPluginBinTool(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginPluginBinToolReq)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -210,14 +228,17 @@ func (h *handler) UploadOriginPluginBinTool(rCtx restserver.IContext) (interface
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload origin plugin bintool, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginPluginBinTool(rCtx, file)
@@ -236,7 +257,7 @@ func (h *handler) UploadOriginPluginBinTool(rCtx restserver.IContext) (interface
 }
 
 // UploadOriginPluginV2 upload origin plugin.
-func (h *handler) UploadOriginPluginV2(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginPluginV2(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginPluginV2Req)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -245,14 +266,17 @@ func (h *handler) UploadOriginPluginV2(rCtx restserver.IContext) (interface{}, e
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload plugin v2, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginPluginV2(rCtx, file)
@@ -271,7 +295,7 @@ func (h *handler) UploadOriginPluginV2(rCtx restserver.IContext) (interface{}, e
 }
 
 // UploadOriginExternalPluginV2 upload origin external plugin.
-func (h *handler) UploadOriginExternalPluginV2(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginExternalPluginV2(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginExternalPluginV2Req)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -280,14 +304,17 @@ func (h *handler) UploadOriginExternalPluginV2(rCtx restserver.IContext) (interf
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload external plugin v2, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginExternalPlugin(rCtx, file)
@@ -306,7 +333,7 @@ func (h *handler) UploadOriginExternalPluginV2(rCtx restserver.IContext) (interf
 }
 
 // UploadOriginPluginV3 upload origin plugin.
-func (h *handler) UploadOriginPluginV3(rCtx restserver.IContext) (interface{}, error) {
+func (h *handler) UploadOriginPluginV3(rCtx restserver.IContext) (_ interface{}, retErr error) {
 	req := new(protoFile.UploadOriginPluginV3Req)
 	fileHeader, err := rCtx.ParseFileForm(req)
 	if err != nil {
@@ -315,14 +342,17 @@ func (h *handler) UploadOriginPluginV3(rCtx restserver.IContext) (interface{}, e
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
 
-	file, err := fileHeader.Open()
+	rawFile, err := fileHeader.Open()
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to upload plugin v3, failed to open file")
 
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
 	}
+	file := filex.OnceReadCloser(rawFile)
 	defer func() {
-		_ = file.Close()
+		if errClose := file.Close(); errClose != nil {
+			retErr = resterrf.ErrWrap(resterrf.Aborted, errors.Join(retErr, errClose))
+		}
 	}()
 
 	detail, err := h.manager.UploadOriginPluginV3(rCtx, file)
