@@ -570,6 +570,15 @@ func writeOriginUploadTgzSource(tarWriter *tar.Writer, source tgzMergeSource, ru
 		}
 	}
 
+	// Tar EOF may precede the gzip trailer; read one byte past the limit to distinguish it from gzip EOF.
+	trailingBytes, err := io.Copy(io.Discard, io.LimitReader(gzipReader, maxTrailingGzipBytes+1))
+	if err != nil {
+		return fmt.Errorf("failed to finish reading source gzip stream, source(%s): %w", source.name, err)
+	}
+	if trailingBytes > maxTrailingGzipBytes {
+		return fmt.Errorf("source gzip stream exceeds %d trailing decompressed bytes, source(%s)", maxTrailingGzipBytes, source.name)
+	}
+
 	return nil
 }
 
