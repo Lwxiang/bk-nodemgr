@@ -97,7 +97,7 @@ func (act *actionGenOperCleanOrphanProcess) DelayFn(_ int) func() {
 	return func() {}
 }
 
-// Do lists one page of stale processes and generates a cleanup operation for each batch.
+// Do scans up to the configured number of stale processes and generates cleanup operations in batches.
 func (act *actionGenOperCleanOrphanProcess) Do(ctx *action.InstanceContext) error {
 	param := new(ActionParamGenOperCleanOrphanProcess)
 	if err := conv.MapToStruct(ctx.Data.Content, param); err != nil {
@@ -123,9 +123,9 @@ func (act *actionGenOperCleanOrphanProcess) Do(ctx *action.InstanceContext) erro
 			InfoLastSyncAtBefore: &deadline,
 		},
 	}
-	processes, _, err := act.processStg.ListProcesses(std.Context(), types.Page{Limit: int(pageSize)}, condition)
+	processes, err := act.processStg.ScanProcesses(std.Context(), pageSize, condition)
 	if err != nil {
-		return fmt.Errorf("failed to list stale processes: %w", err)
+		return fmt.Errorf("failed to scan stale processes: %w", err)
 	}
 	if len(processes) == 0 {
 		std.InstanceData().Log().

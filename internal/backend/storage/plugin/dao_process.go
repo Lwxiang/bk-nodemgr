@@ -149,6 +149,24 @@ func (s *Storage) listProcesses(nCtx contextx.IContext, page types.Page, conditi
 	return s.daoProcess.List(nCtx, page, opts...)
 }
 
+func (s *Storage) scanProcesses(nCtx contextx.IContext, limit int64, conditions ...*types.ProcessCondition) ([]*types.Process, error) {
+	if nCtx == nil {
+		return nil, base.ErrInvalidContext()
+	}
+
+	opts, err := convertProcessConditionsToOptions(conditions...)
+	if err != nil {
+		return nil, err
+	}
+
+	processes, err := s.daoProcess.ScanWithLimit(nCtx, limit, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan processes: %w", err)
+	}
+
+	return processes, nil
+}
+
 // nolint: nonamedreturns
 func (s *Storage) existProcess(nCtx contextx.IContext, hostID int64, pluginName string) (exist bool, err error) {
 	if nCtx == nil {
