@@ -158,7 +158,7 @@ func (fc *fileCache) GetOrFetch(
 	}
 
 	// fast path: check index under read lock.
-	if file, dirPath, ok := fc.lookupIndex(filename, expectedMD5); ok {
+	if file, dirPath, ok := fc.lookupIndex(nCtx, filename, expectedMD5); ok {
 		logger.G.Sys().With("filename", filename, "md5", expectedMD5).Info("file cache hit")
 
 		return file, dirPath, nil
@@ -170,7 +170,7 @@ func (fc *fileCache) GetOrFetch(
 	defer mu.Unlock()
 
 	// double-check after acquiring the per-filename lock.
-	if file, dirPath, ok := fc.lookupIndex(filename, expectedMD5); ok {
+	if file, dirPath, ok := fc.lookupIndex(nCtx, filename, expectedMD5); ok {
 		logger.G.Sys().With("filename", filename, "md5", expectedMD5).Info("file cache hit (double-check)")
 
 		return file, dirPath, nil
@@ -187,15 +187,15 @@ func (fc *fileCache) GetOrFetch(
 }
 
 // FileExists implements IFileCache.
-func (fc *fileCache) FileExists(filename string, expectedMD5 string) bool {
+func (fc *fileCache) FileExists(nCtx contextx.IContext, filename string, expectedMD5 string) bool {
 	filename = filepath.Base(filename)
-	_, _, ok := fc.lookupIndex(filename, expectedMD5)
+	_, _, ok := fc.lookupIndex(nCtx, filename, expectedMD5)
 
 	return ok
 }
 
 // GetFile implements IFileCache.
-func (fc *fileCache) GetFile(filename string) (fileiface.File, string, bool) {
+func (fc *fileCache) GetFile(nCtx contextx.IContext, filename string) (fileiface.File, string, bool) {
 	filename = filepath.Base(filename)
 
 	fc.indexMu.RLock()
@@ -203,6 +203,10 @@ func (fc *fileCache) GetFile(filename string) (fileiface.File, string, bool) {
 	fc.indexMu.RUnlock()
 
 	if !ok {
+		return nil, "", false
+	}
+
+	if !fc.entryAvailable(nCtx, filename, entry) {
 		return nil, "", false
 	}
 
@@ -221,7 +225,9 @@ func (fc *fileCache) Close() error {
 
 // lookupIndex checks the index under a read lock.
 // Returns (file, dirPath, true) on a cache hit.
-func (fc *fileCache) lookupIndex(filename, expectedMD5 string) (fileiface.File, string, bool) {
+func (fc *fileCache) lookupIndex(
+	nCtx contextx.IContext, filename, expectedMD5 string) (fileiface.File, string, bool) {
+
 	fc.indexMu.RLock()
 	entry, ok := fc.index[filename]
 	fc.indexMu.RUnlock()
@@ -230,9 +236,35 @@ func (fc *fileCache) lookupIndex(filename, expectedMD5 string) (fileiface.File, 
 		return nil, "", false
 	}
 
+	if !fc.entryAvailable(nCtx, filename, entry) {
+		return nil, "", false
+	}
+
 	entry.updateLastAccess()
 
 	return entry.file, entry.dirPath, true
+}
+
+func (fc *fileCache) entryAvailable(nCtx contextx.IContext, filename string, entry *cachedEntry) bool {
+	content, err := entry.file.Content(nCtx)
+	if err != nil {
+		fc.indexMu.Lock()
+		if current, ok := fc.index[filename]; ok && current == entry {
+			delete(fc.index, filename)
+			fc.dlMu.Delete(filename)
+		}
+		fc.indexMu.Unlock()
+
+		logger.G.Sys().WithErr(err).
+			With("filename", filename, "dir", entry.dirPath, "md5", entry.md5).
+			Warn("file cache entry missing from disk, dropping stale index")
+
+		return false
+	}
+
+	_ = content.Close()
+
+	return true
 }
 
 // getOrCreateDLMutex returns the per-filename download mutex, creating it if absent.
