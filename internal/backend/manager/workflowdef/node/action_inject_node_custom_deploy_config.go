@@ -158,6 +158,8 @@ func (act *actionInjectNodeCustomDeployConfig) Do(ctx *action.InstanceContext) (
 	// installer workdir priority: user specified in info > network unit custom deploy config > deploy constant default.
 	std.DeployInfo().InstallerRuntime.BaseWorkDir = deployConstant.BaseWorkDir
 	std.DeployInfo().InstallerRuntime.WorkDir = deployConstant.GenerateWorkDir()
+	std.DeployInfo().InstallerRuntime.HTTPProxyOverride = deployConstant.HTTPProxyOverride
+	std.DeployInfo().InstallerRuntime.HTTPProxyAddress = deployConstant.HTTPProxyAddress
 
 	std.DeployInfo().BaseRuntime = types.DeploymentBaseRuntime{
 		BaseDeployDir:     deployConstant.BaseDeployDir,

@@ -194,8 +194,10 @@ func convertDeploymentInfoToTypes(info *Info) (*types.DeploymentInfo, error) {
 			},
 		},
 		InstallerRuntime: types.DeploymentInstallerRuntime{
-			BaseWorkDir: info.InstallerRuntime.BaseWorkDir,
-			WorkDir:     info.InstallerRuntime.WorkDir,
+			BaseWorkDir:       info.InstallerRuntime.BaseWorkDir,
+			WorkDir:           info.InstallerRuntime.WorkDir,
+			HTTPProxyOverride: info.InstallerRuntime.HTTPProxyOverride,
+			HTTPProxyAddress:  info.InstallerRuntime.HTTPProxyAddress,
 		},
 		BaseRuntime: types.DeploymentBaseRuntime{
 			BaseDeployDir:     info.BaseRuntime.BaseDeployDir,
@@ -451,8 +453,10 @@ func convertDeploymentInfoFromTypes(info *types.DeploymentInfo) (*Info, error) {
 		RelayCallbackPort:        info.Host.Dynamic.RelayCallbackPort,
 		ProxyInstallOriginUnitID: info.Host.Dynamic.ProxyInstallOriginUnitID,
 		InstallerRuntime: InstallerRuntime{
-			BaseWorkDir: info.InstallerRuntime.BaseWorkDir,
-			WorkDir:     info.InstallerRuntime.WorkDir,
+			BaseWorkDir:       info.InstallerRuntime.BaseWorkDir,
+			WorkDir:           info.InstallerRuntime.WorkDir,
+			HTTPProxyOverride: info.InstallerRuntime.HTTPProxyOverride,
+			HTTPProxyAddress:  info.InstallerRuntime.HTTPProxyAddress,
 		},
 		BaseRuntime: BaseRuntime{
 			BaseDeployDir:     info.BaseRuntime.BaseDeployDir,

@@ -112,6 +112,11 @@ type PluginDeploymentInfo struct {
 type PluginDeploymentInstallerRuntime struct {
 	BaseWorkDir string
 	WorkDir     string
+	// HTTPProxyOverride whether the installer overrides the target host's env proxy settings.
+	HTTPProxyOverride bool
+	// HTTPProxyAddress is the proxy URL applied when HTTPProxyOverride is true.
+	// Empty address means explicitly skipping the proxy.
+	HTTPProxyAddress string
 }
 
 // PluginDeploymentBaseRuntime this is the base runtime for plugin deployment.

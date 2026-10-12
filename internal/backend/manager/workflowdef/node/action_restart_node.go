@@ -232,11 +232,13 @@ func (act *actionRestartNode) restartThroughCommand(std *nodeUtils.NodeActionSta
 
 	restartParams := &installer.NodeStepRestartParams{
 		NodeCommonParams: installer.NodeCommonParams{
-			DeployEnv:     system.GetEnv(),
-			Generation:    int(info.Host.Dynamic.NodeGeneration),
-			NodeRole:      string(info.Host.Dynamic.NodeRole),
-			BaseWorkDir:   info.InstallerRuntime.BaseWorkDir,
-			BaseDeployDir: info.BaseRuntime.BaseDeployDir,
+			DeployEnv:         system.GetEnv(),
+			Generation:        int(info.Host.Dynamic.NodeGeneration),
+			NodeRole:          string(info.Host.Dynamic.NodeRole),
+			BaseWorkDir:       info.InstallerRuntime.BaseWorkDir,
+			BaseDeployDir:     info.BaseRuntime.BaseDeployDir,
+			HTTPProxyOverride: info.InstallerRuntime.HTTPProxyOverride,
+			HTTPProxyAddress:  info.InstallerRuntime.HTTPProxyAddress,
 		},
 		InstallWorkDir:    info.InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,
