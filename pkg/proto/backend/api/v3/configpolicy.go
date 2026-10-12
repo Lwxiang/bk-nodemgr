@@ -571,6 +571,10 @@ func (x *ConfigPolicyPreviewReq) Validate() error {
 		}
 	}
 
+	if ids := x.GetOrderedConfigpolicyId(); len(conv.SliceUnique(ids)) != len(ids) {
+		return fmt.Errorf("duplicated ordered_configpolicy_id")
+	}
+
 	return nil
 }
 
@@ -591,11 +595,13 @@ func (x *ConfigPolicyPreviewReq) AutoConvert() {
 // ConvertFromTypes populates the preview request from types values.
 func (x *ConfigPolicyPreviewReq) ConvertFromTypes(
 	bizID int64, policyType types.ConfigPolicyType, targetPluginName string,
-	hosts []types.ConfigPolicyPreviewHost) {
+	hosts []types.ConfigPolicyPreviewHost,
+	orderedConfigPolicyIDs []int64) {
 
 	x.BkBizId = bizID
 	x.PolicyType = string(policyType)
 	x.PluginName = &targetPluginName
+	x.OrderedConfigpolicyId = orderedConfigPolicyIDs
 
 	protoHosts := make([]*PreviewHost, len(hosts))
 	for i, host := range hosts {

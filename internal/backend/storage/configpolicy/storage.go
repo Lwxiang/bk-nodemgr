@@ -254,13 +254,14 @@ func (s *Storage) UpdatePriorityManyConfigPolicy(nCtx contextx.IContext, priorit
 // PreviewConfigPolicy previews the merged config for each host.
 func (s *Storage) PreviewConfigPolicy(nCtx contextx.IContext,
 	bizID int64, policyType types.ConfigPolicyType, targetPluginName string,
-	hosts []types.ConfigPolicyPreviewHost) (*types.ConfigPolicyPreviewResult, error) {
+	hosts []types.ConfigPolicyPreviewHost,
+	orderedConfigPolicyID []int64) (*types.ConfigPolicyPreviewResult, error) {
 
 	var result *types.ConfigPolicyPreviewResult
 
 	err := s.WrapFn(nCtx, metricOperationPreviewConfigPolicy, func(nCtx contextx.IContext) error {
 		var err error
-		result, err = s.previewConfigPolicy(nCtx, bizID, policyType, targetPluginName, hosts)
+		result, err = s.previewConfigPolicy(nCtx, bizID, policyType, targetPluginName, hosts, orderedConfigPolicyID)
 
 		return err
 	})

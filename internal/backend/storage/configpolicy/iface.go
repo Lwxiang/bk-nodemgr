@@ -79,9 +79,12 @@ type IDaoConfigPolicyNode interface {
 		targetPluginName string, hostID int64) (*types.ConfigPolicyMatchResult, error)
 
 	// PreviewConfigPolicy previews the merged config for each host by matching enabled policies.
+	// orderedConfigPolicyID optionally overrides the DB priority order with the user-specified
+	// priority order, highest priority first; empty falls back to the DB priority order.
 	PreviewConfigPolicy(nCtx contextx.IContext,
 		bizID int64, policyType types.ConfigPolicyType, targetPluginName string,
-		hosts []types.ConfigPolicyPreviewHost) (*types.ConfigPolicyPreviewResult, error)
+		hosts []types.ConfigPolicyPreviewHost,
+		orderedConfigPolicyID []int64) (*types.ConfigPolicyPreviewResult, error)
 }
 
 // IDaoConfigPolicyEvent defines the interface for policy event.

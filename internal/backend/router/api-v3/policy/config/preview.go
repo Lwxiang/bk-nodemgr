@@ -47,7 +47,8 @@ func (h *handler) PreviewConfigPolicy(rCtx restserver.IContext) (interface{}, er
 		return nil, errf.ErrWrap(errf.PermissionDenied, authErr)
 	}
 
-	results, err := h.storageConfigPolicy.PreviewConfigPolicy(rCtx, req.GetBkBizId(), policyType, req.GetPluginName(), previewHosts)
+	results, err := h.storageConfigPolicy.PreviewConfigPolicy(rCtx, req.GetBkBizId(), policyType, req.GetPluginName(),
+		previewHosts, req.GetOrderedConfigpolicyId())
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to preview config policy")
 

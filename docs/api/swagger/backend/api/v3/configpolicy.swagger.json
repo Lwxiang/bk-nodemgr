@@ -1194,6 +1194,13 @@
         },
         "plugin_name": {
           "type": "string"
+        },
+        "ordered_configpolicy_id": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
         }
       },
       "description": "ConfigPolicyPreviewReq describes HTTP request body for previewing merged\nconfig result by host list."
