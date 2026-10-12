@@ -341,6 +341,7 @@ func (act *actionInstallPagentByWMI) buildInstallCmd(
 			NodeRole:      string(std.DeployInfo().Host.Dynamic.NodeRole),
 			BaseWorkDir:   std.DeployInfo().InstallerRuntime.BaseWorkDir,
 			BaseDeployDir: std.DeployInfo().BaseRuntime.BaseDeployDir,
+			SkipHTTPProxy: std.DeployInfo().InstallerRuntime.SkipHTTPProxy,
 		},
 		InstallerPath:          installerPath,
 		DownloadSvrAddr:        nodeUtils.BuildServerURLs(downloadEndpoints...),

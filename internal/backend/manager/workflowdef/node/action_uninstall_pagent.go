@@ -163,6 +163,7 @@ func (act *actionUninstallPagent) Do(ctx *action.InstanceContext) (err error) {
 			NodeRole:      string(std.DeployInfo().Host.Dynamic.NodeRole),
 			BaseWorkDir:   std.DeployInfo().InstallerRuntime.BaseWorkDir,
 			BaseDeployDir: std.DeployInfo().BaseRuntime.BaseDeployDir,
+			SkipHTTPProxy: std.DeployInfo().InstallerRuntime.SkipHTTPProxy,
 		},
 		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,

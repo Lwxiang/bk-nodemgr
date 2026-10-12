@@ -247,6 +247,7 @@ func (act *actionUpgradePluginV2) buildUpgradeParams(
 				BaseDeployDir:     std.DeployInfo().BaseRuntime.BaseDeployDir,
 				BaseWorkDir:       std.DeployInfo().InstallerRuntime.BaseWorkDir,
 				DeployEnv:         system.GetEnv(),
+				SkipHTTPProxy:     std.DeployInfo().InstallerRuntime.SkipHTTPProxy,
 			},
 			PluginGroup:     targetPlugin.Group,
 			PluginName:      targetPlugin.Name,

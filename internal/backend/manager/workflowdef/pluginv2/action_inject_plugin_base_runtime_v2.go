@@ -175,6 +175,7 @@ func (act *actionInjectPluginBaseRuntimeV2) Do(ctx *action.InstanceContext) (err
 	// installer workdir priority: user specified in info > network unit custom deploy config > deploy constant default.
 	std.DeployInfo().InstallerRuntime.BaseWorkDir = pluginV2Constant.BaseWorkDir
 	std.DeployInfo().InstallerRuntime.WorkDir = pluginV2Constant.GenerateWorkDir()
+	std.DeployInfo().InstallerRuntime.SkipHTTPProxy = pluginV2Constant.SkipHTTPProxy
 
 	act.injectBaseRuntime(std, pluginV2Constant, nodeConstant, nodeRole, customDeployConfig)
 

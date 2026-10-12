@@ -82,8 +82,9 @@ func (mode LoginMode) Validate() error {
 
 // DeploymentInstallerRuntime this is the installer runtime for node deployment.
 type DeploymentInstallerRuntime struct {
-	BaseWorkDir string
-	WorkDir     string
+	BaseWorkDir   string
+	WorkDir       string
+	SkipHTTPProxy bool
 }
 
 // DeploymentBaseRuntime  this is the base runtime for deployment.

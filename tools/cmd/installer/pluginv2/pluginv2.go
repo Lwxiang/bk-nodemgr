@@ -20,10 +20,12 @@
 package pluginv2
 
 import (
+	"fmt"
 	"runtime"
 
 	pluginV2Flag "github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/pluginv2/flag"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/pluginv2/step"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -34,6 +36,23 @@ func NewPluginCommand() *cobra.Command {
 		Use:   "pluginv2",
 		Short: "Plugin v2 command",
 		Long:  "Plugin v2 command",
+		// PersistentPreRunE is inherited by every pluginv2 leaf command (none of them defines
+		// its own PersistentPreRunE) and runs before any HTTP request, so dropping the
+		// proxy env vars here makes every http.Client skip the HTTP proxy.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			skipHTTPProxy, err := cmd.Flags().GetBool(pluginV2Flag.SkipHTTPProxy)
+			if err != nil {
+				return err
+			}
+
+			if !skipHTTPProxy {
+				return nil
+			}
+
+			fmt.Printf("flag --%s is set, all http requests will skip the proxy\n", pluginV2Flag.SkipHTTPProxy)
+
+			return utils.UnsetProxyEnv()
+		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
@@ -57,6 +76,7 @@ func NewPluginCommand() *cobra.Command {
 	pluginCommand.PersistentFlags().String(pluginV2Flag.PluginPkgName, "", "plugin package name, this will be used to download the plugin package")
 	pluginCommand.PersistentFlags().String(pluginV2Flag.BaseDeployDir, defaultBaseDeployDir(), "base deployed directory of this node, the deploy dir will be created under this directory with deploy-env")
 	pluginCommand.PersistentFlags().String(pluginV2Flag.BaseWorkDir, defaultBaseWorkDir(), "base work directory of this node, the work dir will be created under this directory with deploy-env")
+	pluginCommand.PersistentFlags().Bool(pluginV2Flag.SkipHTTPProxy, false, "skip the http proxy for all http requests in the installer")
 
 	return pluginCommand
 }

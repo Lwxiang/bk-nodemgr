@@ -382,8 +382,9 @@ func convertPluginDeploymentInfoToTypes(info *Info) (*types.PluginDeploymentInfo
 			},
 		},
 		InstallerRuntime: types.PluginDeploymentInstallerRuntime{
-			BaseWorkDir: info.InstallerRuntime.BaseWorkDir,
-			WorkDir:     info.InstallerRuntime.WorkDir,
+			BaseWorkDir:   info.InstallerRuntime.BaseWorkDir,
+			WorkDir:       info.InstallerRuntime.WorkDir,
+			SkipHTTPProxy: info.InstallerRuntime.SkipHTTPProxy,
 		},
 		BaseRuntime: types.PluginDeploymentBaseRuntime{
 			BaseDeployDir:         info.BaseRuntime.BaseDeployDir,
@@ -491,8 +492,9 @@ func convertPluginDeploymentInfoFromTypes(info *types.PluginDeploymentInfo) (*In
 			},
 		},
 		InstallerRuntime: installerRuntime{
-			BaseWorkDir: info.InstallerRuntime.BaseWorkDir,
-			WorkDir:     info.InstallerRuntime.WorkDir,
+			BaseWorkDir:   info.InstallerRuntime.BaseWorkDir,
+			WorkDir:       info.InstallerRuntime.WorkDir,
+			SkipHTTPProxy: info.InstallerRuntime.SkipHTTPProxy,
 		},
 		BaseRuntime: baseRuntime{
 			BaseDeployDir:         info.BaseRuntime.BaseDeployDir,

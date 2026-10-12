@@ -83,6 +83,10 @@ const (
 
 	// pluginV2FlagPluginPkgName plugin flag name defines the plugin package name.
 	pluginV2FlagPluginPkgName pluginV2FlagName = "plugin_pkg_name"
+
+	// pluginV2FlagSkipHTTPProxy plugin flag name defines whether to skip the HTTP proxy for all http requests.
+	// SYNC: tools/cmd/installer/pluginv2/flag.SkipHTTPProxy.
+	pluginV2FlagSkipHTTPProxy pluginV2FlagName = "skip_http_proxy"
 )
 
 // PluginV2CommonParams defines the common params of installer.
@@ -94,6 +98,9 @@ type PluginV2CommonParams struct {
 	BaseWorkDir   string
 
 	DeployEnv string
+
+	// SkipHTTPProxy whether the installer should skip the HTTP proxy for all http requests.
+	SkipHTTPProxy bool
 }
 
 // Validate validates the common params.
@@ -212,6 +219,10 @@ func (params *PluginV2InstallParams) buildArgs() []string {
 		args = append(args, "--skip_download")
 	}
 
+	if params.SkipHTTPProxy {
+		args = append(args, fmt.Sprintf("--%s", pluginV2FlagSkipHTTPProxy))
+	}
+
 	return args
 }
 
@@ -327,6 +338,10 @@ func (params *PluginV2UpgradeParams) buildArgs() []string {
 		fmt.Sprintf("--%s %s", pluginV2FlagOperInstID, params.OperInstID),
 	}
 
+	if params.SkipHTTPProxy {
+		args = append(args, fmt.Sprintf("--%s", pluginV2FlagSkipHTTPProxy))
+	}
+
 	return args
 }
 
@@ -422,6 +437,10 @@ func (params *PluginV2UninstallParams) buildArgs() []string {
 		fmt.Sprintf("--%s %s", pluginV2FlagCallbackSvrAdd, params.CallbackSvrAddr),
 		fmt.Sprintf("--%s %s", pluginV2FlagDeployToken, params.DeployToken),
 		fmt.Sprintf("--%s %s", pluginV2FlagOperInstID, params.OperInstID),
+	}
+
+	if params.SkipHTTPProxy {
+		args = append(args, fmt.Sprintf("--%s", pluginV2FlagSkipHTTPProxy))
 	}
 
 	return args

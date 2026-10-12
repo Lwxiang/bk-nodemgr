@@ -170,6 +170,7 @@ func (act *actionInjectPluginCustomDeployConfig) Do(ctx *action.InstanceContext)
 	// installer workdir priority: user specified in info > network unit custom deploy config > deploy constant default.
 	std.DeployInfo().InstallerRuntime.BaseWorkDir = pluginConstant.BaseWorkDir
 	std.DeployInfo().InstallerRuntime.WorkDir = pluginConstant.GenerateWorkDir()
+	std.DeployInfo().InstallerRuntime.SkipHTTPProxy = pluginConstant.SkipHTTPProxy
 
 	std.DeployInfo().BaseRuntime = types.PluginDeploymentBaseRuntime{
 		BaseDeployDir:         pluginConstant.BaseDeployDir,

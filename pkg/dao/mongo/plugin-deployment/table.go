@@ -242,8 +242,9 @@ type processSpec struct {
 
 // installerRuntime this is the installer runtime for plugin deployment.
 type installerRuntime struct {
-	BaseWorkDir string `json:"base_work_dir" bson:"base_work_dir"`
-	WorkDir     string `json:"work_dir" bson:"work_dir"`
+	BaseWorkDir   string `json:"base_work_dir" bson:"base_work_dir"`
+	WorkDir       string `json:"work_dir" bson:"work_dir"`
+	SkipHTTPProxy bool   `json:"skip_http_proxy" bson:"skip_http_proxy"`
 }
 
 // baseRuntime this is the base runtime for plugin deployment.

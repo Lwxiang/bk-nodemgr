@@ -20,12 +20,14 @@
 package node
 
 import (
+	"fmt"
 	"runtime"
 
 	nodeflag "github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/flag"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/persistent"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/step"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +38,23 @@ func NewNodeCommand() *cobra.Command {
 		Use:   "node",
 		Short: "Node command",
 		Long:  "Node command",
+		// PersistentPreRunE is inherited by every node leaf command (none of them defines
+		// its own PersistentPreRunE) and runs before any HTTP request, so dropping the
+		// proxy env vars here makes every http.Client skip the HTTP proxy.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			skipHTTPProxy, err := cmd.Flags().GetBool(nodeflag.SkipHTTPProxy)
+			if err != nil {
+				return err
+			}
+
+			if !skipHTTPProxy {
+				return nil
+			}
+
+			fmt.Printf("flag --%s is set, all http requests will skip the proxy\n", nodeflag.SkipHTTPProxy)
+
+			return utils.UnsetProxyEnv()
+		},
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			vars, err := persistent.GetVariables(cmd)
 			if err != nil {
@@ -72,6 +91,7 @@ func NewNodeCommand() *cobra.Command {
 	nodeCommand.PersistentFlags().IntP(nodeflag.Generation, nodeflag.GenerationS, int(types.Generation2), "the generation of this node, 1 or 2")
 	nodeCommand.PersistentFlags().String(nodeflag.BaseDeployDir, defaultBaseDeployDir(), "base deployed directory of this node, the deploy dir will be created under this directory with deploy-env")
 	nodeCommand.PersistentFlags().String(nodeflag.BaseWorkDir, defaultBaseWorkDir(), "base work directory of this node, the work dir will be created under this directory with deploy-env")
+	nodeCommand.PersistentFlags().Bool(nodeflag.SkipHTTPProxy, false, "skip the http proxy for all http requests in the installer")
 
 	return nodeCommand
 }

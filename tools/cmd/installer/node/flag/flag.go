@@ -91,4 +91,7 @@ const (
 
 	// RenewGSETask defines the renew GSE task flag.
 	RenewGSETask = "renew_gse_task"
+
+	// SkipHTTPProxy defines the flag to skip the HTTP proxy for all http requests.
+	SkipHTTPProxy = "skip_http_proxy"
 )

@@ -156,6 +156,7 @@ func buildDebugCommand(std *pluginUtils.PluginActionStandarder, debugAction stri
 			BaseDeployDir:     std.DeployInfo().BaseRuntime.BaseDeployDir,
 			BaseWorkDir:       std.DeployInfo().InstallerRuntime.BaseWorkDir,
 			DeployEnv:         system.GetEnv(),
+			SkipHTTPProxy:     std.DeployInfo().InstallerRuntime.SkipHTTPProxy,
 		},
 		PluginGroup: process.PluginGroup,
 		PluginName:  process.PluginName,

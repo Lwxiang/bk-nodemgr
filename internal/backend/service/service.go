@@ -190,6 +190,7 @@ func (svc *Service) initialStaticsConfigs() error {
 			OsType:           criteria.OSType(svc.conf.GSEDeployConfs[idx].OsType),
 			BaseDeployDir:    svc.conf.GSEDeployConfs[idx].BaseDeployDir,
 			BaseWorkDir:      svc.conf.GSEDeployConfs[idx].BaseWorkDir,
+			SkipHTTPProxy:    svc.conf.GSEDeployConfs[idx].SkipHTTPProxy,
 			ManualScriptPath: svc.conf.GSEDeployConfs[idx].ManualScriptPath,
 		}
 		if err := deployconstant.SetDeployConf(deployConf); err != nil {
@@ -512,6 +513,7 @@ func (svc *Service) newAuthorizer() (auth.IAuthorizer, error) {
 		// Disabled handlers reject direct IAM calls; only the authorizer may bypass checks.
 		svc.Cap.IAMV3Handler = iamv3.NewDisabledHandler()
 		svc.Cap.IAMV4Handler = iamv4.NewDisabledHandler()
+
 		return auth.NewNoOpAuthorizer(), nil
 	}
 }

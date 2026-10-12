@@ -612,6 +612,7 @@ type GSEDeployConf struct {
 	OsType           string                `yaml:"osType" usage:"os type"`
 	BaseWorkDir      string                `yaml:"baseWorkDir" usage:"base work dir"`
 	BaseDeployDir    string                `yaml:"baseDeployDir" usage:"base deploy dir"`
+	SkipHTTPProxy    bool                  `yaml:"skipHTTPProxy" usage:"whether the installer should skip the HTTP proxy"`
 	Custom           GSEDeployCustom       `yaml:"custom" usage:"custom deploy conf"`
 	PluginCustom     GSEDeployPluginCustom `yaml:"pluginCustom" usage:"plugin custom deploy conf"`
 	ManualScriptPath string                `yaml:"manualScriptPath" usage:"manual script"`

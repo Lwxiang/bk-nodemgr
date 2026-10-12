@@ -73,4 +73,7 @@ const (
 
 	// PluginPkgName defines the plugin package name flag.
 	PluginPkgName = "plugin_pkg_name"
+
+	// SkipHTTPProxy defines the flag to skip the HTTP proxy for all http requests.
+	SkipHTTPProxy = "skip_http_proxy"
 )

@@ -237,6 +237,7 @@ func (act *actionRestartNode) restartThroughCommand(std *nodeUtils.NodeActionSta
 			NodeRole:      string(info.Host.Dynamic.NodeRole),
 			BaseWorkDir:   info.InstallerRuntime.BaseWorkDir,
 			BaseDeployDir: info.BaseRuntime.BaseDeployDir,
+			SkipHTTPProxy: info.InstallerRuntime.SkipHTTPProxy,
 		},
 		InstallWorkDir:    info.InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,

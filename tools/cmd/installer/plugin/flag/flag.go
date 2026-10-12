@@ -82,4 +82,7 @@ const (
 
 	// DebugAction defines the debug action flag.
 	DebugAction = "debug_action"
+
+	// SkipHTTPProxy defines the flag to skip the HTTP proxy for all http requests.
+	SkipHTTPProxy = "skip_http_proxy"
 )

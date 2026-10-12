@@ -306,6 +306,7 @@ func buildOfflineInstallScript(
 			NodeRole:      string(deployInfo.Host.Dynamic.NodeRole),
 			BaseWorkDir:   baseWorkDir,
 			BaseDeployDir: baseDeployDir,
+			SkipHTTPProxy: deployInfo.InstallerRuntime.SkipHTTPProxy,
 		},
 		InstallerFileName: installerFileName,
 		NodeVersion:       string(deployInfo.Host.Dynamic.NodeVersion),

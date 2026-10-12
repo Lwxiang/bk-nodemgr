@@ -277,6 +277,7 @@ func (act *actionInstallProxyBySSH) buildSSHOnlyProxyInstallCmd(std *nodeUtils.N
 			NodeRole:      string(std.DeployInfo().Host.Dynamic.NodeRole),
 			BaseWorkDir:   std.DeployInfo().InstallerRuntime.BaseWorkDir,
 			BaseDeployDir: std.DeployInfo().BaseRuntime.BaseDeployDir,
+			SkipHTTPProxy: std.DeployInfo().InstallerRuntime.SkipHTTPProxy,
 		},
 		InstallerPath: installerPath,
 		DeployToken:   std.Token(),

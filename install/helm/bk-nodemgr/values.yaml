@@ -1843,6 +1843,8 @@ backend:
         osType: "linux"
         baseWorkDir: "/tmp/bknm/"
         baseDeployDir: "/usr/local/"
+        # skipHTTPProxy controls whether the installer skips the HTTP proxy for all http requests.
+        skipHTTPProxy: false
         manualScriptPath: "/bk-nodemgr/script/manual/linux/install.sh"
         custom:
           logDir: ""
@@ -1861,6 +1863,8 @@ backend:
         osType: "windows"
         baseWorkDir: "c:\\tmp\\bknm\\"
         baseDeployDir: "c:\\"
+        # skipHTTPProxy controls whether the installer skips the HTTP proxy for all http requests.
+        skipHTTPProxy: false
         manualScriptPath: "/bk-nodemgr/script/manual/windows/install.bat"
         custom:
           logDir: ""

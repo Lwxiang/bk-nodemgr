@@ -110,8 +110,9 @@ type PluginDeploymentInfo struct {
 
 // PluginDeploymentInstallerRuntime this is the installer runtime for plugin deployment.
 type PluginDeploymentInstallerRuntime struct {
-	BaseWorkDir string
-	WorkDir     string
+	BaseWorkDir   string
+	WorkDir       string
+	SkipHTTPProxy bool
 }
 
 // PluginDeploymentBaseRuntime this is the base runtime for plugin deployment.

@@ -122,6 +122,10 @@ const (
 	// nodeFlagSkipCallback node flag name defines whether to skip callback reporting.
 	// SYNC: tools/cmd/installer/node/flag.SkipCallback.
 	nodeFlagSkipCallback nodeFlagName = "skip_callback"
+
+	// nodeFlagSkipHTTPProxy node flag name defines whether to skip the HTTP proxy for all http requests.
+	// SYNC: tools/cmd/installer/node/flag.SkipHTTPProxy.
+	nodeFlagSkipHTTPProxy nodeFlagName = "skip_http_proxy"
 )
 
 // NodeCommonParams defines the common installer-facing params shared by node commands.
@@ -131,6 +135,9 @@ type NodeCommonParams struct {
 	NodeRole      string
 	BaseWorkDir   string
 	BaseDeployDir string
+
+	// SkipHTTPProxy whether the installer should skip the HTTP proxy for all http requests.
+	SkipHTTPProxy bool
 
 	AdditionArgs []string
 }
@@ -161,13 +168,18 @@ func (params *NodeCommonParams) Validate() error {
 }
 
 func (params *NodeCommonParams) buildArgs() []string {
-	return []string{
+	args := []string{
 		fmt.Sprintf("--%s %s", nodeFlagDeployEnv, params.DeployEnv),
 		fmt.Sprintf("--%s %d", nodeFlagGeneration, params.Generation),
 		fmt.Sprintf("--%s %s", nodeFlagNodeRole, params.NodeRole),
 		fmt.Sprintf("--%s %s", nodeFlagBaseWorkDir, params.BaseWorkDir),
 		fmt.Sprintf("--%s %s", nodeFlagBaseDeployDir, params.BaseDeployDir),
 	}
+	if params.SkipHTTPProxy {
+		args = append(args, fmt.Sprintf("--%s", nodeFlagSkipHTTPProxy))
+	}
+
+	return args
 }
 
 // NodeInstallParams defines the params for a full node install command.

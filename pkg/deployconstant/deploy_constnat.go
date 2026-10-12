@@ -36,6 +36,9 @@ type DeployConf struct {
 	BaseDeployDir string
 	BaseWorkDir   string
 
+	// SkipHTTPProxy whether the installer should skip the HTTP proxy.
+	SkipHTTPProxy bool
+
 	ManualScriptPath string
 }
 
