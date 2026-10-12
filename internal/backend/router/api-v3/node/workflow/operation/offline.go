@@ -301,11 +301,13 @@ func buildOfflineInstallScript(
 
 	params := &installer.NodeOfflineInstallParams{
 		NodeCommonParams: installer.NodeCommonParams{
-			DeployEnv:     system.GetEnv(),
-			Generation:    int(deployInfo.Host.Dynamic.NodeGeneration),
-			NodeRole:      string(deployInfo.Host.Dynamic.NodeRole),
-			BaseWorkDir:   baseWorkDir,
-			BaseDeployDir: baseDeployDir,
+			DeployEnv:         system.GetEnv(),
+			Generation:        int(deployInfo.Host.Dynamic.NodeGeneration),
+			NodeRole:          string(deployInfo.Host.Dynamic.NodeRole),
+			BaseWorkDir:       baseWorkDir,
+			BaseDeployDir:     baseDeployDir,
+			HTTPProxyOverride: deployInfo.InstallerRuntime.HTTPProxyOverride,
+			HTTPProxyAddress:  deployInfo.InstallerRuntime.HTTPProxyAddress,
 		},
 		InstallerFileName: installerFileName,
 		NodeVersion:       string(deployInfo.Host.Dynamic.NodeVersion),

@@ -102,6 +102,10 @@ const (
 
 	// pluginFlagLogToStd plugin flag name defines whether logs are also written to stdout.
 	pluginFlagLogToStd pluginFlagName = "log_to_std"
+
+	// pluginFlagHTTPProxy plugin flag name defines the http proxy override for all http requests.
+	// SYNC: tools/cmd/installer/plugin/flag.HTTPProxy.
+	pluginFlagHTTPProxy pluginFlagName = "http_proxy"
 )
 
 // PluginCommonParams defines the common params of installer.
@@ -113,6 +117,13 @@ type PluginCommonParams struct {
 	BaseWorkDir   string
 
 	DeployEnv string
+
+	// HTTPProxyOverride whether the installer overrides the target host's env proxy settings.
+	HTTPProxyOverride bool
+
+	// HTTPProxyAddress is the proxy URL applied when HTTPProxyOverride is true.
+	// Empty address means explicitly skipping the proxy.
+	HTTPProxyAddress string
 }
 
 // Validate validates the common params.
@@ -229,6 +240,10 @@ func (params *PluginInstallParams) buildArgs() []string {
 	}
 	if params.SkipDownload {
 		args = append(args, "--skip_download")
+	}
+
+	if params.HTTPProxyOverride {
+		args = append(args, fmt.Sprintf(`--%s="%s"`, pluginFlagHTTPProxy, params.HTTPProxyAddress))
 	}
 
 	return args
@@ -364,6 +379,10 @@ func (params *PluginUpgradeParams) buildArgs() []string {
 		args = append(args, "--skip_download")
 	}
 
+	if params.HTTPProxyOverride {
+		args = append(args, fmt.Sprintf(`--%s="%s"`, pluginFlagHTTPProxy, params.HTTPProxyAddress))
+	}
+
 	return args
 }
 
@@ -459,6 +478,10 @@ func (params *PluginUninstallParams) buildArgs() []string {
 		fmt.Sprintf("--%s %s", pluginFlagCallbackSvrAdd, params.CallbackSvrAddr),
 		fmt.Sprintf("--%s %s", pluginFlagDeployToken, params.DeployToken),
 		fmt.Sprintf("--%s %s", pluginFlagOperInstID, params.OperInstID),
+	}
+
+	if params.HTTPProxyOverride {
+		args = append(args, fmt.Sprintf(`--%s="%s"`, pluginFlagHTTPProxy, params.HTTPProxyAddress))
 	}
 
 	return args
@@ -565,6 +588,10 @@ func (params *PluginDebugParams) buildArgs(quote func(string) string) []string {
 	}
 	if params.PidDir != "" {
 		args = append(args, fmt.Sprintf("--%s %s", pluginFlagPidDir, quote(params.PidDir)))
+	}
+
+	if params.HTTPProxyOverride {
+		args = append(args, fmt.Sprintf(`--%s="%s"`, pluginFlagHTTPProxy, params.HTTPProxyAddress))
 	}
 
 	return args

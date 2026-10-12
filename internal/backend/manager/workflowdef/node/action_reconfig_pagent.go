@@ -159,11 +159,13 @@ func (act *actionReconfigPagent) Do(ctx *action.InstanceContext) (err error) {
 
 	reconfigParams := &installer.NodeReconfigParams{
 		NodeCommonParams: installer.NodeCommonParams{
-			DeployEnv:     system.GetEnv(),
-			Generation:    int(std.DeployInfo().Host.Dynamic.NodeGeneration),
-			NodeRole:      string(std.DeployInfo().Host.Dynamic.NodeRole),
-			BaseWorkDir:   std.DeployInfo().InstallerRuntime.BaseWorkDir,
-			BaseDeployDir: std.DeployInfo().BaseRuntime.BaseDeployDir,
+			DeployEnv:         system.GetEnv(),
+			Generation:        int(std.DeployInfo().Host.Dynamic.NodeGeneration),
+			NodeRole:          string(std.DeployInfo().Host.Dynamic.NodeRole),
+			BaseWorkDir:       std.DeployInfo().InstallerRuntime.BaseWorkDir,
+			BaseDeployDir:     std.DeployInfo().BaseRuntime.BaseDeployDir,
+			HTTPProxyOverride: std.DeployInfo().InstallerRuntime.HTTPProxyOverride,
+			HTTPProxyAddress:  std.DeployInfo().InstallerRuntime.HTTPProxyAddress,
 		},
 		InstallWorkDir:    std.DeployInfo().InstallerRuntime.WorkDir,
 		InstallerFileName: toolName,

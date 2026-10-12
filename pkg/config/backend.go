@@ -21,8 +21,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/runtime/criteria"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tenant"
@@ -612,9 +614,41 @@ type GSEDeployConf struct {
 	OsType           string                `yaml:"osType" usage:"os type"`
 	BaseWorkDir      string                `yaml:"baseWorkDir" usage:"base work dir"`
 	BaseDeployDir    string                `yaml:"baseDeployDir" usage:"base deploy dir"`
+	HTTPProxy        HTTPProxy             `yaml:"httpProxy" usage:"http proxy override settings for the installer"`
 	Custom           GSEDeployCustom       `yaml:"custom" usage:"custom deploy conf"`
 	PluginCustom     GSEDeployPluginCustom `yaml:"pluginCustom" usage:"plugin custom deploy conf"`
 	ManualScriptPath string                `yaml:"manualScriptPath" usage:"manual script"`
+}
+
+// HTTPProxy defines the http proxy override settings for the installer.
+type HTTPProxy struct {
+	// Override controls whether the installer overrides the target host's env proxy settings.
+	Override bool `yaml:"override" usage:"whether to override the http proxy for installer http requests"`
+	// Address is the proxy URL applied when Override is true. Empty address means explicitly skipping the proxy.
+	Address string `yaml:"address" usage:"http proxy url for installer http requests, empty means skipping the proxy"`
+}
+
+// Validate validates the config.
+func (conf HTTPProxy) Validate() error {
+	if !conf.Override || conf.Address == "" {
+		return nil
+	}
+
+	parsed, err := url.Parse(conf.Address)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("invalid http proxy url: %q", conf.Address)
+	}
+
+	if parsed.User != nil {
+		return fmt.Errorf("http proxy url must not contain userinfo")
+	}
+
+	// the proxy value is rendered into shell scripts, forbid shell-unsafe characters.
+	if strings.ContainsAny(conf.Address, " \t\n\"'`$&;|") {
+		return fmt.Errorf("http proxy url contains shell-unsafe characters: %q", conf.Address)
+	}
+
+	return nil
 }
 
 // Validate validates the config.
@@ -629,6 +663,10 @@ func (conf GSEDeployConf) Validate() error {
 
 	if conf.BaseDeployDir == "" {
 		return fmt.Errorf("failed to validate base deploy dir config: base deploy dir is empty")
+	}
+
+	if err := conf.HTTPProxy.Validate(); err != nil {
+		return fmt.Errorf("failed to validate http proxy config: %w", err)
 	}
 
 	if err := conf.Custom.Validate(); err != nil {

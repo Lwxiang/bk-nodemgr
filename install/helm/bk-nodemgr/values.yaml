@@ -1843,6 +1843,12 @@ backend:
         osType: "linux"
         baseWorkDir: "/tmp/bknm/"
         baseDeployDir: "/usr/local/"
+        # httpProxy controls whether the installer uses the HTTP proxy for all http requests.
+        # override=false keeps the target host's env proxy settings untouched.
+        # override=true applies address as the proxy; empty address means explicitly skipping the proxy.
+        httpProxy:
+          override: false
+          address: ""
         manualScriptPath: "/bk-nodemgr/script/manual/linux/install.sh"
         custom:
           logDir: ""
@@ -1861,6 +1867,12 @@ backend:
         osType: "windows"
         baseWorkDir: "c:\\tmp\\bknm\\"
         baseDeployDir: "c:\\"
+        # httpProxy controls whether the installer uses the HTTP proxy for all http requests.
+        # override=false keeps the target host's env proxy settings untouched.
+        # override=true applies address as the proxy; empty address means explicitly skipping the proxy.
+        httpProxy:
+          override: false
+          address: ""
         manualScriptPath: "/bk-nodemgr/script/manual/windows/install.bat"
         custom:
           logDir: ""
