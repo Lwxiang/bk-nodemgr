@@ -91,4 +91,7 @@ const (
 
 	// RenewGSETask defines the renew GSE task flag.
 	RenewGSETask = "renew_gse_task"
+
+	// HTTPProxy defines the flag to override the HTTP proxy for all http requests.
+	HTTPProxy = "http_proxy"
 )

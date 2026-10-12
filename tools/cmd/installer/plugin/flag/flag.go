@@ -82,4 +82,7 @@ const (
 
 	// DebugAction defines the debug action flag.
 	DebugAction = "debug_action"
+
+	// HTTPProxy defines the flag to override the HTTP proxy for all http requests.
+	HTTPProxy = "http_proxy"
 )

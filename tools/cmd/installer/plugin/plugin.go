@@ -20,10 +20,12 @@
 package plugin
 
 import (
+	"fmt"
 	"runtime"
 
 	pluginFlag "github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/plugin/flag"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/plugin/step"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -34,6 +36,25 @@ func NewPluginCommand() *cobra.Command {
 		Use:   "plugin",
 		Short: "Plugin command",
 		Long:  "Plugin command",
+		// PersistentPreRunE is inherited by every plugin leaf command (none of them defines
+		// its own PersistentPreRunE) and runs before any HTTP request, so overriding the
+		// proxy env vars here makes every http.Client apply the override.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			// distinguish "flag not given" from "given with an empty value": only an
+			// explicitly given flag overrides the proxy, and an empty value skips it.
+			if !cmd.Flags().Changed(pluginFlag.HTTPProxy) {
+				return nil
+			}
+
+			httpProxy, err := cmd.Flags().GetString(pluginFlag.HTTPProxy)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("flag --%s is set, http proxy is overridden for all http requests\n", pluginFlag.HTTPProxy)
+
+			return utils.OverrideProxyEnv(httpProxy)
+		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
@@ -59,6 +80,8 @@ func NewPluginCommand() *cobra.Command {
 	pluginCommand.PersistentFlags().String(pluginFlag.PluginPkgName, "", "plugin package name, this will be used to download the plugin package")
 	pluginCommand.PersistentFlags().String(pluginFlag.BaseDeployDir, defaultBaseDeployDir(), "base deployed directory of this node, the deploy dir will be created under this directory with deploy-env")
 	pluginCommand.PersistentFlags().String(pluginFlag.BaseWorkDir, defaultBaseWorkDir(), "base work directory of this node, the work dir will be created under this directory with deploy-env")
+	pluginCommand.PersistentFlags().String(pluginFlag.HTTPProxy, "",
+		"override the http proxy for all http requests in the installer, empty value means skipping the proxy")
 
 	return pluginCommand
 }
