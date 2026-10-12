@@ -73,4 +73,7 @@ const (
 
 	// PluginPkgName defines the plugin package name flag.
 	PluginPkgName = "plugin_pkg_name"
+
+	// HTTPProxy defines the flag to override the HTTP proxy for all http requests.
+	HTTPProxy = "http_proxy"
 )

@@ -20,12 +20,14 @@
 package node
 
 import (
+	"fmt"
 	"runtime"
 
 	nodeflag "github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/flag"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/persistent"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/cmd/installer/node/step"
 	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/types"
+	"github.com/TencentBlueKing/bk-nodemgr/tools/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +38,25 @@ func NewNodeCommand() *cobra.Command {
 		Use:   "node",
 		Short: "Node command",
 		Long:  "Node command",
+		// PersistentPreRunE is inherited by every node leaf command (none of them defines
+		// its own PersistentPreRunE) and runs before any HTTP request, so overriding the
+		// proxy env vars here makes every http.Client apply the override.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			// distinguish "flag not given" from "given with an empty value": only an
+			// explicitly given flag overrides the proxy, and an empty value skips it.
+			if !cmd.Flags().Changed(nodeflag.HTTPProxy) {
+				return nil
+			}
+
+			httpProxy, err := cmd.Flags().GetString(nodeflag.HTTPProxy)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("flag --%s is set, http proxy is overridden for all http requests\n", nodeflag.HTTPProxy)
+
+			return utils.OverrideProxyEnv(httpProxy)
+		},
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			vars, err := persistent.GetVariables(cmd)
 			if err != nil {
@@ -72,6 +93,8 @@ func NewNodeCommand() *cobra.Command {
 	nodeCommand.PersistentFlags().IntP(nodeflag.Generation, nodeflag.GenerationS, int(types.Generation2), "the generation of this node, 1 or 2")
 	nodeCommand.PersistentFlags().String(nodeflag.BaseDeployDir, defaultBaseDeployDir(), "base deployed directory of this node, the deploy dir will be created under this directory with deploy-env")
 	nodeCommand.PersistentFlags().String(nodeflag.BaseWorkDir, defaultBaseWorkDir(), "base work directory of this node, the work dir will be created under this directory with deploy-env")
+	nodeCommand.PersistentFlags().String(nodeflag.HTTPProxy, "",
+		"override the http proxy for all http requests in the installer, empty value means skipping the proxy")
 
 	return nodeCommand
 }
