@@ -482,6 +482,7 @@ const handleIpSelectorClose = () => {
 // 预览匹配策略
 const previewData = ref<ConfigPolicyPreviewRespPreviewItem[]>([]);
 const previewLoading = ref(false);
+let previewRequestId = 0;
 const previewPagination = reactive({
   current: 1,
   limit: 10,
@@ -514,12 +515,19 @@ const reliableSpanMethod = ({ row, _rowIndex, column, visibleData }: any) => {
 };
 
 const fetchPreviewMatchStrategy = async () => {
+  const requestId = ++previewRequestId;
+  previewData.value = [];
+  previewPagination.count = 0;
+  previewPagination.current = 1;
   previewLoading.value = true;
   try {
     const res = await ConfigPolicyAPIService.ConfigPolicyPreview({
       bk_biz_id: props.bizId,
       policy_type: props.configpolicyType,
       plugin_name: '',
+      // preview with the user-adjusted priority order, highest first,
+      // instead of the saved DB priority order.
+      ordered_configpolicy_id: sortedConfigs.value.filter(item => item.enabled).map(item => item.configpolicy_id),
       hosts: selectedHosts.value.map(host => ({
         bk_host_id: host.bk_host_id,
         bk_networkunit_id: host.bk_networkunit_id || 0,
@@ -528,6 +536,8 @@ const fetchPreviewMatchStrategy = async () => {
         cpu_arch: host.cpu_arch || '',
       })),
     });
+    if (requestId !== previewRequestId) return;
+
     // 构建 hostId -> selectedHost 映射，用于补充主机信息
     const hostMap = new Map<number, ISelectedHost>();
     selectedHosts.value.forEach(h => hostMap.set(h.bk_host_id, h));
@@ -555,10 +565,14 @@ const fetchPreviewMatchStrategy = async () => {
     previewPagination.count = items.length;
     previewPagination.current = 1;
   } catch {
+    if (requestId !== previewRequestId) return;
+
     previewData.value = [];
     previewPagination.count = 0;
   } finally {
-    previewLoading.value = false;
+    if (requestId === previewRequestId) {
+      previewLoading.value = false;
+    }
   }
 };
 
@@ -649,6 +663,9 @@ const handlePrevStep = () => {
 const handleNextStep = () => {
   if (currentStep.value < steps.value.length - 1) {
     currentStep.value += 1;
+    if (currentStep.value === 1 && selectedHosts.value.length > 0) {
+      fetchPreviewMatchStrategy();
+    }
   }
 };
 

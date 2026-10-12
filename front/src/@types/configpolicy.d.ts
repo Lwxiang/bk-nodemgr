@@ -251,6 +251,9 @@ export interface ConfigPolicyPreviewReq {
   policy_type: string;
   hosts: PreviewHost[];
   plugin_name: string;
+  // optional user-specified priority order, highest first;
+  // empty falls back to the DB priority order.
+  ordered_configpolicy_id?: number[];
 }
 
 // ConfigPolicyPreviewResp describes HTTP response body for preview result.
