@@ -44,6 +44,7 @@ spec:
         {{- end }}
     spec:
       {{- include "bk-nodemgr.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "bk-nodemgr.serviceAccountName" . }}
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}

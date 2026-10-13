@@ -20,6 +20,17 @@ Create chart name and version as used by the chart label.
 {{- end -}}
 
 {{/*
+Create the name of the service account to use
+*/}}
+{{- define "bk-nodemgr.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{- default (include "bk-nodemgr.fullname" .) .Values.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.serviceAccount.name -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Return the proper bk-nodemgr image name
 */}}
 {{- define "bk-nodemgr.image" -}}

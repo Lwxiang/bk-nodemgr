@@ -533,12 +533,14 @@ updateStrategy:
 ## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
 ##
 schedulerName: ""
-## @param serviceAccount.create Specifies whether a ServiceAccount should be created
-## @param serviceAccount.name The name of the ServiceAccount to create
+## @param serviceAccount.create Enable creation of a ServiceAccount for bk-nodemgr pods
+## @param serviceAccount.name The name of the ServiceAccount to use. If not set and create is true, a name is generated using the common.names.fullname template
+## @param serviceAccount.annotations Additional custom annotations for the ServiceAccount
 ##
 serviceAccount:
-  create: true
+  create: false
   name: ""
+  annotations: {}
 ## @param hostAliases [array] bk-nodemgr pod host aliases
 ## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
 ##

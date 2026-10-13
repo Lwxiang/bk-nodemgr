@@ -30,6 +30,7 @@ spec:
         app: nodemgr-apigw-sync
     spec:
       {{- include "bk-nodemgr.apiManagerImagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "bk-nodemgr.serviceAccountName" . }}
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
