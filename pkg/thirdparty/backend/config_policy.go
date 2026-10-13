@@ -88,9 +88,12 @@ type IHandlerConfigPolicy interface {
 	// @param bizID the business id.
 	// @param policyType the config policy type.
 	// @param hosts the preview host entries.
+	// @param orderedConfigPolicyIDs optional user-specified priority order, highest first;
+	//        empty falls back to the DB priority order.
 	// @return the preview result and error.
 	PreviewConfigPolicy(nCtx contextx.IContext, bizID int64, policyType types.ConfigPolicyType, targetPluginName string,
-		hosts []types.ConfigPolicyPreviewHost) (*types.ConfigPolicyPreviewResult, error)
+		hosts []types.ConfigPolicyPreviewHost,
+		orderedConfigPolicyIDs []int64) (*types.ConfigPolicyPreviewResult, error)
 }
 
 // ListConfigPolicy lists config policy.
@@ -209,10 +212,11 @@ func (h *Handler) DeleteConfigPolicy(nCtx contextx.IContext, configPolicyIDs ...
 
 // PreviewConfigPolicy previews the merged config for each host.
 func (h *Handler) PreviewConfigPolicy(nCtx contextx.IContext, bizID int64, policyType types.ConfigPolicyType, targetPluginName string,
-	hosts []types.ConfigPolicyPreviewHost) (*types.ConfigPolicyPreviewResult, error) {
+	hosts []types.ConfigPolicyPreviewHost,
+	orderedConfigPolicyIDs []int64) (*types.ConfigPolicyPreviewResult, error) {
 
 	req := new(protoBackend.ConfigPolicyPreviewReq)
-	req.ConvertFromTypes(bizID, policyType, targetPluginName, hosts)
+	req.ConvertFromTypes(bizID, policyType, targetPluginName, hosts, orderedConfigPolicyIDs)
 
 	resp, err := h.cli.previewConfigPolicy(nCtx, req)
 	if err != nil {

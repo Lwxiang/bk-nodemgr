@@ -239,6 +239,7 @@ message ConfigPolicyPreviewReq {
   string policy_type = 2;
   repeated PreviewHost hosts = 3;
   optional string plugin_name = 4;
+  repeated int64 ordered_configpolicy_id = 5;
 }
 
 // ConfigPolicyPreviewResp describes HTTP response body for preview result.

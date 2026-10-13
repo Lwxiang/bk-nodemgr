@@ -581,6 +581,10 @@ func (x *ConfigPolicyPreviewReq) Validate() error {
 		}
 	}
 
+	if ids := x.GetOrderedConfigpolicyId(); len(conv.SliceUnique(ids)) != len(ids) {
+		return fmt.Errorf("duplicated ordered_configpolicy_id")
+	}
+
 	return nil
 }
 

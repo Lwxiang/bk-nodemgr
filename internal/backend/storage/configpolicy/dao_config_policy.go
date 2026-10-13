@@ -267,7 +267,8 @@ type scopeConstraints struct {
 // previewConfigPolicy queries all enabled policies once and filters per host in memory.
 func (s *Storage) previewConfigPolicy(nCtx contextx.IContext,
 	bizID int64, policyType types.ConfigPolicyType, targetPluginName string,
-	hosts []types.ConfigPolicyPreviewHost) (*types.ConfigPolicyPreviewResult, error) {
+	hosts []types.ConfigPolicyPreviewHost,
+	orderedConfigPolicyID []int64) (*types.ConfigPolicyPreviewResult, error) {
 
 	if len(hosts) == 0 {
 		return &types.ConfigPolicyPreviewResult{}, nil
@@ -292,6 +293,9 @@ func (s *Storage) previewConfigPolicy(nCtx contextx.IContext,
 	}
 	constraints := collectScopeConstraints(allPolicies)
 
+	// apply the user-specified preview order, falling back to DB priority order when absent.
+	allPolicies = makeConfigPolicyInOrder(allPolicies, orderedConfigPolicyID)
+
 	result := &types.ConfigPolicyPreviewResult{}
 	for _, host := range hosts {
 		policies := findMatchedPolicies(allPolicies, host)
@@ -305,6 +309,27 @@ func (s *Storage) previewConfigPolicy(nCtx contextx.IContext,
 	}
 
 	return result, nil
+}
+
+// makeConfigPolicyInOrder keeps only the policies in orderedConfigPolicyID, reversed:
+// the first ordered ID is the highest priority and merges last in deepMergeConfig,
+// so it wins conflicts. An empty order falls back to the DB priority order.
+func makeConfigPolicyInOrder(policies []*types.ConfigPolicy, orderedConfigPolicyID []int64) []*types.ConfigPolicy {
+	if len(orderedConfigPolicyID) == 0 {
+		return policies
+	}
+
+	result := make([]*types.ConfigPolicy, 0, len(orderedConfigPolicyID))
+	for i := len(orderedConfigPolicyID) - 1; i >= 0; i-- {
+		for _, p := range policies {
+			if p.ID == orderedConfigPolicyID[i] {
+				result = append(result, p)
+				break
+			}
+		}
+	}
+
+	return result
 }
 
 func collectScopeConstraints(policies []*types.ConfigPolicy) scopeConstraints {
