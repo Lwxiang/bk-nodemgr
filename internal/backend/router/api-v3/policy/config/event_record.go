@@ -28,26 +28,13 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
 )
 
-// recordConfigPolicyEvent records a single config policy event.
-func (h *handler) recordConfigPolicyEvent(rCtx restserver.IContext, event *types.ConfigPolicyEvent) {
-	err := h.goAsyncPool.Run(
-		rCtx,
-		func(nCtx contextx.IContext) error {
-			return h.storageConfigPolicy.CreateManyConfigPolicyEvent(nCtx, event)
-		},
-		goasync.WithName("record_config_policy_event"),
-	)
-	if err != nil {
-		logger.G.Sys().WithErr(err).Error("failed to submit policy event recording task")
-	}
-}
-
 // recordConfigPolicyEventsByPolicies builds events from policies and records them via the goasync pool.
 func (h *handler) recordConfigPolicyEventsByPolicies(
 	rCtx restserver.IContext,
 	eventType types.ConfigPolicyEventType,
 	policies ...*types.ConfigPolicy,
 ) {
+	operator := rCtx.BKUsername()
 
 	err := h.goAsyncPool.Run(
 		rCtx,
@@ -62,7 +49,7 @@ func (h *handler) recordConfigPolicyEventsByPolicies(
 					ConfigPolicyName: cp.Name,
 					ConfigPolicyType: cp.Type,
 					Version:          int64(cp.Version),
-					Operator:         cp.Operator,
+					Operator:         operator,
 					OperateTime:      time.Now(),
 				}
 			}
@@ -78,6 +65,8 @@ func (h *handler) recordConfigPolicyEventsByPolicies(
 
 // recordConfigPolicyEventsByPolicyIDs queries policies by IDs, builds events, and records them via the goasync pool.
 func (h *handler) recordConfigPolicyEventsByPolicyIDs(rCtx restserver.IContext, eventType types.ConfigPolicyEventType, policyIDs ...int64) {
+	operator := rCtx.BKUsername()
+
 	err := h.goAsyncPool.Run(
 		rCtx,
 		func(nCtx contextx.IContext) error {
@@ -96,7 +85,7 @@ func (h *handler) recordConfigPolicyEventsByPolicyIDs(rCtx restserver.IContext, 
 					ConfigPolicyName: cp.Name,
 					ConfigPolicyType: cp.Type,
 					Version:          int64(cp.Version),
-					Operator:         cp.Operator,
+					Operator:         operator,
 					OperateTime:      time.Now(),
 				}
 			}
