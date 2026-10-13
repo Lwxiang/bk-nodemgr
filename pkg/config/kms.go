@@ -33,8 +33,8 @@ const (
 	kmsPrivateKeyModuleFileEnvName        = "BK_NODEMGR_KMS_PRIVATE_KEY_MODULE_FILE"
 )
 
-// KMSSecret defines the kms secret config.
-type KMSSecret struct {
+// KMS defines the kms secret config.
+type KMS struct {
 	Enabled          bool   `yaml:"enabled" usage:"enable kms secret"`
 	GlobalSecretFile string `yaml:"globalSecretFile" usage:"global secret file"`
 	ModuleSecretFile string `yaml:"moduleSecretFile" usage:"module secret file"`
@@ -42,7 +42,7 @@ type KMSSecret struct {
 	param kms.LoadParam
 }
 
-func (k *KMSSecret) load(moduleEnvName string) error {
+func (k *KMS) load(moduleEnvName string) error {
 	if k.GlobalSecretFile == "" || k.ModuleSecretFile == "" {
 		return fmt.Errorf("kms globalSecretFile or moduleSecretFile is empty")
 	}
@@ -67,7 +67,7 @@ func (k *KMSSecret) load(moduleEnvName string) error {
 }
 
 // ParseApplicationServiceConfig parses the application service config.
-func (k *KMSSecret) ParseApplicationServiceConfig(service *ApplicationService) error {
+func (k *KMS) ParseApplicationServiceConfig(service *ApplicationService) error {
 	if !k.Enabled {
 		return nil
 	}
@@ -121,7 +121,7 @@ func (k *KMSSecret) ParseApplicationServiceConfig(service *ApplicationService) e
 }
 
 // ParseBackendServiceConfig parses the backend service config.
-func (k *KMSSecret) ParseBackendServiceConfig(service *BackendService) error {
+func (k *KMS) ParseBackendServiceConfig(service *BackendService) error {
 	if !k.Enabled {
 		return nil
 	}
@@ -205,7 +205,7 @@ func (k *KMSSecret) ParseBackendServiceConfig(service *BackendService) error {
 }
 
 // ParseFileServiceConfig parses the file service config.
-func (k *KMSSecret) ParseFileServiceConfig(service *FileService) error {
+func (k *KMS) ParseFileServiceConfig(service *FileService) error {
 	if !k.Enabled {
 		return nil
 	}

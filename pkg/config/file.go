@@ -258,7 +258,7 @@ type FileServiceTempFile struct {
 type FileService struct {
 	RunMode            RunMode              `yaml:"runMode" usage:"run mode of service"`
 	TenantMode         tenant.Mode          `yaml:"tenantMode" usage:"tenant mode of service"`
-	KMSSecret          KMSSecret            `yaml:"kmsSecret" usage:"kms secret of file service"`
+	KMS                KMS                  `yaml:"kms" usage:"kms secret of file service"`
 	Etcd               Etcd                 `yaml:"etcd" usage:"etcd config of file service"`
 	GSE                GSE                  `yaml:"gse" usage:"gse config of file service"`
 	InfoServer         HTTPServer           `yaml:"infoServer" usage:"info server config of file service"`
@@ -334,8 +334,8 @@ func (svc *FileService) LoadFromFile(path string) error {
 	}
 
 	// load kms secret.
-	if svc.KMSSecret.Enabled {
-		if err = svc.KMSSecret.ParseFileServiceConfig(svc); err != nil {
+	if svc.KMS.Enabled {
+		if err = svc.KMS.ParseFileServiceConfig(svc); err != nil {
 			return err
 		}
 	}

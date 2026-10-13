@@ -21,4 +21,5 @@ package envelope
 // KMSApplicationEnvelope defines kms application envelope.
 type KMSApplicationEnvelope struct {
 	// About to be implemented.
+	// It should be
 }

@@ -19,15 +19,15 @@ Not responsible for:
 
 ## WHERE TO LOOK
 
-| File | Purpose |
-|------|---------|
-| `kms.go` | `LoadParam` input contract; `LoadKMSApplicationSecret` / `LoadKMSBackendSecret` / `LoadKMSFileSecret` entrypoints; internal per-envelope decrypt helpers |
-| `envelope/` | Typed structs for decrypted global and per-module envelope JSON |
+| File        | Purpose                                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kms.go`    | `LoadParam` input contract; `LoadKMSApplicationSecret` / `LoadKMSBackendSecret` / `LoadKMSFileSecret` entrypoints; internal per-envelope decrypt helpers |
+| `envelope/` | Typed structs for decrypted global and per-module envelope JSON                                                                                          |
 
 ### Call flow
 
 ```
-pkg/config kms.go KMSSecret.load()          (reads envelope files + private-key env vars)
+pkg/config kms.go KMS.load()                (reads envelope files + private-key env vars)
     → pkg/kms LoadKMS<Service>Secret(param) (decrypt + unmarshal)
     → pkg/kms/envelope KMS<Service>Envelope (typed result)
     → pkg/config kms.go Parse*ServiceConfig (maps values into *Service config fields)

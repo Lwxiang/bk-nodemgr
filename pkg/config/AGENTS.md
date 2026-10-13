@@ -27,7 +27,7 @@ Not responsible for:
 | `backend.go` | `BackendService` — backend server config; GSE, CMDB, IAM, plugin, workflow worker settings |
 | `file.go` | `FileService` — file server config; download port, mount host dir |
 | `relay.go` | `RelayService` — relay server config |
-| `kms.go` | `KMSSecret` — shared KMS secret loading; decrypts envelopes via `pkg/kms` and maps values into each service config |
+| `kms.go` | `KMS` — shared KMS secret loading; decrypts envelopes via `pkg/kms` and maps values into each service config |
 | `config_test.go` | Unit tests for shared sub-struct validation |
 
 ### Key types in `config.go`
@@ -72,7 +72,7 @@ env BK_NODEMGR_APPLICATION_UNIX_SSH_PORT_DEFAULT
 - Do not add business logic or derived state to config structs — they are pure value holders.
 - Do not read environment variables outside of `LoadFromEnv()` in each `*Service` file.
   - **Exception (KMS):** `kms.go` reads `BK_NODEMGR_KMS_PRIVATE_KEY_*` env vars inside
-    `KMSSecret.load()`. KMS private keys are bootstrap secrets shared by all services, so they
+    `KMS.load()`. KMS private keys are bootstrap secrets shared by all services, so they
     are centralized in one choke point instead of being duplicated across each `LoadFromEnv()`.
 - Do not define a service-specific sub-struct in `config.go` — keep it in the service-specific file.
 - Do not skip `Validate()` in service startup — missing required fields must fail fast.
@@ -80,7 +80,7 @@ env BK_NODEMGR_APPLICATION_UNIX_SSH_PORT_DEFAULT
 
 ## EXCEPTIONS
 
-- **`KMSSecret` lives in `kms.go`, not `config.go`.** Although `KMSSecret` is embedded by
+- **`KMS` lives in `kms.go`, not `config.go`.** Although `KMS` is embedded by
   `ApplicationService` / `BackendService` / `FileService`, it is kept in a dedicated file
   together with the `Parse*ServiceConfig` mapping functions (~250 lines) that translate the
   decrypted KMS envelope into each service's config fields. Moving only the struct into
