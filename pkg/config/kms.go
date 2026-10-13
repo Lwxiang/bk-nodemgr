@@ -1,0 +1,253 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making
+ * 蓝鲸智云 - 节点管理 (BlueKing - Node Management) available.
+ * Copyright (C) Tencent. All rights reserved.
+ * Licensed under the MIT License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at http://opensource.org/licenses/MIT
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+
+ * We undertake not to change the open source license (MIT license) applicable
+
+ * to the current version of the project delivered to anyone in the future.
+ */
+
+package config
+
+import (
+	"encoding/base64"
+	"fmt"
+	"os"
+
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/kms"
+)
+
+const (
+	kmsPrivateKeyGlobalEnvName            = "BK_NODEMGR_KMS_PRIVATE_KEY_GLOBAL"
+	kmsPrivateKeyModuleApplicationEnvName = "BK_NODEMGR_KMS_PRIVATE_KEY_MODULE_APPLICATION"
+	kmsPrivateKeyModuleBackendEnvName     = "BK_NODEMGR_KMS_PRIVATE_KEY_MODULE_BACKEND"
+	kmsPrivateKeyModuleFileEnvName        = "BK_NODEMGR_KMS_PRIVATE_KEY_MODULE_FILE"
+)
+
+// KMSSecret defines the kms secret config.
+type KMSSecret struct {
+	Enabled          bool   `yaml:"enabled" usage:"enable kms secret"`
+	GlobalSecretFile string `yaml:"globalSecretFile" usage:"global secret file"`
+	ModuleSecretFile string `yaml:"moduleSecretFile" usage:"module secret file"`
+
+	param kms.LoadParam
+}
+
+func (k *KMSSecret) load(moduleEnvName string) error {
+	if k.GlobalSecretFile == "" || k.ModuleSecretFile == "" {
+		return fmt.Errorf("kms globalSecretFile or moduleSecretFile is empty")
+	}
+
+	envelopeGlobal, err := os.ReadFile(k.GlobalSecretFile)
+	if err != nil {
+		return err
+	}
+	k.param.EnvelopeGlobal = string(envelopeGlobal)
+
+	envelopeModule, err := os.ReadFile(k.ModuleSecretFile)
+	if err != nil {
+		return err
+	}
+	k.param.EnvelopeModule = string(envelopeModule)
+
+	// get private key from env.
+	k.param.PrivateKeyGlobal = os.Getenv(kmsPrivateKeyGlobalEnvName)
+	k.param.PrivateKeyModule = os.Getenv(moduleEnvName)
+
+	return nil
+}
+
+// ParseApplicationServiceConfig parses the application service config.
+func (k *KMSSecret) ParseApplicationServiceConfig(service *ApplicationService) error {
+	if !k.Enabled {
+		return nil
+	}
+
+	if err := k.load(kmsPrivateKeyModuleApplicationEnvName); err != nil {
+		return err
+	}
+
+	dataGlobal, _, err := kms.LoadKMSApplicationSecret(k.param)
+	if err != nil {
+		return err
+	}
+
+	// etcd.
+	service.Etcd.Password = dataGlobal.Etcd.Default.Password
+	service.Etcd.TLS.Password = dataGlobal.Etcd.Default.TLSPassword
+	// TODO: add tls certs from dataGlobal.
+
+	// mongodb.
+	service.MongoDB.Username = dataGlobal.MongoDB.Default.Username
+	service.MongoDB.Password = dataGlobal.MongoDB.Default.Password
+
+	// services.
+	// - info
+	service.InfoServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.ApplicationInfo.SymmetricKey
+	// - admin
+	service.AdminServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.ApplicationAdmin.SymmetricKey
+	// - basic
+	service.BasicServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.ApplicationBasic.SymmetricKey
+	// - file client
+	service.File.JWTClientConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileBasic.SymmetricKey
+
+	// bk-app.
+	// - backend
+	service.Backend.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.Backend.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - user manager
+	service.UserManager.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.UserManager.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - bk saas
+	service.BKSaas.BKLogin.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.BKSaas.BKLogin.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - iam v3
+	service.IAMV3.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.IAMV3.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - notice
+	service.Notice.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.Notice.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+
+	return nil
+}
+
+// ParseBackendServiceConfig parses the backend service config.
+func (k *KMSSecret) ParseBackendServiceConfig(service *BackendService) error {
+	if !k.Enabled {
+		return nil
+	}
+
+	if err := k.load(kmsPrivateKeyModuleBackendEnvName); err != nil {
+		return err
+	}
+
+	dataGlobal, dataModule, err := kms.LoadKMSBackendSecret(k.param)
+	if err != nil {
+		return err
+	}
+
+	// etcd.
+	service.Etcd.Password = dataGlobal.Etcd.Default.Password
+	service.Etcd.TLS.Password = dataGlobal.Etcd.Default.TLSPassword
+	// TODO: add tls certs from dataGlobal.
+
+	// mongodb.
+	service.MongoDB.Username = dataGlobal.MongoDB.Default.Username
+	service.MongoDB.Password = dataGlobal.MongoDB.Default.Password
+
+	// redis.
+	service.Redis.Password = dataGlobal.Redis.Default.Password
+
+	// services.
+	// - prework for decoding base64.
+	basicPublicKeyPem, err := base64.StdEncoding.DecodeString(dataGlobal.JwtServerConfig.BackendBasic.PublicKeyPEMBase64)
+	if err != nil {
+		return fmt.Errorf("failed to decode public key pem: %w", err)
+	}
+	// - info
+	service.InfoServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.BackendInfo.SymmetricKey
+	// - admin
+	service.AdminServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.BackendAdmin.SymmetricKey
+	// - basic
+	service.BasicServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.BackendBasic.SymmetricKey
+	service.BasicServer.JWTServerConfig.PublicKeyPem = string(basicPublicKeyPem)
+	// - callback
+	service.CallbackServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.BackendCallback.SymmetricKey
+	// - proxy
+	service.ProxyServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.BackendProxy.SymmetricKey
+	// - file client
+	service.File.JWTClientConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileBasic.SymmetricKey
+
+	// bk-app.
+	// - cmdb
+	service.CMDB.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.CMDB.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - gse
+	service.GSE.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.GSE.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - user manager
+	service.UserManager.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.UserManager.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - monitor
+	service.Monitor.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.Monitor.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - iamv3
+	service.IAMV3.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.IAMV3.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - iamv4
+	service.IAMV4.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.IAMV4.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+	// - iegtjj
+	service.CreditVault.HostCreditVault.IEGTJJ.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.CreditVault.HostCreditVault.IEGTJJ.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+
+	// encryption.
+	service.EncryptKey = dataModule.Encryption.EncryptKey
+
+	// gse.
+	service.GSE.PluginSlotID = dataModule.GSE.PluginSlotID
+	service.GSE.PluginSlotToken = dataModule.GSE.PluginSlotToken
+
+	// credit vault.
+	service.CreditVault.HostCreditVault.IEGTJJ.Key = dataModule.CreditVault.IEGTJJ.Key
+	service.CreditVault.HostCreditVault.IEGTJJ.SecretKey = dataModule.CreditVault.IEGTJJ.SecretKey
+
+	return nil
+}
+
+// ParseFileServiceConfig parses the file service config.
+func (k *KMSSecret) ParseFileServiceConfig(service *FileService) error {
+	if !k.Enabled {
+		return nil
+	}
+
+	if err := k.load(kmsPrivateKeyModuleFileEnvName); err != nil {
+		return err
+	}
+
+	dataGlobal, dataModule, err := kms.LoadKMSFileSecret(k.param)
+	if err != nil {
+		return err
+	}
+
+	// etcd.
+	service.Etcd.Password = dataGlobal.Etcd.Default.Password
+	service.Etcd.TLS.Password = dataGlobal.Etcd.Default.TLSPassword
+	// TODO: add tls certs from dataGlobal.
+
+	// mongodb.
+	service.MongoDB.Username = dataGlobal.MongoDB.Default.Username
+	service.MongoDB.Password = dataGlobal.MongoDB.Default.Password
+
+	// services.
+	// - info
+	service.InfoServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileInfo.SymmetricKey
+	// - admin
+	service.AdminServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileAdmin.SymmetricKey
+	// - basic
+	service.BasicServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileBasic.SymmetricKey
+	// - download
+	service.DownloadServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileDownload.SymmetricKey
+	// - export
+	service.ExportServer.JWTServerConfig.SymmetricKey = dataGlobal.JwtServerConfig.FileExport.SymmetricKey
+
+	// bk-app.
+	// - gse
+	service.GSE.AppCode = dataGlobal.BKAppIDSecret.Default.AppCode
+	service.GSE.AppSecret = dataGlobal.BKAppIDSecret.Default.AppSecret
+
+	// bkrepo.
+	service.Repo.AccessKey = dataModule.BKRepo.Default.AccessKey
+	service.Repo.SecretKey = dataModule.BKRepo.Default.SecretKey
+
+	return nil
+}
