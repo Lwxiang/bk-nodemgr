@@ -204,50 +204,35 @@ func (s *Storage) CreateConfigPolicy(nCtx contextx.IContext, configPolicy *types
 // UpdateConfigPolicy updates the config policy.
 func (s *Storage) UpdateConfigPolicy(nCtx contextx.IContext, fields types.ConfigPolicyFields, configPolicy *types.ConfigPolicy) error {
 	return s.WrapFn(nCtx, metricOperationUpdateConfigPolicy, func(nCtx contextx.IContext) error {
-		var err error
-		err = s.updateConfigPolicy(nCtx, fields, configPolicy)
-
-		return err
+		return s.updateConfigPolicy(nCtx, fields, configPolicy)
 	})
 }
 
 // DeleteManyConfigPolicy deletes the config policies.
 func (s *Storage) DeleteManyConfigPolicy(nCtx contextx.IContext, configPolicyIDs ...int64) error {
 	return s.WrapFn(nCtx, metricOperationDeleteManyConfigPolicy, func(nCtx contextx.IContext) error {
-		var err error
-		err = s.deleteManyConfigPolicy(nCtx, configPolicyIDs...)
-
-		return err
+		return s.deleteManyConfigPolicy(nCtx, configPolicyIDs...)
 	})
 }
 
 // EnableManyConfigPolicy enables the config policies.
 func (s *Storage) EnableManyConfigPolicy(nCtx contextx.IContext, configPolicyIDs ...int64) error {
 	return s.WrapFn(nCtx, metricOperationEnableManyConfigPolicy, func(nCtx contextx.IContext) error {
-		var err error
-		err = s.enableManyConfigPolicy(nCtx, configPolicyIDs...)
-
-		return err
+		return s.enableManyConfigPolicy(nCtx, configPolicyIDs...)
 	})
 }
 
 // DisableManyConfigPolicy disables the config policies.
 func (s *Storage) DisableManyConfigPolicy(nCtx contextx.IContext, configPolicyIDs ...int64) error {
 	return s.WrapFn(nCtx, metricOperationDisableManyConfigPolicy, func(nCtx contextx.IContext) error {
-		var err error
-		err = s.disableManyConfigPolicy(nCtx, configPolicyIDs...)
-
-		return err
+		return s.disableManyConfigPolicy(nCtx, configPolicyIDs...)
 	})
 }
 
 // UpdatePriorityManyConfigPolicy batch-updates the priority field for the given policy IDs.
 func (s *Storage) UpdatePriorityManyConfigPolicy(nCtx contextx.IContext, priorities map[int64]int64) error {
 	return s.WrapFn(nCtx, metricOperationReorderPrioritiesConfigPolicy, func(nCtx contextx.IContext) error {
-		var err error
-		err = s.updatePriorityManyConfigPolicy(nCtx, priorities)
-
-		return err
+		return s.updatePriorityManyConfigPolicy(nCtx, priorities)
 	})
 }
 
