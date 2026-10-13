@@ -27,7 +27,7 @@
           <i class="nodeman-icon nc-plus-line text-[11px] mr-[8px]"></i>
           {{ $t('agentStrategy.createConfig') }}
         </Button>
-        <Button @click="handleSortPreview">
+        <Button :loading="sortPreviewLoading" @click="handleSortPreview">
           {{ $t('agentStrategy.sortAndPreview') }}
         </Button>
       </div>
@@ -274,7 +274,7 @@
   <!-- SortPreview 排序并预览组件 -->
   <SortPreview
     v-model:is-show="isShowSortPreview"
-    :config-list="tableData"
+    :config-list="sortPreviewConfigList"
     :configpolicy-type="configpolicyType"
     :biz-id="strategyBizId || 0"
     @save-sort="handleSaveSort"
@@ -319,11 +319,13 @@ const pagination = reactive({ count: 0, limit: 50, current: 1, remote: true });
 const tableData = ref<ConfigPolicy[]>([]);
 const loading = ref(false);
 
-// Priority: discrete index among enabled rows (0-based), theme by rank
+// Priority: global index among enabled rows (0-based).
+// The list is sorted enabled-first by priority ASC, so all rows on previous
+// pages are enabled and the page offset equals the enabled rows before this page.
 const enabledRows = computed(() => tableData.value.filter(row => row.enabled));
 const enabledPriorityIndex = (row: ConfigPolicy) => {
   const idx = enabledRows.value.indexOf(row);
-  return idx >= 0 ? idx : -1;
+  return idx >= 0 ? (pagination.current - 1) * pagination.limit + idx : -1;
 };
 const active = ref('');
 const panels = computed(() => [
@@ -430,8 +432,44 @@ const handleRequestEdit = () => {
 
 // ===== SortPreview =====
 const isShowSortPreview = ref(false);
-const handleSortPreview = () => {
-  isShowSortPreview.value = true;
+const sortPreviewConfigList = ref<ConfigPolicy[]>([]);
+const sortPreviewLoading = ref(false);
+const handleSortPreview = async () => {
+  if (sortPreviewLoading.value || !strategyBizId.value) return;
+
+  const bizId = strategyBizId.value;
+  const policyType = configpolicyType.value;
+  const allConfigs: ConfigPolicy[] = [];
+  const pageSize = 1000;
+  let offset = 0;
+  let hasMore = true;
+  sortPreviewLoading.value = true;
+  try {
+    while (hasMore) {
+      const res = await ConfigPolicyAPIService.ConfigPolicyList({
+        page: { offset, limit: pageSize },
+        only_count: false,
+        exact_include_conditions: {
+          bk_biz_id: [bizId],
+          configpolicy_type: [policyType],
+          enabled: [true],
+        },
+        fuzzy_include_conditions: {},
+      });
+      if (bizId !== strategyBizId.value || policyType !== configpolicyType.value) return;
+
+      allConfigs.push(...res.items);
+      offset += pageSize;
+      hasMore = res.items.length === pageSize;
+    }
+
+    sortPreviewConfigList.value = allConfigs;
+    isShowSortPreview.value = true;
+  } catch {
+    // error handled by fetch interceptor
+  } finally {
+    sortPreviewLoading.value = false;
+  }
 };
 
 const handleSaveSort = async () => {
