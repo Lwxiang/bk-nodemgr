@@ -24,11 +24,11 @@ import (
 	"fmt"
 
 	"github.com/TencentBlueKing/bk-kms-sdk/go/decrypt"
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/kms/envelope"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/config/kms/envelope"
 )
 
-// LoadParam the load param.
-type LoadParam struct {
+// EnvelopeLoadParam the load param.
+type EnvelopeLoadParam struct {
 	// global envelope and private-key.
 	EnvelopeGlobal   string
 	PrivateKeyGlobal string
@@ -38,14 +38,14 @@ type LoadParam struct {
 	PrivateKeyModule string
 }
 
-// LoadKMSApplicationSecret load the kms application secret.
-func LoadKMSApplicationSecret(param LoadParam) (*envelope.KMSGlobalEnvelope, *envelope.KMSApplicationEnvelope, error) {
+// LoadApplicationEnvelopes load the kms application secret.
+func LoadApplicationEnvelopes(param EnvelopeLoadParam) (*envelope.GlobalEnvelope, *envelope.ApplicationEnvelope, error) {
 	dataGlobal, err := loadKMSGlobalSecret(param.EnvelopeGlobal, param.PrivateKeyGlobal)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	dataModule, err := loadKMSApplicationSecret(param.EnvelopeModule, param.PrivateKeyModule)
+	dataModule, err := loadApplicationEnvelopes(param.EnvelopeModule, param.PrivateKeyModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -53,14 +53,14 @@ func LoadKMSApplicationSecret(param LoadParam) (*envelope.KMSGlobalEnvelope, *en
 	return dataGlobal, dataModule, nil
 }
 
-// LoadKMSBackendSecret load the kms backend secret.
-func LoadKMSBackendSecret(param LoadParam) (*envelope.KMSGlobalEnvelope, *envelope.KMSBackendEnvelope, error) {
+// LoadBackendEnvelopes load the kms backend secret.
+func LoadBackendEnvelopes(param EnvelopeLoadParam) (*envelope.GlobalEnvelope, *envelope.BackendEnvelope, error) {
 	dataGlobal, err := loadKMSGlobalSecret(param.EnvelopeGlobal, param.PrivateKeyGlobal)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	dataModule, err := loadKMSBackendSecret(param.EnvelopeModule, param.PrivateKeyModule)
+	dataModule, err := loadBackendEnvelopes(param.EnvelopeModule, param.PrivateKeyModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,14 +68,14 @@ func LoadKMSBackendSecret(param LoadParam) (*envelope.KMSGlobalEnvelope, *envelo
 	return dataGlobal, dataModule, nil
 }
 
-// LoadKMSFileSecret load the kms file secret.
-func LoadKMSFileSecret(param LoadParam) (*envelope.KMSGlobalEnvelope, *envelope.KMSFileEnvelope, error) {
+// LoadFileEnvelopes load the kms file secret.
+func LoadFileEnvelopes(param EnvelopeLoadParam) (*envelope.GlobalEnvelope, *envelope.FileEnvelope, error) {
 	dataGlobal, err := loadKMSGlobalSecret(param.EnvelopeGlobal, param.PrivateKeyGlobal)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	dataModule, err := loadKMSFileSecret(param.EnvelopeModule, param.PrivateKeyModule)
+	dataModule, err := loadFileEnvelopes(param.EnvelopeModule, param.PrivateKeyModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,13 +83,13 @@ func LoadKMSFileSecret(param LoadParam) (*envelope.KMSGlobalEnvelope, *envelope.
 	return dataGlobal, dataModule, nil
 }
 
-func loadKMSGlobalSecret(envelopeGlobal, key string) (*envelope.KMSGlobalEnvelope, error) {
+func loadKMSGlobalSecret(envelopeGlobal, key string) (*envelope.GlobalEnvelope, error) {
 	plainText, err := decrypt.Decrypt(envelopeGlobal, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt global secret: %w", err)
 	}
 
-	var data envelope.KMSGlobalEnvelope
+	var data envelope.GlobalEnvelope
 	err = json.Unmarshal([]byte(plainText), &data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal global secret: %w", err)
@@ -98,13 +98,13 @@ func loadKMSGlobalSecret(envelopeGlobal, key string) (*envelope.KMSGlobalEnvelop
 	return &data, nil
 }
 
-func loadKMSApplicationSecret(envelopeModule, key string) (*envelope.KMSApplicationEnvelope, error) {
+func loadApplicationEnvelopes(envelopeModule, key string) (*envelope.ApplicationEnvelope, error) {
 	plainText, err := decrypt.Decrypt(envelopeModule, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt application secret: %w", err)
 	}
 
-	var data envelope.KMSApplicationEnvelope
+	var data envelope.ApplicationEnvelope
 	err = json.Unmarshal([]byte(plainText), &data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal application secret: %w", err)
@@ -113,13 +113,13 @@ func loadKMSApplicationSecret(envelopeModule, key string) (*envelope.KMSApplicat
 	return &data, nil
 }
 
-func loadKMSBackendSecret(envelopeModule, key string) (*envelope.KMSBackendEnvelope, error) {
+func loadBackendEnvelopes(envelopeModule, key string) (*envelope.BackendEnvelope, error) {
 	plainText, err := decrypt.Decrypt(envelopeModule, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt backend secret: %w", err)
 	}
 
-	var data envelope.KMSBackendEnvelope
+	var data envelope.BackendEnvelope
 	err = json.Unmarshal([]byte(plainText), &data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal backend secret: %w", err)
@@ -128,13 +128,13 @@ func loadKMSBackendSecret(envelopeModule, key string) (*envelope.KMSBackendEnvel
 	return &data, nil
 }
 
-func loadKMSFileSecret(envelopeModule, key string) (*envelope.KMSFileEnvelope, error) {
+func loadFileEnvelopes(envelopeModule, key string) (*envelope.FileEnvelope, error) {
 	plainText, err := decrypt.Decrypt(envelopeModule, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt file secret: %w", err)
 	}
 
-	var data envelope.KMSFileEnvelope
+	var data envelope.FileEnvelope
 	err = json.Unmarshal([]byte(plainText), &data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal file secret: %w", err)

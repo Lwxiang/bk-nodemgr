@@ -21,7 +21,7 @@ Not responsible for:
 
 | File        | Purpose                                                                                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `kms.go`    | `LoadParam` input contract; `LoadKMSApplicationSecret` / `LoadKMSBackendSecret` / `LoadKMSFileSecret` entrypoints; internal per-envelope decrypt helpers |
+| `kms.go`    | `LoadParam` input contract; `LoadApplicationEnvelopes` / `LoadBackendEnvelopes` / `LoadFileEnvelopes` entrypoints; internal per-envelope decrypt helpers |
 | `envelope/` | Typed structs for decrypted global and per-module envelope JSON                                                                                          |
 
 ### Call flow

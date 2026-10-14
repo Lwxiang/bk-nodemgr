@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/TencentBlueKing/bk-nodemgr/pkg/kms"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/config/kms"
 )
 
 const (
@@ -39,7 +39,7 @@ type KMS struct {
 	GlobalSecretFile string `yaml:"globalSecretFile" usage:"global secret file"`
 	ModuleSecretFile string `yaml:"moduleSecretFile" usage:"module secret file"`
 
-	param kms.LoadParam
+	param kms.EnvelopeLoadParam
 }
 
 func (k *KMS) load(moduleEnvName string) error {
@@ -76,7 +76,7 @@ func (k *KMS) ParseApplicationServiceConfig(service *ApplicationService) error {
 		return err
 	}
 
-	dataGlobal, _, err := kms.LoadKMSApplicationSecret(k.param)
+	dataGlobal, _, err := kms.LoadApplicationEnvelopes(k.param)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (k *KMS) ParseBackendServiceConfig(service *BackendService) error {
 		return err
 	}
 
-	dataGlobal, dataModule, err := kms.LoadKMSBackendSecret(k.param)
+	dataGlobal, dataModule, err := kms.LoadBackendEnvelopes(k.param)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (k *KMS) ParseFileServiceConfig(service *FileService) error {
 		return err
 	}
 
-	dataGlobal, dataModule, err := kms.LoadKMSFileSecret(k.param)
+	dataGlobal, dataModule, err := kms.LoadFileEnvelopes(k.param)
 	if err != nil {
 		return err
 	}

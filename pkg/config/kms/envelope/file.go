@@ -18,8 +18,15 @@
 
 package envelope
 
-// KMSApplicationEnvelope defines kms application envelope.
-type KMSApplicationEnvelope struct {
-	// About to be implemented.
-	// It should be
+// FileEnvelope defines kms file envelope.
+type FileEnvelope struct {
+	BKRepo struct {
+		Default BKRepo `json:"default"`
+	} `json:"bkrepo"`
+}
+
+// BKRepo defines bk repo.
+type BKRepo struct {
+	AccessKey string `json:"access_key"`
+	SecretKey string `json:"secret_key"`
 }

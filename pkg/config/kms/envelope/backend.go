@@ -18,15 +18,31 @@
 
 package envelope
 
-// KMSFileEnvelope defines kms file envelope.
-type KMSFileEnvelope struct {
-	BKRepo struct {
-		Default KMSBKRepo `json:"default"`
-	} `json:"bkrepo"`
+// BackendEnvelope defines kms backend envelope.
+type BackendEnvelope struct {
+	Encryption  BackendEncryption  `json:"encryption"`
+	GSE         BackendGSE         `json:"gse"`
+	CreditVault BackendCreditVault `json:"credit_vault"`
 }
 
-// KMSBKRepo defines bk repo.
-type KMSBKRepo struct {
-	AccessKey string `json:"access_key"`
+// BackendEncryption defines kms backend encryption.
+type BackendEncryption struct {
+	EncryptKey string `json:"encrypt_key"`
+}
+
+// BackendGSE defines kms backend gse.
+type BackendGSE struct {
+	PluginSlotID    int    `json:"plugin_slot_id"`
+	PluginSlotToken string `json:"plugin_slot_token"`
+}
+
+// BackendCreditVault defines kms backend credit vault.
+type BackendCreditVault struct {
+	IEGTJJ BackendIEGTJJ `json:"iegtjj"`
+}
+
+// BackendIEGTJJ defines kms backend iegtjj.
+type BackendIEGTJJ struct {
+	Key       string `json:"key"`
 	SecretKey string `json:"secret_key"`
 }

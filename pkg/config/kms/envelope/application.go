@@ -18,31 +18,8 @@
 
 package envelope
 
-// KMSBackendEnvelope defines kms backend envelope.
-type KMSBackendEnvelope struct {
-	Encryption  KMSBackendEncryption  `json:"encryption"`
-	GSE         KMSBackendGSE         `json:"gse"`
-	CreditVault KMSBackendCreditVault `json:"credit_vault"`
-}
-
-// KMSBackendEncryption defines kms backend encryption.
-type KMSBackendEncryption struct {
-	EncryptKey string `json:"encrypt_key"`
-}
-
-// KMSBackendGSE defines kms backend gse.
-type KMSBackendGSE struct {
-	PluginSlotID    int    `json:"plugin_slot_id"`
-	PluginSlotToken string `json:"plugin_slot_token"`
-}
-
-// KMSBackendCreditVault defines kms backend credit vault.
-type KMSBackendCreditVault struct {
-	IEGTJJ KMSBackendIEGTJJ `json:"iegtjj"`
-}
-
-// KMSBackendIEGTJJ defines kms backend iegtjj.
-type KMSBackendIEGTJJ struct {
-	Key       string `json:"key"`
-	SecretKey string `json:"secret_key"`
+// ApplicationEnvelope defines kms application envelope.
+type ApplicationEnvelope struct {
+	// About to be implemented.
+	// It should be
 }
