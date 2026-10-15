@@ -137,6 +137,7 @@ const (
 type BackendService struct {
 	RunMode            RunMode          `yaml:"runMode" usage:"run mode of service"`
 	TenantMode         tenant.Mode      `yaml:"tenantMode" usage:"tenant mode of service"`
+	KMS                KMS              `yaml:"kms" usage:"kms secret of backend service"`
 	CMDB               CMDB             `yaml:"cmdb" usage:"cmdb config of backend service"`
 	File               File             `yaml:"file" usage:"file config of backend service"`
 	GSE                GSE              `yaml:"gse" usage:"gse config of backend service"`
@@ -413,6 +414,13 @@ func (svc *BackendService) LoadFromFile(path string) error {
 
 	if err = yaml.Unmarshal(configContent, svc); err != nil {
 		return err
+	}
+
+	// load kms secret.
+	if svc.KMS.Enabled {
+		if err = svc.KMS.ParseBackendServiceConfig(svc); err != nil {
+			return err
+		}
 	}
 
 	return nil
