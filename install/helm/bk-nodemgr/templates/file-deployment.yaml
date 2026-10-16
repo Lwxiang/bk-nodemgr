@@ -103,6 +103,18 @@ spec:
           env:
             - name: NODEMGR-MODULE
               value: file
+            {{- if .Values.kms.enabled }}
+            - name: BK_NODEMGR_KMS_PRIVATE_KEY_GLOBAL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "bk-nodemgr.fullname" . }}-global-kms-secret
+                  key: privateKey
+            - name: BK_NODEMGR_KMS_PRIVATE_KEY_MODULE_FILE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "bk-nodemgr.fullname" . }}-file-kms-secret
+                  key: privateKey
+            {{- end }}
           ports:
             - name: info-http
               containerPort: {{ .Values.file.config.infoServer.port }}
@@ -145,6 +157,11 @@ spec:
               mountPath: {{ .Values.common.etcPath }}
             - name: nodemgr-workspace
               mountPath: {{ .Values.file.config.workspaceFileGroup.fullPath }}
+            {{- if .Values.kms.enabled }}
+            - name: kms-envelope
+              mountPath: {{ .Values.common.secretPath }}
+              readOnly: true
+            {{- end }}
           {{- if .Values.resources }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
           {{- else }}
@@ -281,4 +298,19 @@ spec:
         hostPath:
           path: {{ .Values.file.config.mountHostDir }}
           type: DirectoryOrCreate
+      {{- if .Values.kms.enabled }}
+      - name: kms-envelope
+        projected:
+          sources:
+            - secret:
+                name: {{ template "bk-nodemgr.fullname" . }}-global-kms-secret
+                items:
+                  - key: envelope
+                    path: kms-global-envelope
+            - secret:
+                name: {{ template "bk-nodemgr.fullname" . }}-file-kms-secret
+                items:
+                  - key: envelope
+                    path: kms-file-envelope
+      {{- end }}
 {{- end }}
