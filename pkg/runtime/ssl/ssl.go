@@ -124,7 +124,7 @@ func (c TLSConfig) NewServerTLSConf() (*tls.Config, error) {
 
 func loadCa(ca []byte) (*x509.CertPool, error) {
 	caPool := x509.NewCertPool()
-	if ok := caPool.AppendCertsFromPEM(ca); ok != true {
+	if ok := caPool.AppendCertsFromPEM(ca); !ok {
 		return nil, fmt.Errorf("append ca cert failed")
 	}
 
