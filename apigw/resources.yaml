@@ -4996,6 +4996,20 @@ paths:
                         properties:
                           base_work_dir:
                             type: string
+                          firewall:
+                            type: object
+                            description: |-
+                              Unset inherits deployment defaults; an empty object disables firewall
+                              setup.
+                            properties:
+                              remote_ips:
+                                type: array
+                                items:
+                                  type: string
+                              features:
+                                type: array
+                                items:
+                                  type: string
                         description: InstallerRuntime describes the installer runtime config.
                     description: CustomDeployConfig describes the deploy config for host deployment.
               description: |-
@@ -5324,6 +5338,20 @@ paths:
                               properties:
                                 base_work_dir:
                                   type: string
+                                firewall:
+                                  type: object
+                                  description: |-
+                                    Unset inherits deployment defaults; an empty object disables firewall
+                                    setup.
+                                  properties:
+                                    remote_ips:
+                                      type: array
+                                      items:
+                                        type: string
+                                    features:
+                                      type: array
+                                      items:
+                                        type: string
                               description: InstallerRuntime describes the installer runtime config.
                           description: CustomDeployConfig describes the deploy config for host deployment.
                     description: |-
@@ -5587,6 +5615,20 @@ paths:
                                     properties:
                                       base_work_dir:
                                         type: string
+                                      firewall:
+                                        type: object
+                                        description: |-
+                                          Unset inherits deployment defaults; an empty object disables firewall
+                                          setup.
+                                        properties:
+                                          remote_ips:
+                                            type: array
+                                            items:
+                                              type: string
+                                          features:
+                                            type: array
+                                            items:
+                                              type: string
                                     description: InstallerRuntime describes the installer runtime config.
                                 description: CustomDeployConfig describes the deploy config for host deployment.
                           description: NetworkUnit describes the network unit informations.
@@ -6018,6 +6060,20 @@ paths:
                             properties:
                               base_work_dir:
                                 type: string
+                              firewall:
+                                type: object
+                                description: |-
+                                  Unset inherits deployment defaults; an empty object disables firewall
+                                  setup.
+                                properties:
+                                  remote_ips:
+                                    type: array
+                                    items:
+                                      type: string
+                                  features:
+                                    type: array
+                                    items:
+                                      type: string
                             description: InstallerRuntime describes the installer runtime config.
                         description: CustomDeployConfig describes the deploy config for host deployment.
                   description: |-
@@ -23658,6 +23714,20 @@ paths:
                             properties:
                               base_work_dir:
                                 type: string
+                              firewall:
+                                type: object
+                                description: |-
+                                  Unset inherits deployment defaults; an empty object disables firewall
+                                  setup.
+                                properties:
+                                  remote_ips:
+                                    type: array
+                                    items:
+                                      type: string
+                                  features:
+                                    type: array
+                                    items:
+                                      type: string
                             description: InstallerRuntime describes the installer runtime config.
                         description: CustomDeployConfig describes the deploy config for host deployment.
                   error:
