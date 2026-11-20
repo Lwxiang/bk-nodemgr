@@ -98,6 +98,9 @@ const (
 	ActionPackageManage Action = "package_manage"
 	// ActionPackageHistoryView represents the action to view package history.
 	ActionPackageHistoryView Action = "package_history_view"
+
+	// ActionCloudSecurityGroupManage represents the action to manage global cloud security group bindings.
+	ActionCloudSecurityGroupManage Action = "cloud_security_group_manage"
 )
 
 // ActionDisplayName returns the human-readable display name for the given action.
@@ -170,6 +173,8 @@ func ActionDisplayName(a Action) string {
 		return "管理资源包"
 	case ActionPackageHistoryView:
 		return "查看资源包历史"
+	case ActionCloudSecurityGroupManage:
+		return "管理云安全组"
 	default:
 		return ""
 	}

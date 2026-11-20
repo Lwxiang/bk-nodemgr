@@ -79,10 +79,21 @@ func (h *handler) CreateNetworkUnit(rCtx restserver.IContext) (interface{}, erro
 		networkUnit.Links = req.ConvertLinksToTypes()
 	}
 
+	accessPoints := req.ConvertAccssPointsToTypes(rCtx.TenantID(), networkAreaID)
+	if err := h.validateAccessPointPools(accessPoints); err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to create networkunit, invalid cloud security group pool")
+		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+	if hasPoolBinding(accessPoints) {
+		if err := h.checkCloudSGManage(rCtx); err != nil {
+			return nil, err
+		}
+	}
+
 	networkUnitID, accessPointResult, err := h.storage.CreateNetworkUnit(
 		rCtx,
 		networkUnit,
-		req.ConvertAccssPointsToTypes(rCtx.TenantID(), networkAreaID)...)
+		accessPoints...)
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to create networkunit")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
@@ -376,11 +387,35 @@ func (h *handler) UpdateNetworkUnit(rCtx restserver.IContext) (interface{}, erro
 		networkUnit.Links = req.ConvertLinksToTypes()
 	}
 
+	accessPoints := req.ConvertAccssPointsToTypes(rCtx.TenantID(), networkAreaID)
+	existingIDs := make([]int64, 0, len(accessPoints))
+	for _, accessPoint := range accessPoints {
+		if accessPoint.ID >= 0 {
+			existingIDs = append(existingIDs, accessPoint.ID)
+		}
+	}
+
+	existingPoolIDs, err := h.listExistingCloudSGPoolIDs(rCtx, existingIDs)
+	if err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to update networkunit, failed to list existing accesspoint pools")
+		return nil, resterrf.ErrWrap(resterrf.DBExecCmdFailed, err)
+	}
+
+	if err := h.validateAccessPointPools(accessPoints); err != nil {
+		logger.G.Biz(rCtx).WithErr(err).Error("failed to update networkunit, invalid cloud security group pool")
+		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)
+	}
+	if hasPoolBindingChanged(accessPoints, existingPoolIDs) {
+		if err := h.checkCloudSGManage(rCtx); err != nil {
+			return nil, err
+		}
+	}
+
 	accessPointResult, err := h.storage.UpdateNetworkUnit(
 		rCtx,
 		req.ConvertFieldsToTypes(),
 		networkUnit,
-		req.ConvertAccssPointsToTypes(rCtx.TenantID(), networkAreaID)...)
+		accessPoints...)
 	if err != nil {
 		logger.G.Biz(rCtx).WithErr(err).Error("failed to update networkunit")
 		return nil, resterrf.ErrWrap(resterrf.InvalidParameter, err)

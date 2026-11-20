@@ -59,6 +59,10 @@ function appendInterfaceToTypeDefinitions(type, fileName, prefix = '') {
   let output = '';
   const typeCommentList = type.comment?.split('\n');
   output += typeCommentList?.length ? `${typeCommentList.map(comment => `// ${comment}\n`).join('')}` : '';
+  if (type.fieldsArray.length === 0) {
+    output += `${fileName === 'common' ? '' : 'export '}type ${prefix}${type.name} = Record<string, never>;\n\n`;
+    return output;
+  }
   output += `${fileName === 'common' ? '' : 'export '}interface ${prefix}${type.name} {\n`;
   type.fieldsArray.forEach((field) => {
     const commentList = field.comment?.split('\n');

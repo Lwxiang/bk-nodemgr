@@ -1021,6 +1021,37 @@ func (c *cli) listAccessPointBrief(ctx contextx.IContext, req *protoBackend.Topo
 	return resp, nil
 }
 
+func (c *cli) listCloudSecurityGroupPools(
+	ctx contextx.IContext, req *protoBackend.TopoCloudSecurityGroupPoolListReq,
+) (*protoBackend.TopoCloudSecurityGroupPoolListResp, error) {
+
+	resp := new(protoBackend.TopoCloudSecurityGroupPoolListResp)
+	header := c.getHeader(ctx)
+
+	err := c.client.Post().
+		SubResourcef("/topo/cloud_security_group_pool/list").
+		WithContext(ctx).
+		WithHeaders(header).
+		Body(req).
+		EnableLogBody().
+		EnableLogResponse().
+		Do().Into(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if code := resp.GetCode(); code != CodeOK {
+		return nil, buildBackendResponseError("list cloud security group pools", resp, resp.GetError())
+	}
+
+	if resp.GetData() == nil {
+		return nil, fmt.Errorf("list cloud security group pools failed, get empty data. code(%d), message(%s), request-id(%s)",
+			resp.GetCode(), resp.GetMessage(), resp.GetRequestId())
+	}
+
+	return resp, nil
+}
+
 func (c *cli) getConstant(ctx contextx.IContext, req *protoBackend.TopoConstantGetReq,
 ) (*protoBackend.TopoConstantGetResp, error) {
 

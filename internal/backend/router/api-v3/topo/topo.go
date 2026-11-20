@@ -21,6 +21,7 @@ package topo
 
 import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/cloudsg"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/credit"
@@ -44,6 +45,7 @@ type handler struct {
 	manager            manager.IManager
 	storage            topoStg.IStorage
 	storageHostCredit  credit.IStorageHostCredit
+	cloudSGRegistry    cloudsg.IRegistry
 	cmdbHandler        cmdb.IHandler
 	gseHandler         gse.IHandler
 	goAsyncPool        goasync.IHandler
@@ -64,6 +66,7 @@ func newHandler(rg *gin.RouterGroup, capability *options.Capability) *handler {
 		manager:            capability.Manager,
 		storage:            capability.StorageTopo,
 		storageHostCredit:  capability.StorageCredit,
+		cloudSGRegistry:    capability.CloudSGRegistry,
 		cmdbHandler:        capability.CmdbHandler,
 		gseHandler:         capability.GSEHandler,
 		goAsyncPool:        goAsyncPool,
@@ -114,6 +117,7 @@ func Load(rg *gin.RouterGroup, capability *options.Capability) {
 	// accesspoint apis.
 	h.rg.POST("/accesspoint/list", restserver.Handler(h.ListAccessPoint))
 	h.rg.POST("/accesspoint/list/brief", restserver.Handler(h.ListAccessPointBrief))
+	h.rg.POST("/cloud_security_group_pool/list", restserver.Handler(h.ListCloudSecurityGroupPools))
 
 	// topoStg event apis.
 	h.rg.POST("/event/list", restserver.Handler(h.ListEvent))

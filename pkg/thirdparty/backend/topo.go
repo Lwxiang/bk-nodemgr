@@ -19,6 +19,7 @@
 package backend
 
 import (
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/cloudsg"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/pageexecutor"
 	protoBackend "github.com/TencentBlueKing/bk-nodemgr/pkg/proto/backend/api/v3"
@@ -50,6 +51,9 @@ type IHandlerAccessPoint interface {
 	// @param condition the filter conditions.
 	// @return the access-point brief list with page and the total count with filter and error.
 	ListAccessPointBrief(nCtx contextx.IContext, page types.Page, condition *types.AccessPointCondition) ([]*types.AccessPoint, int64, error)
+
+	// ListCloudSecurityGroupPools lists globally configured pool summaries.
+	ListCloudSecurityGroupPools(nCtx contextx.IContext) ([]cloudsg.CloudSecurityGroupPoolSummary, error)
 }
 
 // IHandlerBusiness defines the business Handler.
@@ -258,6 +262,16 @@ func (h *Handler) ListAccessPointBrief(nCtx contextx.IContext, page types.Page, 
 	}
 
 	return result.Items, total, nil
+}
+
+// ListCloudSecurityGroupPools lists globally configured pool summaries.
+func (h *Handler) ListCloudSecurityGroupPools(nCtx contextx.IContext) ([]cloudsg.CloudSecurityGroupPoolSummary, error) {
+	resp, err := h.cli.listCloudSecurityGroupPools(nCtx, new(protoBackend.TopoCloudSecurityGroupPoolListReq))
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.ConvertPoolsToTypes(), nil
 }
 
 // ===============================================================================
