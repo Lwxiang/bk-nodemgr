@@ -55,6 +55,7 @@ func (oper *operInstallPagentByManual) ActionDefNames() []string {
 	return []string{
 		ActionNameTryReuseAgentID,
 		ActionNameUpsertHostToCMDB,
+		ActionNameAuthorizeProxyExportIP,
 		ActionNameSelectRelayHost,
 		ActionNameGenManualBootstrapCommand,
 		ActionNameWaitDetectInfoByManual,
@@ -80,6 +81,7 @@ func (oper *operInstallPagentByManual) DefaultParameters() operation.Param {
 		RetryStartPoint: map[string]bool{
 			ActionNameTryReuseAgentID:              true,
 			ActionNameUpsertHostToCMDB:             true,
+			ActionNameAuthorizeProxyExportIP:       true,
 			ActionNameSelectRelayHost:              true,
 			ActionNameGenManualBootstrapCommand:    true,
 			ActionNameWaitDetectInfoByManual:       false,

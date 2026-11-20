@@ -55,6 +55,7 @@ func (oper *operInstallNodeBySSH) ActionDefNames() []string {
 	return []string{
 		ActionNameTryReuseAgentID,
 		ActionNameUpsertHostToCMDB,
+		ActionNameAuthorizeProxyExportIP,
 		ActionNameDetectInfoBySSH,
 		ActionNameInjectNodeCustomDeployConfig,
 		ActionNameRenderNodeDeployment,
@@ -77,6 +78,7 @@ func (oper *operInstallNodeBySSH) DefaultParameters() operation.Param {
 		RetryStartPoint: map[string]bool{
 			ActionNameTryReuseAgentID:              true,
 			ActionNameUpsertHostToCMDB:             true,
+			ActionNameAuthorizeProxyExportIP:       true,
 			ActionNameDetectInfoBySSH:              true,
 			ActionNameInjectNodeCustomDeployConfig: true,
 			ActionNameRenderNodeDeployment:         true,

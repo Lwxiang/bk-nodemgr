@@ -59,6 +59,7 @@ func (oper *operInstallProxyBySSH) ActionDefNames() []string {
 		ActionNamePagentDetectInfoBySSH,
 		ActionNameInjectNodeCustomDeployConfig,
 		ActionNameRenderNodeDeployment,
+		ActionNameAuthorizeProxyExportIP,
 		ActionNameEnsurePkgToRelay,
 		ActionNameInstallProxyBySSH,
 		ActionNameWaitInstallerComplete,
@@ -84,6 +85,7 @@ func (oper *operInstallProxyBySSH) retryStartPoint() map[string]bool {
 	return map[string]bool{
 		ActionNameTryReuseAgentID:              true,
 		ActionNameUpsertHostToCMDB:             true,
+		ActionNameAuthorizeProxyExportIP:       true,
 		ActionNameSelectRelayHost:              true,
 		ActionNameInjectNodeCustomDeployConfig: true,
 		ActionNamePagentDetectInfoBySSH:        true,

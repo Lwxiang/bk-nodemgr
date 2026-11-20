@@ -29,6 +29,8 @@ import (
 const (
 	// CleanTriggerIntervalSecond defines the interval of cleaning trigger records.
 	CleanTriggerIntervalSecond = "clean_trigger_interval_second"
+	// CloudSGInspectIntervalSecond defines the interval of the read-only cloud security group inspection.
+	CloudSGInspectIntervalSecond = "cloud_sg_inspect_interval_second"
 	// NetworkUnitSegmentRules defines the setting name for network unit segment rules.
 	NetworkUnitSegmentRules = "networkunit_segment_rules"
 	// PluginCompatibilityModePolicy defines the setting name for plugin compatibility mode policy.
@@ -156,6 +158,10 @@ func PreDefinition() []*types.GlobalSettings {
 		{
 			SettingName: CleanTriggerIntervalSecond,
 			Value:       scheduler.Every1m,
+		},
+		{
+			SettingName: CloudSGInspectIntervalSecond,
+			Value:       scheduler.Every1h,
 		},
 		{
 			SettingName: PluginCompatibilityModePolicy,

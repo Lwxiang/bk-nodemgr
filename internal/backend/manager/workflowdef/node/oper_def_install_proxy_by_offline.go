@@ -58,6 +58,7 @@ func (oper *operInstallProxyByOffline) ActionDefNames() []string {
 		ActionNameResolveOfflineDetectInfo,
 		ActionNameInjectNodeCustomDeployConfig,
 		ActionNameRenderNodeDeployment,
+		ActionNameAuthorizeProxyExportIP,
 		ActionNameWaitOfflineManualInstall,
 		ActionNameWaitGseReady,
 		ActionNameSyncNodeInfo,
@@ -77,6 +78,7 @@ func (oper *operInstallProxyByOffline) DefaultParameters() operation.Param {
 		RetryStartPoint: map[string]bool{
 			ActionNameTryReuseAgentID:              true,
 			ActionNameUpsertHostToCMDB:             true,
+			ActionNameAuthorizeProxyExportIP:       true,
 			ActionNameResolveOfflineDetectInfo:     true,
 			ActionNameInjectNodeCustomDeployConfig: true,
 			ActionNameRenderNodeDeployment:         true,

@@ -23,6 +23,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	providerV3 "github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth/v3/provider"
 	providerV4 "github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth/v4/provider"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/cloudsg"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/periodictask"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/bizeventdataidconf"
@@ -137,6 +138,8 @@ type Capability struct {
 
 	// LockerFactory locker factory
 	LockerFactory locker.MutexFactory
+	// CloudSGRegistry is the global cloud security group pool registry.
+	CloudSGRegistry cloudsg.IRegistry
 
 	// Crypter ...
 	Crypter crypter.Crypter

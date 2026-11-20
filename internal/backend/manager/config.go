@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/cloudsg"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/bizeventdataidconf"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/configpolicy"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/credit"
@@ -74,6 +75,8 @@ type Config struct {
 
 	// workflow locker.
 	LockerFactory locker.MutexFactory
+	// CloudSGRegistry is the global cloud security group pool registry.
+	CloudSGRegistry cloudsg.IRegistry
 
 	// storages.
 	StorageTopo               topoStg.IStorage

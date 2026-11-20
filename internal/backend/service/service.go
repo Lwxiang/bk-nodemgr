@@ -32,6 +32,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth/v3"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/auth/v4"
+	cloudsgSvc "github.com/TencentBlueKing/bk-nodemgr/internal/backend/cloudsg"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/options"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/periodictask"
@@ -51,6 +52,7 @@ import (
 	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/workflow"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/access"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/cloudsg"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/config"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/creditvault"
@@ -83,6 +85,7 @@ import (
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/iamv4"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/iegtjj"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/monitor"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/tencentcloud"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/thirdparty/usermanager"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/tracing"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/types"
@@ -360,11 +363,21 @@ func (svc *Service) initialCapability() error {
 
 	// initial locker factory.
 	svc.Cap.LockerFactory = redsync.New(svc.Cap.RedisClient)
+	// initial global cloud security group pool registry.
+	svc.Cap.CloudSGRegistry = cloudsgSvc.NewRegistry(
+		svc.conf.CloudSecurityGroup,
+		map[cloudsg.CloudSecurityGroupVendor]tencentcloud.ISecurityGroupHandler{
+			tencentcloud.Vendor: tencentcloud.NewSecurityGroupHandler(),
+		},
+		svc.Cap.LockerFactory,
+	)
 
 	// initial period task.
 	svc.Cap.PeriodicTask = periodictask.NewPeriodicTask(periodictask.Config{
 		Locker:      svc.Cap.LockerFactory,
 		StgWorkflow: svc.Cap.StorageWorkflow,
+		StgTopo:     svc.Cap.StorageTopo,
+		CloudSG:     svc.Cap.CloudSGRegistry,
 	})
 
 	// initial IAM callback handler.
@@ -958,6 +971,7 @@ func (svc *Service) initialManager() error {
 		InstallerFileGroup:        svc.Cap.InstallerFileGroup,
 		FileCache:                 svc.Cap.FileCache,
 		LockerFactory:             svc.Cap.LockerFactory,
+		CloudSGRegistry:           svc.Cap.CloudSGRegistry,
 		StorageTopo:               svc.Cap.StorageTopo,
 		StorageNode:               svc.Cap.StorageNode,
 		StorageWorkflow:           svc.Cap.StorageWorkflow,

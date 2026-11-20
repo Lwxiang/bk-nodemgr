@@ -20,6 +20,7 @@
 package node
 
 import (
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/cloudsg"
 	managerIface "github.com/TencentBlueKing/bk-nodemgr/internal/backend/manager/iface"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/bizeventdataidconf"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/configpolicy"
@@ -48,6 +49,8 @@ type Capability struct {
 	GSEHandler     gse.IHandler
 	FileHandler    file.IHandler
 	MonitorHandler monitor.IHandler
+	// CloudSGRegistry is the global cloud security group pool registry.
+	CloudSGRegistry cloudsg.IRegistry
 
 	// stroage.
 	StorageTopo               topoStg.IStorage

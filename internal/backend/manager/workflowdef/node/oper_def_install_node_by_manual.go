@@ -55,6 +55,7 @@ func (oper *operInstallNodeByManual) ActionDefNames() []string {
 	return []string{
 		ActionNameTryReuseAgentID,
 		ActionNameUpsertHostToCMDB,
+		ActionNameAuthorizeProxyExportIP,
 		ActionNameGenManualBootstrapCommand,
 		ActionNameWaitDetectInfoByManual,
 		ActionNameInjectNodeCustomDeployConfig,
@@ -78,6 +79,7 @@ func (oper *operInstallNodeByManual) DefaultParameters() operation.Param {
 		RetryStartPoint: map[string]bool{
 			ActionNameTryReuseAgentID:              true,
 			ActionNameUpsertHostToCMDB:             true,
+			ActionNameAuthorizeProxyExportIP:       true,
 			ActionNameGenManualBootstrapCommand:    true,
 			ActionNameWaitDetectInfoByManual:       false,
 			ActionNameInjectNodeCustomDeployConfig: false,

@@ -22,6 +22,8 @@ package periodictask
 import (
 	"sync"
 
+	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/cloudsg"
+	topoStg "github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/topo"
 	"github.com/TencentBlueKing/bk-nodemgr/internal/backend/storage/workflow"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/contextx"
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/globalsettings"
@@ -42,6 +44,8 @@ type Config struct {
 	Locker locker.MutexFactory
 
 	StgWorkflow workflow.IStorage
+	StgTopo     topoStg.IStorage
+	CloudSG     cloudsg.IRegistry
 }
 
 // PeriodicTask defines a watcher manager.
@@ -90,6 +94,12 @@ func (pt *PeriodicTask) registerTasks(ctx contextx.IContext) error {
 			globalsettings.Get(ctx, globalsettings.CleanTriggerIntervalSecond, scheduler.Every1m),
 			periodicTaskTimeoutCleanTrigger,
 			pt.CleanTrigger,
+		),
+		scheduler.NewTask(
+			periodicTaskNameCloudSGInspect,
+			globalsettings.Get(ctx, globalsettings.CloudSGInspectIntervalSecond, scheduler.Every1h),
+			periodicTaskTimeoutCloudSGInspect,
+			pt.CloudSGInspect,
 		),
 	}
 
