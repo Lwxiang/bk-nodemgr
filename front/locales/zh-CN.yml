@@ -614,6 +614,10 @@ topoManager:
       accessPointName: 接入点名称
       createAccessPoint: 新增接入点
       deleteTips: 确认要删除该接入点？
+      cloudSecurityGroup: 云网络策略
+      cloudSecurityGroupTips: 开启后,该接入点被引用为上游时,Proxy 安装将自动放行出口 IP
+      cloudSgPool: 安全组池
+      cloudSgPoolPlaceholder: 请选择安全组池
       input:
         placeholder: 请输入IP:端口
         validate: 格式错误，请输入IP:端口

@@ -11,7 +11,9 @@
     </i>
     <CreateAccessPoint
       :index="index"
-      v-model:data="data[index]">
+      v-model:data="data[index]"
+      :has-cloud-sg-manage-permission="hasCloudSgManagePermission"
+      :pool-options="poolOptions">
     </CreateAccessPoint>
   </div>
   <div
@@ -32,7 +34,19 @@ import { useI18n } from 'vue-i18n';
 
 import CreateAccessPoint from './create-access-point.vue';
 
+import type { CloudSecurityGroupPool } from '@/@types/topo';
+
 const data = defineModel<Omit<AccessPoint, 'accesspoint_id' | 'tenant_id'>[]>('accessPoints', { required: true });
+defineProps({
+  hasCloudSgManagePermission: {
+    type: Boolean,
+    default: false,
+  },
+  poolOptions: {
+    type: Array as () => CloudSecurityGroupPool[],
+    default: () => [],
+  },
+});
 const { t } = useI18n();
 
 const initData: Omit<AccessPoint, 'accesspoint_id' | 'tenant_id'> = {
@@ -43,6 +57,7 @@ const initData: Omit<AccessPoint, 'accesspoint_id' | 'tenant_id'> = {
     file: [''],
     data: [''],
   },
+  cloud_security_group_pool_id: '',
 };
 
 const handleDeleteAccessPoint = async (index: number) => {

@@ -613,6 +613,10 @@ topoManager:
       senior: Advanced
       accessPointName: Access Point Name
       createAccessPoint: Add Access Point
+      cloudSecurityGroup: Cloud Network Policy
+      cloudSecurityGroupTips: When enabled, proxy installation automatically authorizes the export IP once this access point is referenced as upstream
+      cloudSgPool: Security Group Pool
+      cloudSgPoolPlaceholder: Select a security group pool
       deleteTips: Confirm delete this access point?
       input:
         placeholder: Enter IP:Port

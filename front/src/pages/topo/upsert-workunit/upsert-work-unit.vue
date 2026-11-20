@@ -41,7 +41,9 @@
             :label="$t('topoManager.workUnit.form.downstream')"
             label-width="130">
             <CreateAccessPointList
-              v-model:access-points="form.accesspoints">
+              v-model:access-points="form.accesspoints"
+              :has-cloud-sg-manage-permission="hasCloudSgManagePermission"
+              :pool-options="cloudSgPoolOptions">
             </CreateAccessPointList>
           </Form.FormItem>
           <CustomDeployConfigForm
@@ -116,7 +118,9 @@
             :label="$t('topoManager.workUnit.form.downstream')"
             label-width="130">
             <CreateAccessPointList
-              v-model:access-points="form.accesspoints">
+              v-model:access-points="form.accesspoints"
+              :has-cloud-sg-manage-permission="hasCloudSgManagePermission"
+              :pool-options="cloudSgPoolOptions">
             </CreateAccessPointList>
           </Form.FormItem>
           <CustomDeployConfigForm
@@ -169,11 +173,13 @@ import {
 } from './custom-deploy-config';
 import { buildNetworkUnitPayload } from './network-unit-payload';
 
+import type { CloudSecurityGroupPool } from '@/@types/topo';
 import { NodeConstantService } from '@/api/modules/node_constant';
 import { PackageService } from '@/api/modules/pkg';
 import { TopoService } from '@/api/modules/topo';
 import { PACKAGE_GENERATION } from '@/common/const';
 import { scrollToFirstErrorByClassNames } from '@/common/util';
+import { useAuthStore } from '@/stores/auth';
 import { useWorkareaStore } from '@/stores/workarea';
 
 const isShow = defineModel<boolean>('isShow', { required: true });
@@ -194,11 +200,38 @@ const {
   handleFetchAllWorkUnit,
 } = useWorkareaStore();
 const workareaStore = useWorkareaStore();
+const authStore = useAuthStore();
 
 const { t } = useI18n();
 const route = useRoute();
 const workareaId = Number(route.params.workarea);
 const unassignedAreaId = Number(window.PROJECT_CONFIG.UNASSIGNED_NETWORK_AREA_ID);
+const cloudSgManageAction = 'cloud_security_group_manage';
+const hasCloudSgManagePermission = ref(false);
+const cloudSgPoolOptions = ref<CloudSecurityGroupPool[]>([]);
+
+const verifyCloudSgManage = async () => {
+  hasCloudSgManagePermission.value = false;
+  const verified = await authStore.batchVerify(
+    [{ id: cloudSgManageAction, action: cloudSgManageAction, resourceType: '', routes: [] }],
+    undefined,
+    undefined,
+    { showPermissionDialog: false },
+  );
+  if (!verified) return;
+  hasCloudSgManagePermission.value = authStore.hasPermissionCache(cloudSgManageAction)
+    && authStore.hasPermission(cloudSgManageAction);
+};
+
+const loadCloudSgPools = async () => {
+  if (!hasCloudSgManagePermission.value) {
+    cloudSgPoolOptions.value = [];
+    return;
+  }
+
+  const res = await TopoService.CloudSecurityGroupPoolList({}).catch(() => ({ items: [] }));
+  cloudSgPoolOptions.value = res.items ?? [];
+};
 
 const type = ref('not_direct');
 const isDirect = ref(false);
@@ -401,9 +434,7 @@ const fetchUnitAgentCount = async (): Promise<number> => {
     const res = await TopoService.TopoGraphNodeGetReq({
       bk_networkunit_id: [props.workUnitId],
     });
-    const info = (res?.graph_node_info || []).find(
-      (item: any) => item.bk_networkunit_id === props.workUnitId,
-    );
+    const info = (res?.graph_node_info || []).find((item: any) => item.bk_networkunit_id === props.workUnitId);
     return info?.total_agent ?? 0;
   } catch {
     return 0;
@@ -459,7 +490,6 @@ const handleConfirm = async () => {
         if (!ok) return;
       }
     }
-
 
     // params配置
     const links = form.links as Links;
@@ -573,7 +603,9 @@ watch(isShow, async (isCurrentShow: boolean) => {
       handleFetchAllWorkarea(),
       handleFetchAllWorkUnit(),
       fetchCustomDeployOsOptions(),
+      verifyCloudSgManage(),
     ]);
+    await loadCloudSgPools();
 
     if (props.isCreate) {
       syncCustomDeployConfigs();
@@ -585,6 +617,8 @@ watch(isShow, async (isCurrentShow: boolean) => {
   }
   if (!isCurrentShow) {
     formRef.value.clearValidate();
+    hasCloudSgManagePermission.value = false;
+    cloudSgPoolOptions.value = [];
     initForm();
   }
 });
