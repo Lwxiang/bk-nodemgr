@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"github.com/TencentBlueKing/bk-nodemgr/pkg/config/kms"
+	"github.com/TencentBlueKing/bk-nodemgr/pkg/config/kms/envelope"
 )
 
 const (
@@ -367,7 +368,23 @@ func (k *KMS) ParseBackendServiceConfig(service *BackendService) error {
 	service.CreditVault.HostCreditVault.IEGTJJ.Key = dataModule.CreditVault.IEGTJJ.Key
 	service.CreditVault.HostCreditVault.IEGTJJ.SecretKey = dataModule.CreditVault.IEGTJJ.SecretKey
 
+	// cloud security group pools.
+	applyCloudSecurityGroupSecretKeys(service.CloudSecurityGroup.Pools, dataModule.CloudSecurityGroup.Pools)
+
 	return nil
+}
+
+// applyCloudSecurityGroupSecretKeys overrides the yaml secret keys of cloud security group
+// pools with the kms envelope values. The yaml value is kept when the envelope carries no
+// entry or an empty secret key for the pool.
+func applyCloudSecurityGroupSecretKeys(
+	pools []CloudSecurityGroupPool, envelopePools map[string]envelope.BackendCloudSecurityGroupPoolSecret,
+) {
+	for idx := range pools {
+		if secretKey := envelopePools[pools[idx].PoolID].SecretKey; secretKey != "" {
+			pools[idx].SecretKey = secretKey
+		}
+	}
 }
 
 // ParseFileServiceConfig parses the file service config.

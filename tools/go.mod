@@ -19,4 +19,5 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
+	golang.org/dl v0.0.0-20261110170429-b9769cbc5f78 // indirect
 )
