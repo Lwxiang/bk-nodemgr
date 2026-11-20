@@ -84,6 +84,10 @@ interface AccessPoint {
   accesspoint_name: string;
   bk_networkarea_id: number;
   endpoints: Endpoints;
+  // cloud_security_group_pool_id binds a global security group pool, empty
+  // means disabled. An omitted value is read as empty, so a full update that
+  // omits it unbinds the pool.
+  cloud_security_group_pool_id: string;
 }
 
 // AccessPointBrief describes the brief access point (no endpoints for

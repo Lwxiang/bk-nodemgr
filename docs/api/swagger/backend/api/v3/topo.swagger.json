@@ -562,6 +562,40 @@
         ]
       }
     },
+    "/api/v3/topo/cloud_security_group_pool/list": {
+      "post": {
+        "summary": "CloudSecurityGroupPoolList lists the global security group pools manageable\nby the current user.",
+        "operationId": "Topo_CloudSecurityGroupPoolList",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3TopoCloudSecurityGroupPoolListResp"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "TopoCloudSecurityGroupPoolListReq describes the request to list global\nsecurity group pools, no parameters required.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3TopoCloudSecurityGroupPoolListReq"
+            }
+          }
+        ],
+        "tags": [
+          "Topo"
+        ]
+      }
+    },
     "/api/v3/topo/constant/get": {
       "post": {
         "summary": "ConstantGet provides getting a constant.",
@@ -1580,6 +1614,10 @@
         },
         "endpoints": {
           "$ref": "#/definitions/v3Endpoints"
+        },
+        "cloud_security_group_pool_id": {
+          "type": "string",
+          "description": "cloud_security_group_pool_id binds a global security group pool, empty\nmeans disabled. An omitted value is read as empty, so a full update that\nomits it unbinds the pool."
         }
       },
       "description": "AccessPoint describes the access point informations."
@@ -1648,6 +1686,18 @@
         }
       },
       "description": "BusinessHostCount describes the host count of business in topo service."
+    },
+    "v3CloudSecurityGroupPool": {
+      "type": "object",
+      "properties": {
+        "pool_id": {
+          "type": "string"
+        },
+        "pool_name": {
+          "type": "string"
+        }
+      },
+      "description": "CloudSecurityGroupPool is the public information of a global security group\npool available for access points."
     },
     "v3CustomDeployConfig": {
       "type": "object",
@@ -2658,6 +2708,47 @@
         },
         "message": {
           "type": "string"
+        }
+      }
+    },
+    "v3TopoCloudSecurityGroupPoolListReq": {
+      "type": "object",
+      "description": "TopoCloudSecurityGroupPoolListReq describes the request to list global\nsecurity group pools, no parameters required."
+    },
+    "v3TopoCloudSecurityGroupPoolListResp": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/definitions/v3Error"
+        },
+        "permission": {
+          "$ref": "#/definitions/v3Permission"
+        },
+        "data": {
+          "$ref": "#/definitions/v3TopoCloudSecurityGroupPoolListRespData"
+        }
+      },
+      "description": "TopoCloudSecurityGroupPoolListResp describes the response of listing global\nsecurity group pools, credentials and security group ids are excluded."
+    },
+    "v3TopoCloudSecurityGroupPoolListRespData": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v3CloudSecurityGroupPool"
+          }
         }
       }
     },

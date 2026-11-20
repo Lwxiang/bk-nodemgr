@@ -383,6 +383,33 @@ export interface TopoAccessPointListBriefRespData {
   items: AccessPointBrief[];
 }
 
+// CloudSecurityGroupPool is the public information of a global security group
+// pool available for access points.
+export interface CloudSecurityGroupPool {
+  pool_id: string;
+  pool_name: string;
+}
+
+// TopoCloudSecurityGroupPoolListReq describes the request to list global
+// security group pools, no parameters required.
+export interface TopoCloudSecurityGroupPoolListReq {
+}
+
+// TopoCloudSecurityGroupPoolListResp describes the response of listing global
+// security group pools, credentials and security group ids are excluded.
+export interface TopoCloudSecurityGroupPoolListResp {
+  code: number;
+  message: string;
+  request_id: string;
+  error: Error;
+  permission: Permission;
+  data: TopoCloudSecurityGroupPoolListRespData;
+}
+
+export interface TopoCloudSecurityGroupPoolListRespData {
+  items: CloudSecurityGroupPool[];
+}
+
 // TopoNetworkUnitUpdateResp describes the HTTP response body when update
 // network unit in topo service.
 export interface TopoNetworkUnitUpdateResp {

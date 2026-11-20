@@ -84,6 +84,10 @@ message AccessPoint {
   optional string accesspoint_name = 3;
   optional int64 bk_networkarea_id = 4;
   Endpoints endpoints = 5;
+  // cloud_security_group_pool_id binds a global security group pool, empty
+  // means disabled. An omitted value is read as empty, so a full update that
+  // omits it unbinds the pool.
+  optional string cloud_security_group_pool_id = 6;
 }
 
 // AccessPointBrief describes the brief access point (no endpoints for
